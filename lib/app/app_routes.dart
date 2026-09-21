@@ -1,0 +1,30 @@
+// 应用壳层路由表：集中声明顶层页面及其依赖绑定，避免页面自行拼接路由。
+import 'package:get/get.dart';
+
+import '../features/device/presentation/device_home_page.dart';
+import '../features/profile/presentation/profile_page.dart';
+import '../features/video/presentation/video_page.dart';
+import 'bindings/device_binding.dart';
+
+/// 归属于应用壳层的命名路由。
+abstract final class AppRoutes {
+  /// 设备主页路由。
+  static const String device = '/device';
+
+  /// 视频主页路由。
+  static const String video = '/video';
+
+  /// 从设备主页进入的用户资料路由。
+  static const String profile = '/profile';
+
+  /// 所有顶层路由及其局部依赖绑定。
+  static final List<GetPage<dynamic>> pages = <GetPage<dynamic>>[
+    GetPage<dynamic>(
+      name: device,
+      page: () => const DeviceHomePage(),
+      binding: DeviceBinding(),
+    ),
+    GetPage<dynamic>(name: video, page: () => const VideoPage()),
+    GetPage<dynamic>(name: profile, page: () => const ProfilePage()),
+  ];
+}
