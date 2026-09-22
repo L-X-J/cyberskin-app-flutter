@@ -2,12 +2,17 @@
 import 'package:get/get.dart';
 
 import '../features/device/presentation/device_home_page.dart';
+import '../features/init/presentation/init_page.dart';
 import '../features/profile/presentation/profile_page.dart';
 import '../features/video/presentation/video_page.dart';
 import 'bindings/device_binding.dart';
+import 'bindings/init_binding.dart';
 
 /// 归属于应用壳层的命名路由。
 abstract final class AppRoutes {
+  /// 应用启动初始化路由。
+  static const String init = '/init';
+
   /// 设备主页路由。
   static const String device = '/device';
 
@@ -19,6 +24,11 @@ abstract final class AppRoutes {
 
   /// 所有顶层路由及其局部依赖绑定。
   static final List<GetPage<dynamic>> pages = <GetPage<dynamic>>[
+    GetPage<dynamic>(
+      name: init,
+      page: () => const InitPage(),
+      binding: InitBinding(),
+    ),
     GetPage<dynamic>(
       name: device,
       page: () => const DeviceHomePage(),

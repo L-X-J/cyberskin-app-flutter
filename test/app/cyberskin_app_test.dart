@@ -1,11 +1,50 @@
 import 'package:cyberskin_app/app/cyberskin_app.dart';
+import 'package:cyberskin_app/features/content/data/content_configuration_cache.dart';
+import 'package:cyberskin_app/features/content/domain/entities/app_content.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+/// 根组件测试使用的内存配置缓存。
+final class _TestContentCache implements ContentConfigurationCache {
+  /// 创建带当天刷新时间的缓存，使初始化页可以立即进入设备页。
+  _TestContentCache()
+    : configuration = AppConfiguration(
+        agreements: const <AppAgreement>[],
+        features: const AppFeatureFlags(),
+      ),
+      lastRefreshAt = DateTime.now(),
+      lastLaunchAt = DateTime.now();
+
+  AppConfiguration? configuration;
+  DateTime? lastRefreshAt;
+  DateTime? lastLaunchAt;
+
+  @override
+  Future<AppConfiguration?> read() async => configuration;
+
+  @override
+  Future<DateTime?> readLastRefreshAt() async => lastRefreshAt;
+
+  @override
+  Future<DateTime?> readLastLaunchAt() async => lastLaunchAt;
+
+  @override
+  Future<void> write(AppConfiguration value) async => configuration = value;
+
+  @override
+  Future<void> writeLastRefreshAt(DateTime value) async =>
+      lastRefreshAt = value;
+
+  @override
+  Future<void> writeLastLaunchAt(DateTime value) async => lastLaunchAt = value;
+}
 
 void main() {
   testWidgets('starts on the device route and navigates to video', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const CyberskinApp());
+    await tester.pumpWidget(
+      CyberskinApp(contentConfigurationCache: _TestContentCache()),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('My Devices'), findsOneWidget);
