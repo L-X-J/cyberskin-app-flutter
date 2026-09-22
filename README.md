@@ -17,6 +17,17 @@ fvm flutter analyze
 fvm flutter test
 ```
 
+真实 App API 联调测试默认跳过，避免把 CI 绑定到本地服务；需要验证全部 Repository
+请求链路时显式传入联调地址：
+
+```bash
+CYBERSKIN_LIVE_API_BASE_URL=http://192.168.1.11:8090 fvm flutter test \
+  test/features/api/repository_live_api_test.dart
+```
+
+该测试使用开发环境的 mock OAuth fixture 和固定邮箱验证码，并会在结束后清理创建的节奏
+与设备绑定。
+
 如果 FVM 报告无法写入安装目录的引擎缓存，先修复本机 FVM 目录权限，再重新执行命令；该错误不应通过修改项目代码绕过。
 
 ## 架构
@@ -33,7 +44,11 @@ lib/
     ├── rhythm/             # 片段式自定义节奏
     ├── training/           # 训练课程与运行
     ├── video/              # 官方、浏览器、本地视频
-    └── profile/            # 用户资料、隐私、反馈和版本
+    ├── profile/            # 用户资料
+    ├── content/            # 启动配置、CMS 页面和广告位
+    ├── feedback/           # 用户反馈与预签名附件上传
+    ├── version/            # App 版本检查
+    └── init/               # 启动配置前置校验与首屏跳转
 ```
 
 `lib` 下每个目录都提供 `README.md`，用于说明该目录的职责、当前内容和边界；`.dart`
@@ -53,7 +68,12 @@ lib/
 
 App 接口的静态 OpenAPI 3.1 文档位于 [docs/openapi/app-openapi.json](docs/openapi/app-openapi.json)，覆盖后端 `App接口` 分组的 `/app/v1/**` 接口、请求/响应 schema、统一 `{ code, msg, data }` 响应和鉴权声明。导出、更新、鉴权补齐及校验流程见 [docs/openapi/README.md](docs/openapi/README.md)。
 
-该 JSON 是后端 SpringDoc 的导出快照，不是接口定义真相源；契约以 Controller、BO、VO 及其注解为准。接口变化后必须重新导出，客户端请求仍需通过 Feature `data` 层的 Repository 访问，基础地址由 `--dart-define=CYBERSKIN_API_BASE_URL=...` 注入，禁止硬编码生产地址或直接在页面调用 API。
+该 JSON 是后端 SpringDoc 的导出快照，不是接口定义真相源；契约以 Controller、BO、VO 及其注解为准。当前 29 个 App API 操作均通过 Feature `data` 层的 Repository 访问，基础地址由 `--dart-define=CYBERSKIN_API_BASE_URL=...` 注入，禁止硬编码生产地址或直接在页面调用 API。
+
+共享网络层严格区分 HTTP 状态与业务响应 `code`：仅 `code == 200` 为成功，HTTP 或业务
+401 都会清理安全存储中的 token/clientId。请求状态通过 `NetworkRequestMonitor` 以无敏感
+数据的有界历史提供给页面或诊断使用。登录凭证使用 `flutter_secure_storage` 保存；预签名
+对象存储的原始字节 PUT 是唯一使用 `package:http` 的传输例外。
 
 ## UI 设计与响应式规范
 

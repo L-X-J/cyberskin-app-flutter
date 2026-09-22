@@ -29,6 +29,20 @@ Cyberskin App 是面向美国男性用户的英文 Flutter 客户端，连接并
 - App 状态使用 GetX `GetxController` + `Rx`；路由和依赖使用 GetX；局部状态使用 `setState`。
 - API 请求统一从 GetX `GetConnect` 客户端进入，业务代码仍通过 Repository 访问。
 - API 基础地址通过 `--dart-define=CYBERSKIN_API_BASE_URL=...` 注入，不写入源码或文档中的环境常量。
+- App API 的 29 个 `/app/v1/**` 操作由 `core/network/app_api_operation.dart` 注册并由契约测试
+  对照 OpenAPI 快照。`BaseRemoteRepository` 仅将 `{code,msg,data}` 的 `code == 200` 视为成功；
+  HTTP 或业务 `401` 会清理安全会话。
+- 登录 token、clientId 与到期时间存放于 `flutter_secure_storage`；请求监控只保存操作、方法、
+  路径、状态和耗时，不保存载荷或凭证。预签名对象存储原始字节 PUT 是唯一使用 `package:http`
+  的网络例外。
+- `test/features/api/repository_live_api_test.dart` 在设置 `CYBERSKIN_LIVE_API_BASE_URL` 后执行
+  全 Repository 真实请求，默认测试会跳过。开发后端启用 OAuth mock 与邮箱固定码 `123456`；
+  测试创建的设备绑定会物理删除，节奏接口为软删除。
+- 应用首屏为 `init`：启动时读取 `content` 的本地启动配置缓存。当天首次刷新或无缓存时，
+  无缓存必须等待 `AppApiOperation.appConfig` 成功后才能进入设备页；已有配置时立即进入并在
+  后台刷新。每次远端成功后由 `ContentRemoteRepository` 覆盖 SharedPreferences 缓存。
+- 所有函数都必须有中文 Dart doc；函数内部稍复杂、非显然或有状态/并发/缓存语义的代码块，
+  必须补充中文行内注释，说明原因、边界和失败策略，不能只给类或公开方法写注释。
 - `Obx` 只包裹最小可变 Widget 子树，避免整页重建。
 - Repository 是数据访问单一入口，错误转换为显式结果/领域错误。
 - 领域模型不可变；测试文件以 `_test.dart` 结尾。

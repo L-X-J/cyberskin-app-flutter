@@ -10,3 +10,7 @@
 
 依赖方向为 `presentation -> domain <- data`。新增功能先定义领域契约，再实现数据源与
 展示层，最后由 `app` 组装具体依赖；禁止跨 Feature 直接导入其 `data` 实现。
+
+当前远端 API 按变化原因拆分为 `auth`、`device`、`rhythm`、`training`、`video`、`profile`、
+`content`、`feedback`、`version` 和 `init`。`init` 只编排启动配置前置条件，配置缓存仍归
+`content/data`；设备远端目录/绑定与本地 BLE 会话 Repository 保持分离。
