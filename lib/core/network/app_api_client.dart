@@ -9,9 +9,14 @@ final class AppApiClient extends GetConnect {
   /// 创建客户端，并允许显式传入环境基础地址。
   AppApiClient({String? baseUrl}) : _configuredBaseUrl = baseUrl;
 
+  /// 测试或特定入口显式传入的基础地址。
   final String? _configuredBaseUrl;
 
   @override
+  /// 初始化 GetConnect 的基础地址、超时与 JSON 内容类型。
+  ///
+  /// 空基础地址保留给 Widget/Repository 单元测试，生产入口必须通过 dart-define
+  /// 提供地址，避免在源码中固化环境域名。
   void onInit() {
     super.onInit();
     final baseUrl =
@@ -23,12 +28,4 @@ final class AppApiClient extends GetConnect {
     httpClient.timeout = const Duration(seconds: 15);
     httpClient.defaultContentType = 'application/json; charset=utf-8';
   }
-
-  /// 通过 GetConnect 执行带泛型返回类型的 JSON GET 请求。
-  Future<Response<T>> getJson<T>(String path, {Map<String, dynamic>? query}) =>
-      get<T>(path, query: query);
-
-  /// 通过 GetConnect 执行带泛型返回类型的 JSON POST 请求。
-  Future<Response<T>> postJson<T>(String path, Object? body) =>
-      post<T>(path, body);
 }

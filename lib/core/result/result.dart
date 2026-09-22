@@ -14,6 +14,9 @@ sealed class Result<T> {
   /// 当前结果是否包含成功值。
   bool get isSuccess => this is Success<T>;
 
+  /// 当前结果是否包含失败信息。
+  bool get isFailure => this is Failure<T>;
+
   /// 成功时返回对应值，失败时返回 `null`。
   T? get valueOrNull => switch (this) {
     Success<T>(:final value) => value,
