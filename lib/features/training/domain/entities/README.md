@@ -1,6 +1,6 @@
 # training/domain/entities 目录
 
-训练领域实体预留目录，当前尚无实现。
+包含训练课程摘要、详情、开放 stages 协议和稳定 customMode 打点模型。
 
-课程、阶段和执行记录等具有独立生命周期或聚合关系的对象可放在此处；简单状态和值对象
-保留在 `training/domain`，避免目录膨胀。
+`stages` 的协议结构尚未在 OpenAPI 细化，保持不可变原始 JSON；`customMode` 的
+`start-end`、`des`、`command_data` 已显式建模，命令文本可由协议层验证。

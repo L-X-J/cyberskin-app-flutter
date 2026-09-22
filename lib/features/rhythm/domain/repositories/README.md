@@ -1,6 +1,5 @@
 # rhythm/domain/repositories 目录
 
-节奏 Repository 抽象预留目录，当前尚无实现。
+包含节奏读取、创建、更新和删除的 Repository 抽象及输入值对象。
 
-后续接口描述节奏读取、保存、删除和同步语义，不暴露 REST、数据库或 BLE 类型；具体
-实现归 `rhythm/data`。
+接口不暴露 REST、数据库或 BLE 类型；具体实现归 `rhythm/data`。

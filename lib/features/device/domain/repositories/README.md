@@ -1,6 +1,7 @@
 # device/domain/repositories 目录
 
-设备领域 Repository 抽象预留目录，当前尚无实现。
+本目录定义设备型号目录和用户绑定设备的 Repository 抽象及不可变模型。
 
-现有简单契约仍位于 `device_repository.dart`。当设备连接、能力配置和缓存查询分别形成
-稳定契约后再迁移或新增文件；接口不得暴露 HTTP、BLE 或数据库类型。
+现有 `device_repository.dart` 仍只描述本地 BLE 连接/会话设备列表；它与这里的远端型号、
+绑定记录分离，避免将缺少实时连接状态和电量的后台数据伪装为 BLE 会话状态。接口不得暴露
+HTTP、BLE 句柄或数据库类型。
