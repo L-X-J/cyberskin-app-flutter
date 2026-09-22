@@ -49,6 +49,12 @@ lib/
 
 数据向下流动：`Repository -> GetxController -> View`。事件向上流动：`View -> GetxController -> Repository`。完整约束见 `AGENTS.md`。
 
+## App API 文档
+
+App 接口的静态 OpenAPI 3.1 文档位于 [docs/openapi/app-openapi.json](docs/openapi/app-openapi.json)，覆盖后端 `App接口` 分组的 `/app/v1/**` 接口、请求/响应 schema、统一 `{ code, msg, data }` 响应和鉴权声明。导出、更新、鉴权补齐及校验流程见 [docs/openapi/README.md](docs/openapi/README.md)。
+
+该 JSON 是后端 SpringDoc 的导出快照，不是接口定义真相源；契约以 Controller、BO、VO 及其注解为准。接口变化后必须重新导出，客户端请求仍需通过 Feature `data` 层的 Repository 访问，基础地址由 `--dart-define=CYBERSKIN_API_BASE_URL=...` 注入，禁止硬编码生产地址或直接在页面调用 API。
+
 ## UI 设计与响应式规范
 
 涉及页面、组件、主题、字体、素材、布局、响应式或视觉测试的工作，从 [docs/ui/README.md](docs/ui/README.md) 开始。详细实现规则见 [ui-implementation-standard.md](docs/ui/ui-implementation-standard.md)，页面级布局使用 [page-spec-template.md](docs/ui/page-spec-template.md)，交付时按 [visual-acceptance.md](docs/ui/visual-acceptance.md) 验收。

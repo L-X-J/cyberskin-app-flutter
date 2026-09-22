@@ -40,6 +40,13 @@ lib/
 - 模型使用不可变对象；更新通过替换 Rx 值或集合实例完成。
 - Repository 捕获数据源异常并转换为显式 `Result` / 领域错误；View 不解析底层异常。
 
+## App API 契约与文档
+
+- App API 的接口定义真相源是后端 Controller、请求 BO、响应 VO 及其注解；运行时由 SpringDoc 生成文档。
+- [App OpenAPI 静态文档](docs/openapi/README.md) 说明导出、重新生成、鉴权补齐和校验流程；[app-openapi.json](docs/openapi/app-openapi.json) 是 `App接口` 分组、`/app/v1/**` 的 OpenAPI 3.1 导出快照，不是手工维护的接口定义。
+- App 契约发生新增、删除或字段/注解/校验变化时，必须按 `docs/openapi/README.md` 重新导出并校验，禁止只改静态 JSON 冒充契约更新。
+- 客户端 API 访问必须使用 `core/network` 或 Feature `data` 层的 GetX `GetConnect` 客户端，基础地址由构建参数 `--dart-define=CYBERSKIN_API_BASE_URL=...` 注入；业务请求、响应转换和错误映射仍由 Repository 边界负责。
+
 ## UI 设计还原与响应式开发
 
 - 凡涉及页面、组件、主题、字体、素材、布局、响应式或视觉测试的任务，修改前必须阅读 [UI 规范索引](docs/ui/README.md)、[实现规范](docs/ui/ui-implementation-standard.md)，以及目标页面或组件的布局约定。
