@@ -21,6 +21,7 @@ void main() {
       expect(AppColors.scaffold, const Color(0xFF09090A));
       expect(theme.scaffoldBackgroundColor, const Color(0xFF09090A));
       expect(theme.textTheme.bodyMedium?.fontSize, AppTypography.size16);
+      expect(theme.textTheme.bodyMedium?.decoration, TextDecoration.none);
     });
 
     test('covers standard and custom typography roles', () {

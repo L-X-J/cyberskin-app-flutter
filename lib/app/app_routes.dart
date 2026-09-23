@@ -7,6 +7,7 @@ import '../features/profile/presentation/profile_page.dart';
 import '../features/video/presentation/video_page.dart';
 import 'bindings/device_binding.dart';
 import 'bindings/init_binding.dart';
+import 'init_route_transition.dart';
 
 /// 归属于应用壳层的命名路由。
 abstract final class AppRoutes {
@@ -28,11 +29,15 @@ abstract final class AppRoutes {
       name: init,
       page: () => const InitPage(),
       binding: InitBinding(),
+      customTransition: InitRouteTransition(),
+      transitionDuration: const Duration(milliseconds: 420),
     ),
     GetPage<dynamic>(
       name: device,
       page: () => const DeviceHomePage(),
       binding: DeviceBinding(),
+      customTransition: DeviceRouteTransition(),
+      transitionDuration: const Duration(milliseconds: 1200),
     ),
     GetPage<dynamic>(name: video, page: () => const VideoPage()),
     GetPage<dynamic>(name: profile, page: () => const ProfilePage()),

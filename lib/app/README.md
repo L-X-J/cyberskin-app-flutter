@@ -5,6 +5,7 @@
 - `bindings/`：GetX 应用级与路由级依赖绑定。
 - `widgets/`：应用壳层共享组件，例如底部导航和全局控制区域。
 - `app_routes.dart`：顶层命名路由表。
+- `init_route_transition.dart`：初始化页离场和设备页进入的路由动画实现。
 - `cyberskin_app.dart`：根组件与全局主题、路由、初始绑定的组装入口。
 
 此目录可以引用具体 Feature 实现进行装配，但不得承载 Feature 业务规则或数据访问逻辑。

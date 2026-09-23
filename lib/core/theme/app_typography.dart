@@ -247,5 +247,5 @@ abstract final class AppTypography {
     labelLarge: primaryButton,
     labelMedium: tag,
     labelSmall: badge,
-  );
+  ).apply(decoration: TextDecoration.none);
 }
