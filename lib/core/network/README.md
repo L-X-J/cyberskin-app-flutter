@@ -18,4 +18,5 @@
 - `app_api_operation.dart`：集中登记 App API 操作、HTTP 方法、路径、鉴权要求和请求元数据。
 - `base_remote_repository.dart`：统一处理 HTTP/业务码、401 会话失效、JSON 解码异常和 `Result` 映射。
 - `json_decoder.dart`：提供严格的 JSON 对象、列表、字符串、数字、布尔值和扩展字段解码。
+- `json_text.dart`：从模型回复或外部文本中提取并解析 JSON 对象。
 - `network_request_monitor.dart`：保存有界、无敏感数据的请求开始/完成状态，供诊断或页面观察。

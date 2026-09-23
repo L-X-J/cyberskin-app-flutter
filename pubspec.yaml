@@ -7,12 +7,18 @@ environment:
   sdk: ^3.13.4
 
 dependencies:
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.9
+  # 强大的官方 Image 扩展组件, 支持加载以及失败显示，缓存网络图片，缩放拖拽图片，图片浏览(微信掘金效果)，
+  # 滑动退出页面(微信掘金效果)，编辑图片(裁剪旋转翻转)，保存，绘制自定义效果等功能
+  # https://github.com/fluttercandies/extended_image/blob/master/README-ZH.md
+  extended_image: ^10.1.0
   flutter:
     sdk: flutter
-  flutter_secure_storage: ^10.0.0
+  flutter_secure_storage: ^11.2.0
+  flutter_svg: ^2.3.0
   get: ^4.7.3
   http: ^1.6.0
+  lottie: ^3.6.1
   shared_preferences: ^2.5.5
 
 dev_dependencies:
@@ -24,14 +30,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
+  assets:
+    - assets/images/
+    - assets/lotties/
