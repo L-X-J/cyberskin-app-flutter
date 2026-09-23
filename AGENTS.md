@@ -67,7 +67,7 @@ lib/
 
 - 文件名使用 `snake_case.dart`；类型使用 `UpperCamelCase`；变量和方法使用 `lowerCamelCase`。
 - `lib` 下所有 `.dart` 文件必须有文件职责注释；注释内容使用中文。对外类型、非显然函数、状态机、协议校验、缓存/重试/并发策略写中文 Dart doc 注释，解释原因、边界和契约，不复述代码。
-- `lib` 下每个目录必须提供 `README.md`，说明目录职责、当前内容和边界；新增目录时应同步创建。
+- `lib` 下每个目录必须提供 `README.md`，说明目录职责、当前内容和边界，并列出直接子目录及其中每个 Dart 文件的职责；新增目录或 Dart 文件时应同步更新。
 - 每个领域规则至少有单元测试；页面交互用 Widget test；跨平台真实 BLE/API 流程用 integration test。
 - 测试文件统一放在 `test/` 或 `integration_test/`，命名以 `_test.dart` 结尾。
 - 修改完成后至少运行 `dart format`、`flutter analyze` 和相关测试；涉及构建配置时补充 `flutter build` 或平台构建验证。

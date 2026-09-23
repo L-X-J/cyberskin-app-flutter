@@ -4,3 +4,7 @@
 
 `stages` 的协议结构尚未在 OpenAPI 细化，保持不可变原始 JSON；`customMode` 的
 `start-end`、`des`、`command_data` 已显式建模，命令文本可由协议层验证。
+
+文件职责：
+
+- `training.dart`：定义课程摘要、课程详情、开放阶段协议和 `customMode` 打点模型。
