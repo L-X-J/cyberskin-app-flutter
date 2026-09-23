@@ -45,7 +45,9 @@ void main() {
     await tester.pumpWidget(
       CyberskinApp(contentConfigurationCache: _TestContentCache()),
     );
-    await tester.pumpAndSettle();
+    // 初始化页包含无限循环背景，持续推进到设备页切换完成即可，不能等待静止。
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('My Devices'), findsOneWidget);
     expect(find.text('No devices yet'), findsOneWidget);
