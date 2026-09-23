@@ -60,7 +60,7 @@ Dart 文件的职责也应在所在目录 README 中列出，`.dart` 文件的�
 - `data`：API、BLE、本地存储和 Repository 实现；负责 IO 与错误转换。
 - `presentation`：Page、GetxController、UI 状态；只负责展示、路由和用户事件。
 
-共享状态使用 GetX `GetxController` + `Rx`，依赖由 `Bindings` 注入，路由由 `GetMaterialApp` / `GetPage` 管理，API 客户端使用 GetX `GetConnect`。`Obx` 必须尽量贴近实际变化的组件，避免整页重建。
+GetX 是项目默认的状态管理、依赖注入和路由编排方案：共享状态使用 `GetxController` + 按变化原因拆分的独立 `Rx`，依赖由 `Bindings` 注入，路由由 `GetMaterialApp` / `GetPage` 管理，API 客户端使用 GetX `GetConnect`。`Obx` / `GetX` 应下沉到原子级、实际依赖对应 Rx 的最小组件，只订阅直接需要的字段，避免整页、整列或无关兄弟组件重建；引入其他状态管理或路由方案必须先记录 ADR。
 
 数据向下流动：`Repository -> GetxController -> View`。事件向上流动：`View -> GetxController -> Repository`。完整约束见 `AGENTS.md`。
 

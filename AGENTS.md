@@ -31,11 +31,14 @@ lib/
 
 ## 状态管理、路由与数据流
 
+- GetX 是项目默认的状态管理、依赖注入和路由编排方案；新增跨 Widget、跨页面或会话状态时，优先使用 `GetxController`、`Rx`、`Bindings`、`GetMaterialApp` 和 `GetPage`。未经 ADR 记录和评审，不得在同一业务域引入另一套状态管理或路由架构。
 - 跨页面或会话状态使用 GetX `GetxController`；依赖通过 `Bindings` 注册，禁止在业务 Widget 中隐式创建全局依赖。
 - 页面路由统一使用 `GetMaterialApp`、`GetPage` 和命名路由；页面跳转不直接依赖底层 Navigator 状态。
 - API 客户端使用 GetX `GetConnect`，但只能位于 `core/network` 或 Feature 的 `data` 层；业务访问仍必须经过 Repository。
 - 局部、短生命周期且不需要跨 Widget 共享的输入状态可以使用 `StatefulWidget` + `setState`。
-- 共享状态拆分为多个独立 `Rx` 字段；`Obx` / `GetX` 只包住实际依赖该字段的最小 Widget 子树，禁止用一个大 `Obx` 包整页。
+- 共享状态必须按独立变化原因拆分为多个 `Rx` 字段；禁止用一个聚合 Rx 承载互不相关的 UI 状态。
+- `Obx` / `GetX` 必须尽量下沉到原子级、实际依赖对应 Rx 字段的最小 Widget；一个响应式包装只订阅其直接需要的字段，禁止用一个大 `Obx` / `GetX` 包整页、整列或包含无关兄弟组件的父树。
+- 新增或修改响应式 UI 时，应优先拆出可独立刷新的子组件；只有多个元素始终由同一状态同时变化且拆分会破坏语义时，才允许提升订阅范围，并在代码中保留清晰的组件边界。
 - 数据向下流动：`Repository -> GetxController -> View`；事件向上流动：`View -> GetxController -> Repository`。
 - 模型使用不可变对象；更新通过替换 Rx 值或集合实例完成。
 - Repository 捕获数据源异常并转换为显式 `Result` / 领域错误；View 不解析底层异常。
