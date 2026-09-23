@@ -21,7 +21,7 @@
 | 业务流程、设备能力、状态和错误行为 | 最新明确需求与 PRD | [Cyberskin_PRD_v1.1.0.md](../Cyberskin_PRD_v1.1.0.md) |
 | 视觉参数、素材和布局基准 | 已确认 Figma 节点与设计标注 | 下方 Figma 映射 |
 | Flutter 实现方式和模块边界 | 项目架构规则、现有代码与官方适配原则 | [AGENTS.md](../../AGENTS.md)、`lib/` |
-| 已落地主题 token | 代码 | [`lib/core/theme/app_theme.dart`](../../lib/core/theme/app_theme.dart) |
+| 已落地主题 token | 代码 | [`lib/core/theme/`](../../lib/core/theme/README.md)、[`docs/design_system/README.md`](../design_system/README.md) |
 
 设计稿和 PRD 冲突时，不得静默选择其中之一。页面布局约定中记录冲突、采用的依据、影响和待决策项。设计信息缺失时，先查找同类组件与其他状态；仍无法确定的内容必须标为推断，不能沉淀为全局 token。
 
@@ -42,7 +42,7 @@
 ### 已验证项目事实
 
 - Flutter 通过 FVM 固定为 `3.47.5`；Dart SDK 约束为 `^3.13.4`。
-- 当前 UI 使用 Flutter Material 3、GetX 路由/状态和 [`AppTheme`](../../lib/core/theme/app_theme.dart)；字体采用 Flutter/Material 默认字体，未注册自定义字体或正式业务素材目录。
+- 当前 UI 使用 Flutter Material 3 Dark Theme、GetX 路由/状态和 [`AppTheme`](../../lib/core/theme/app_theme.dart)；完整 token 说明见 [`docs/design_system/README.md`](../design_system/README.md)。字体采用 Flutter/Material 默认字体，未注册自定义字体或正式业务素材目录。
 - `DeviceCapabilities.gridColumns` 目前只表达一列或两列；PRD 规定自由控制模块、样式、排序和能力由后台配置驱动。
 
 ### 实施约定

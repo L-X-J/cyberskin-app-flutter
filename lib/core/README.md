@@ -7,7 +7,7 @@
 - `protocol/`：通用业务协议与 BLE 帧值对象。
 - `result/`：Repository 边界的显式成功/失败结果。
 - `storage/`：本地持久化能力的预留边界。
-- `theme/`：应用主题与视觉 token。
+- `theme/`：应用主题与视觉 token；文件职责见 `theme/README.md`。
 - `widgets/`：跨业务域通用组件的预留边界。
 
 `core` 只承载语义稳定、无具体业务编排的能力，禁止演变为万能工具集合。Feature 专属

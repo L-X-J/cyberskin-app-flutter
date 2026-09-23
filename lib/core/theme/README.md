@@ -1,11 +1,17 @@
 # core/theme 目录
 
-应用主题和视觉参数的代码真相源。
-
-当前 `app_theme.dart` 定义品牌种子色并构建 Material 主题。页面样式应优先引用
-`ThemeData`、`ColorScheme` 和此目录提供的 token，不在 Feature 中复制数值。设计源与
-落地状态说明见 `docs/ui/design-tokens.md`。
+应用 Material 主题和稳定设计 token 的代码真相源。页面通过 `ThemeData`、`ColorScheme`、`TextTheme`、`AppRadius` 等使用基础样式；渐变、玻璃和辉光经 `AppThemeExtension` 暴露。设计来源和待确认值见 [`docs/design_system/README.md`](../../../docs/design_system/README.md)。
 
 文件职责：
 
-- `app_theme.dart`：创建应用级 `ThemeData` 和 Material 颜色方案，供 `app` 和 Feature 页面使用。
+- `app_colors.dart`：品牌、背景、文字、alpha 和描边颜色 token。
+- `app_gradients.dart`：可直接用于装饰的线性与径向渐变。
+- `app_typography.dart`：语义字重、Material `TextTheme` 及额外文字变体。
+- `app_radius.dart`：圆角规格与 `Radius` / `BorderRadius` 构造。
+- `app_opacities.dart`：可复用透明度比例。
+- `app_blur.dart`：Figma 模糊数值、Flutter sigma 默认映射及滤镜工厂。
+- `app_effects.dart`：内阴影/外阴影/辉光的原始效果规格。
+- `app_theme_extensions.dart`：主题可访问的渐变、玻璃和效果集合。
+- `app_theme.dart`：组装唯一的 Material 3 Dark Theme。
+
+边界：本目录只保存跨业务域稳定的视觉参数和主题映射，不保存页面布局、业务颜色条件、设备状态或效果绘制组件。内阴影数据不能直接当成外投影使用。

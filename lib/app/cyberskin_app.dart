@@ -28,7 +28,7 @@ final class CyberskinApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       title: 'Cyberskin',
-      theme: AppTheme.light(),
+      theme: AppTheme.dark(),
       debugShowCheckedModeBanner: false,
       initialRoute: AppRoutes.init,
       getPages: AppRoutes.pages,

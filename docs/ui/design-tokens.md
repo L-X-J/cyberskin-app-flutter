@@ -6,12 +6,12 @@
 
 | 范围 | 代码真相源 | 当前状态 |
 | --- | --- | --- |
-| 应用色彩与 Material 主题 | [`lib/core/theme/app_theme.dart`](../../lib/core/theme/app_theme.dart) | 已落地：Material 3，`brandSeed = #0D9488`。 |
+| 应用色彩与 Material 主题 | [`lib/core/theme/`](../../lib/core/theme/README.md)、[`docs/design_system/README.md`](../design_system/README.md) | 已落地：Material 3 深色主题、ThemeExtension 与完整 Theme Report tokens；渐变几何和 blur 映射仍待实图校准。 |
 | 字体 | Flutter/Material 默认字体与 theme text styles | 已采用：不注册自定义字体，页面按默认字体渲染。 |
 | 业务素材 | `pubspec.yaml` 的 `flutter.assets` 与项目素材目录 | 未落地：未声明正式业务素材。 |
 | 共享视觉组件 | `lib/core/` 下明确的 theme/widget 文件 | 尚未建立：新增时遵循本规范。 |
 
-当前 `AppTheme` 是可运行壳的主题，不应被误认为已完成 Figma 视觉 token 映射。后续接入正式视觉系统时，先新增语义 token 和 theme 映射，再迁移页面；不要把设计色值散落到 Widget。
+当前 Theme Report 的语义 token 已映射到 `lib/core/theme/`，应用根组件已切换为深色主题。渐变几何、Flutter blur sigma 和页面级效果仍需按实际 Figma 画板与 Flutter 截图校准；不要把设计色值散落到 Widget。
 
 ## 设计参考记录
 
@@ -20,10 +20,10 @@
 | 设计要素 | 设计证据 | 适用范围 | 落地状态 |
 | --- | --- | --- | --- |
 | 字体族 | 节点 `172:2774`、`172:3131`、`172:3201` 标注 `MiSans`（Regular/Medium/Semibold/Demibold） | 代表性首页和自由控制页 | 当前不接入；使用默认字体，差异在基准验收中记录。 |
-| 标题层级 | 代表性节点显示 28 logical px 的标题、16 logical px 的副标题/卡片文本 | 仅代表性状态 | 待转为语义 text styles，并在实际字体下校准。 |
+| 标题层级 | 代表性节点显示 28 logical px 的标题、16 logical px 的副标题/卡片文本 | 仅代表性状态 | 已转为语义 text styles；本阶段按要求使用平台默认字体，行高采用工程默认值。 |
 | 页面横向边距 | 首页多为 24；自由控制页多为 22 | 两类代表性页面不同 | 不抽象为单一全局边距；页面布局约定明确选用。 |
-| 卡片圆角 | 多处为 32；首页设备主卡外框还出现 48 | 代表性卡片 | 待按组件语义建立 token，不假设所有卡片一致。 |
-| 背景和卡片视觉 | 深色背景、多层渐变、内阴影、玻璃/模糊 | 代表性节点 | 待以 Flutter 实际截图校准，不能机械照搬参数。 |
+| 卡片圆角 | 多处为 32；首页设备主卡外框还出现 48 | 代表性卡片 | 已建立语义圆角 token；是否采用需按具体组件设计选择，不假设所有卡片一致。 |
+| 背景和卡片视觉 | 深色背景、多层渐变、内阴影、玻璃/模糊 | 代表性节点 | 已记录原始效果参数与内外阴影类别；Flutter 实际绘制效果仍需截图校准，不能机械照搬参数。 |
 | 底部结构 | 首页有 Device/Video 导航与快捷 pill；自由控制页仅有快捷 pill | PRD + 代表性节点 | 当前 `AppScaffold` 的结构尚未与设计完全对应，后续页面实施时验收。 |
 
 ## 参数进入代码的门槛
