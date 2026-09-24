@@ -1,6 +1,7 @@
 // 显式启用时对本地 App API 执行全 Repository 真实链路验证。
 import 'dart:io';
 
+import 'package:cyberskin_app/core/logging/app_log.dart';
 import 'package:cyberskin_app/core/network/api_transport.dart';
 import 'package:cyberskin_app/core/network/app_api_client.dart';
 import 'package:cyberskin_app/core/network/network_request_monitor.dart';
@@ -85,6 +86,7 @@ void main() {
       client: client,
       credentials: sessionStore,
       monitor: monitor,
+      log: const NoopAppLog(),
     );
     final auth = AuthRemoteRepository(
       transport: transport,
@@ -125,6 +127,7 @@ void main() {
       byteUploader: (url, bytes, contentType) =>
           transport.putBytes(url, bytes, contentType: contentType),
       monitor: monitor,
+      log: const NoopAppLog(),
     );
     final version = VersionRemoteRepository(
       transport: transport,

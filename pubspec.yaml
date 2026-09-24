@@ -18,7 +18,9 @@ dependencies:
   flutter_svg: ^2.3.0
   get: ^4.7.3
   http: ^1.6.0
+  logger: ^2.8.0
   lottie: ^3.6.1
+  path_provider: ^2.1.6
   shared_preferences: ^2.5.5
 
 dev_dependencies:

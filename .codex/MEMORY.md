@@ -29,6 +29,12 @@ Cyberskin App 是面向美国男性用户的英文 Flutter 客户端，连接并
 - App 状态使用 GetX `GetxController` + `Rx`；路由和依赖使用 GetX；局部状态使用 `setState`。
 - API 请求统一从 GetX `GetConnect` 客户端进入，业务代码仍通过 Repository 访问。
 - API 基础地址通过 `--dart-define=CYBERSKIN_API_BASE_URL=...` 注入，不写入源码或文档中的环境常量。
+- 统一持久化日志位于 `lib/core/logging`，业务只依赖 `AppLog`；日志文件写入 Application
+  Support/logs，使用有界异步队列和 2 MiB 轮转，默认保留 5 个归档文件。Debug 默认打开 API
+  日志；Release/Profile 只有 `CYBERSKIN_API_LOG_ENABLED=true` 才打开。
+- API 日志会脱敏 Authorization、clientid、token、邮箱、验证码、个人资料和对象存储字段；
+  文件上传/下载必须使用文件传输标记，丢弃 URL query、参数和二进制载荷。GetX 命名路由通过
+  `routingCallback` 记录前后路由但不记录 arguments。详见 `docs/adr/ADR-005-unified-logging.md`。
 - App API 的 29 个 `/app/v1/**` 操作由 `core/network/app_api_operation.dart` 注册并由契约测试
   对照 OpenAPI 快照。`BaseRemoteRepository` 仅将 `{code,msg,data}` 的 `code == 200` 视为成功；
   HTTP 或业务 `401` 会清理安全会话。

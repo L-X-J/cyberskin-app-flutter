@@ -75,6 +75,11 @@ App 接口的静态 OpenAPI 3.1 文档位于 [docs/openapi/app-openapi.json](doc
 数据的有界历史提供给页面或诊断使用。登录凭证使用 `flutter_secure_storage` 保存；预签名
 对象存储的原始字节 PUT 是唯一使用 `package:http` 的传输例外。
 
+统一日志由 `core/logging` 提供，使用缓冲文件输出并按大小轮转，默认保留最近 5 个归档文件。
+Debug 模式默认显示并写入 API 交互汇总日志；Release 默认关闭，需通过
+`--dart-define=CYBERSKIN_API_LOG_ENABLED=true` 显式开启。API 日志对凭证、验证码和个人信息
+字段脱敏，文件上传/下载不记录参数和载荷；GetX 命名路由变化也会写入日志。
+
 ## UI 设计与响应式规范
 
 涉及页面、组件、主题、字体、素材、布局、响应式或视觉测试的工作，从 [docs/ui/README.md](docs/ui/README.md) 开始。详细实现规则见 [ui-implementation-standard.md](docs/ui/ui-implementation-standard.md)，页面级布局使用 [page-spec-template.md](docs/ui/page-spec-template.md)，交付时按 [visual-acceptance.md](docs/ui/visual-acceptance.md) 验收。

@@ -1,3 +1,4 @@
+import 'package:cyberskin_app/core/logging/app_log.dart';
 import 'package:cyberskin_app/core/network/api_transport.dart';
 import 'package:cyberskin_app/core/network/app_api_operation.dart';
 import 'package:cyberskin_app/core/network/network_request_monitor.dart';
@@ -253,6 +254,7 @@ void main() {
         sessionStore: store,
         byteUploader: (url, bytes, contentType) async => http.Response('', 200),
         monitor: NetworkRequestMonitor(),
+        log: const NoopAppLog(),
       );
       final version = VersionRemoteRepository(
         transport: transport,

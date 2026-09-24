@@ -2,10 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../core/logging/app_log.dart';
 import '../core/theme/app_theme.dart';
 import '../features/content/data/content_configuration_cache.dart';
 import '../features/device/data/in_memory_device_repository.dart';
 import '../features/device/domain/device_repository.dart';
+import 'app_route_logger.dart';
 import 'app_routes.dart';
 import 'bindings/app_binding.dart';
 
@@ -16,6 +18,7 @@ final class CyberskinApp extends StatelessWidget {
     super.key,
     this.deviceRepository = const InMemoryDeviceRepository(),
     this.contentConfigurationCache,
+    this.log = const NoopAppLog(),
   });
 
   /// 当前应用环境使用的设备 Repository。
@@ -23,6 +26,9 @@ final class CyberskinApp extends StatelessWidget {
 
   /// 启动配置缓存；为空时使用平台 SharedPreferences 实现。
   final ContentConfigurationCache? contentConfigurationCache;
+
+  /// 应用级统一日志实现。
+  final AppLog log;
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +38,13 @@ final class CyberskinApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: AppRoutes.init,
       getPages: AppRoutes.pages,
+      routingCallback: (routing) => AppRouteLogger.record(log, routing),
       initialBinding: AppBinding(
         deviceRepository: deviceRepository,
         contentConfigurationCache:
             contentConfigurationCache ??
             SharedPreferencesContentConfigurationCache(),
+        log: log,
       ),
     );
   }

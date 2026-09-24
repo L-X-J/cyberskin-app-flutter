@@ -2,7 +2,7 @@
 
 GetX 依赖注入装配目录。
 
-- `app_binding.dart`：注册应用生命周期内共享的 Repository、API 客户端和控制器。
+- `app_binding.dart`：注册应用生命周期内共享的日志、Repository、API 客户端和控制器。
 - `device_binding.dart`：注册仅属于设备标签页生命周期的控制器。
 - `init_binding.dart`：注册初始化页使用的启动配置控制器。
 

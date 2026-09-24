@@ -4,6 +4,7 @@
 
 - `error/`：稳定领域错误类型。
 - `extensions/`：跨业务域的稳定 Dart 类型扩展。
+- `logging/`：统一日志接口、脱敏、API/路由日志及异步文件输出。
 - `network/`：网络客户端基础配置。
 - `protocol/`：通用业务协议与 BLE 帧值对象。
 - `result/`：Repository 边界的显式成功/失败结果。

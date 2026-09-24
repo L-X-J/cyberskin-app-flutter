@@ -1,6 +1,7 @@
 // 应用级依赖装配：注册全局 Repository、API 客户端和跨页面控制器。
 import 'package:get/get.dart';
 
+import '../../core/logging/app_log.dart';
 import '../../core/network/api_transport.dart';
 import '../../core/network/app_api_client.dart';
 import '../../core/network/network_request_monitor.dart';
@@ -34,6 +35,7 @@ final class AppBinding extends Bindings {
   AppBinding({
     required this.deviceRepository,
     required this.contentConfigurationCache,
+    required this.log,
   });
 
   /// 当前运行环境使用的设备 Repository 具体实现。
@@ -41,6 +43,9 @@ final class AppBinding extends Bindings {
 
   /// 当前运行环境使用的启动配置缓存实现。
   final ContentConfigurationCache contentConfigurationCache;
+
+  /// 应用生命周期内共享的统一日志接口。
+  final AppLog log;
 
   @override
   void dependencies() {
@@ -51,11 +56,13 @@ final class AppBinding extends Bindings {
       client: client,
       credentials: sessionStore,
       monitor: monitor,
+      log: log,
     );
     Get.put<DeviceRepository>(deviceRepository, permanent: true);
     Get.put<AppApiClient>(client, permanent: true);
     Get.put<SessionCredentialStore>(sessionStore, permanent: true);
     Get.put<NetworkRequestMonitor>(monitor, permanent: true);
+    Get.put<AppLog>(log, permanent: true);
     Get.put<ApiTransport>(transport, permanent: true);
     Get.put<AuthRepository>(
       AuthRemoteRepository(transport: transport, sessionStore: sessionStore),
@@ -109,6 +116,7 @@ final class AppBinding extends Bindings {
         byteUploader: (url, bytes, contentType) =>
             transport.putBytes(url, bytes, contentType: contentType),
         monitor: monitor,
+        log: log,
       ),
       permanent: true,
     );

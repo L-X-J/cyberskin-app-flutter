@@ -6,7 +6,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('launches the Cyberskin device shell', (tester) async {
-    app.main();
+    await app.main();
     await tester.pumpAndSettle();
 
     expect(find.text('My Devices'), findsOneWidget);

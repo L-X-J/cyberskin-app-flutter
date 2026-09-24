@@ -2,6 +2,7 @@
 import 'package:http/http.dart' as http;
 
 import '../../../core/error/app_failure.dart';
+import '../../../core/logging/app_log.dart';
 import '../../../core/network/app_api_operation.dart';
 import '../../../core/network/base_remote_repository.dart';
 import '../../../core/network/json_decoder.dart';
@@ -19,7 +20,8 @@ final class FeedbackRemoteRepository extends BaseRemoteRepository
     required super.sessionStore,
     required this._byteUploader,
     required this._monitor,
-  });
+    AppLog? log,
+  }) : _log = log ?? const NoopAppLog();
 
   /// 对预签名对象存储 URL 发送原始字节的可替换函数。
   final Future<http.Response> Function(
@@ -31,6 +33,9 @@ final class FeedbackRemoteRepository extends BaseRemoteRepository
 
   /// 预签名上传同样使用的无敏感数据请求状态监控服务。
   final NetworkRequestMonitor _monitor;
+
+  /// 只记录预签名字节传输的元数据，不记录签名查询参数或附件内容。
+  final AppLog _log;
 
   @override
   Future<Result<FeedbackUploadTicket>> presign(
@@ -64,6 +69,13 @@ final class FeedbackRemoteRepository extends BaseRemoteRepository
       );
     }
     final uploadUri = Uri.tryParse(uploadUrl);
+    final startedAt = DateTime.now();
+    final transferUri = Uri(
+      scheme: uploadUri?.scheme,
+      host: uploadUri?.host,
+      port: uploadUri?.hasPort == true ? uploadUri?.port : null,
+      path: uploadUri?.path,
+    );
     final started = _monitor.start(
       operation: 'presignedUpload',
       method: 'PUT',
@@ -71,6 +83,14 @@ final class FeedbackRemoteRepository extends BaseRemoteRepository
     );
     try {
       final response = await _byteUploader(uploadUrl, bytes, contentType);
+      _log.apiExchange(
+        method: 'PUT',
+        uri: transferUri,
+        headers: <String, String>{'Content-Type': contentType},
+        statusCode: response.statusCode,
+        duration: DateTime.now().difference(startedAt),
+        isFileTransfer: true,
+      );
       _monitor.finish(
         started,
         httpStatus: response.statusCode,
@@ -89,6 +109,15 @@ final class FeedbackRemoteRepository extends BaseRemoteRepository
         ),
       );
     } on Object catch (error) {
+      _log.apiExchange(
+        method: 'PUT',
+        uri: transferUri,
+        headers: <String, String>{'Content-Type': contentType},
+        statusCode: null,
+        duration: DateTime.now().difference(startedAt),
+        error: 'upload failed',
+        isFileTransfer: true,
+      );
       _monitor.finish(started, errorMessage: '附件上传未能完成。');
       return Result.failure(
         AppFailure(

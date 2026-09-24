@@ -1,6 +1,7 @@
 // GetConnect 传输适配器，统一装配鉴权头与请求状态监控。
 import 'package:http/http.dart' as http;
 
+import '../logging/app_log.dart';
 import '../storage/session_credential_store.dart';
 import 'app_api_client.dart';
 import 'app_api_operation.dart';
@@ -43,6 +44,7 @@ final class GetConnectApiTransport implements ApiTransport {
     required this.client,
     required this.credentials,
     required this.monitor,
+    required this.log,
   });
 
   /// 已配置基础地址和超时的 GetConnect 客户端。
@@ -53,6 +55,9 @@ final class GetConnectApiTransport implements ApiTransport {
 
   /// 不记录敏感数据的请求监控服务。
   final NetworkRequestMonitor monitor;
+
+  /// 脱敏后写入控制台与文件的日志接口。
+  final AppLog log;
 
   @override
   Future<ApiRawResponse> send(
@@ -68,11 +73,16 @@ final class GetConnectApiTransport implements ApiTransport {
       method: spec.method.name.toUpperCase(),
       path: path,
     );
+    final startedAt = DateTime.now();
+    final query = queryParameters.map(
+      (key, value) => MapEntry(key, value?.toString()),
+    )..removeWhere((_, value) => value == null);
+    final uri = client.httpClient.createUri(path, query);
+    final headers = <String, String>{
+      'Content-Type': client.httpClient.defaultContentType,
+    };
     try {
-      final headers = await _headersFor(spec);
-      final query = queryParameters.map(
-        (key, value) => MapEntry(key, value?.toString()),
-      )..removeWhere((_, value) => value == null);
+      headers.addAll(await _headersFor(spec));
       final response = switch (spec.method) {
         ApiHttpMethod.get => await client.get<dynamic>(
           path,
@@ -94,6 +104,18 @@ final class GetConnectApiTransport implements ApiTransport {
           headers: headers,
         ),
       };
+      log.apiExchange(
+        method: spec.method.name.toUpperCase(),
+        uri: response.request?.url ?? uri,
+        headers: headers,
+        pathParameters: pathParameters,
+        queryParameters: queryParameters,
+        body: body,
+        statusCode: response.statusCode,
+        duration: DateTime.now().difference(startedAt),
+        response: response.body,
+        error: response.isOk ? null : 'HTTP request failed',
+      );
       final businessCode = _tryReadBusinessCode(response.body);
       monitor.finish(
         started,
@@ -111,6 +133,17 @@ final class GetConnectApiTransport implements ApiTransport {
         statusText: response.statusText,
       );
     } on Object catch (error) {
+      log.apiExchange(
+        method: spec.method.name.toUpperCase(),
+        uri: uri,
+        headers: headers,
+        pathParameters: pathParameters,
+        queryParameters: queryParameters,
+        body: body,
+        statusCode: null,
+        duration: DateTime.now().difference(startedAt),
+        error: 'transport exception',
+      );
       monitor.finish(started, errorMessage: error.toString());
       rethrow;
     }
