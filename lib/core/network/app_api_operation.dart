@@ -112,6 +112,7 @@ final class AppApiOperationSpec {
     required this.method,
     required this.path,
     required this.requiresAuthentication,
+    this.allowsSessionCredentials = false,
   });
 
   /// HTTP 方法。
@@ -122,6 +123,9 @@ final class AppApiOperationSpec {
 
   /// 是否必须同时附带 Bearer token 与 `clientid`。
   final bool requiresAuthentication;
+
+  /// 公开接口是否应在本地存在会话时附带会话头。
+  final bool allowsSessionCredentials;
 }
 
 /// App OpenAPI 的受控代码化索引。
@@ -316,6 +320,7 @@ abstract final class AppApiOperations {
           method: ApiHttpMethod.get,
           path: '/app/v1/config',
           requiresAuthentication: false,
+          allowsSessionCredentials: true,
         ),
 
         /// 按页面代码查询已发布的 CMS 页面。

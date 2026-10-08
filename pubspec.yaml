@@ -14,6 +14,7 @@ dependencies:
   extended_image: ^10.1.0
   flutter:
     sdk: flutter
+  flutter_liquid_glass_plus: ^0.0.7
   flutter_secure_storage: ^11.2.0
   flutter_svg: ^2.3.0
   get: ^4.7.3
@@ -22,6 +23,7 @@ dependencies:
   lottie: ^3.6.1
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_lints: ^6.0.0
@@ -34,4 +36,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/auth/
     - assets/lotties/

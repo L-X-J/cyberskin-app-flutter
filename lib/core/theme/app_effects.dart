@@ -83,6 +83,34 @@ abstract final class AppEffects {
     offsetY: 4,
   );
 
+  /// 公共液态玻璃按钮第二层内阴影；未注明偏移按 (0, 0) 绘制。
+  static const AppEffectSpec liquidGlassButtonInnerGlow = AppEffectSpec(
+    kind: AppEffectKind.innerShadow,
+    color: Color(0xFFC59EFF),
+    opacityMin: 0.40,
+    opacityMax: 0.40,
+    blurMin: 20,
+    blurMax: 20,
+    spreadMin: 10,
+    spreadMax: 10,
+    offsetX: 0,
+    offsetY: 0,
+  );
+
+  /// 公共液态玻璃按钮深色款的单层紫色内阴影。
+  static const AppEffectSpec liquidGlassButtonSubtleInnerGlow = AppEffectSpec(
+    kind: AppEffectKind.innerShadow,
+    color: Color(0xFF8230FD),
+    opacityMin: 0.40,
+    opacityMax: 0.40,
+    blurMin: 20,
+    blurMax: 20,
+    spreadMin: 10,
+    spreadMax: 10,
+    offsetX: 0,
+    offsetY: 0,
+  );
+
   /// Soft Raised Highlight 内阴影。
   static const AppEffectSpec softRaisedHighlight = AppEffectSpec(
     kind: AppEffectKind.innerShadow,

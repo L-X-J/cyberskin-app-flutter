@@ -39,6 +39,22 @@ abstract final class AppColors {
   /// 粉紫表面，透明度为 20%。
   static const Color secondarySurface = Color.fromRGBO(72, 29, 91, 0.20);
 
+  /// 公共液态玻璃按钮填充：设计师确认的 #D173AB，20% 不透明度。
+  static const Color liquidGlassButtonFill = Color.fromRGBO(
+    209,
+    115,
+    171,
+    0.20,
+  );
+
+  /// 公共液态玻璃按钮深色款填充：#7A576C，20% 不透明度。
+  static const Color liquidGlassButtonSubtleFill = Color.fromRGBO(
+    122,
+    87,
+    108,
+    0.20,
+  );
+
   /// 辅助蓝紫色。
   static const Color accentBlue = Color(0xFF5358AD);
 

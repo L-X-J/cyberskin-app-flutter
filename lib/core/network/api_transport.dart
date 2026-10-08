@@ -163,12 +163,12 @@ final class GetConnectApiTransport implements ApiTransport {
     headers: <String, String>{'Content-Type': contentType},
   );
 
-  /// 为受保护操作组装 Bearer token 与 `clientid`；公开操作不读取凭证。
+  /// 为受保护操作或允许会话的公开操作组装 Bearer token 与 `clientid`。
   ///
   /// Repository 已在真正发送前拦截缺失会话。这里保留空头的防御分支，避免直接
   /// 使用传输层的调用方在凭证缺失时构造不完整或伪造的鉴权信息。
   Future<Map<String, String>> _headersFor(AppApiOperationSpec spec) async {
-    if (!spec.requiresAuthentication) {
+    if (!spec.requiresAuthentication && !spec.allowsSessionCredentials) {
       return const <String, String>{};
     }
     final session = await credentials.read();
