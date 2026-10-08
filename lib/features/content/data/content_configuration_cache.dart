@@ -109,6 +109,7 @@ final class SharedPreferencesContentConfigurationCache
   Map<String, Object?> _encodeConfiguration(AppConfiguration configuration) =>
       <String, Object?>{
         'configVersion': configuration.version,
+        'loggedIn': configuration.loggedIn,
         'agreements': configuration.agreements
             .map(
               (agreement) => <String, Object?>{
@@ -148,6 +149,7 @@ final class SharedPreferencesContentConfigurationCache
         : const <String, dynamic>{};
     return AppConfiguration(
       version: json['configVersion'] as String?,
+      loggedIn: json['loggedIn'] as bool? ?? false,
       agreements: agreements,
       features: AppFeatureFlags(
         emailLoginEnabled: features['emailLoginEnabled'] as bool? ?? false,

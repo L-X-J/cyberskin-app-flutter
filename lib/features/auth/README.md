@@ -10,5 +10,6 @@ Google 登录、验证码、当前用户和登出，并只在数据层将 token/
 
 - `data/`：认证 API 和会话凭证的远端 Repository；文件说明见 `data/README.md`。
 - `domain/`：用户模型、登录请求值对象和认证 Repository 接口；文件说明见 `domain/README.md`。
-- `presentation/`：登录页面和 Controller 的预留展示层，当前无 Dart 实现；见 `presentation/README.md`。
+- `presentation/`：登录首页、邮箱登录页和 Controller；见 `presentation/README.md`。
+- `assets/images/auth/`：从 Ardot 导出的登录首页按钮视觉切图，页面通过语义化点击层复用。
 - 当前 Feature 根目录无 Dart 文件。

@@ -17,7 +17,7 @@ final class DeviceHomePage extends GetView<DeviceHomeController> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      currentTab: AppTab.device,
+      currentTab: AppTab.home,
       appBar: AppBar(
         title: const Text('My Devices'),
         actions: [

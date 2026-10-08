@@ -1,6 +1,7 @@
 // 应用级依赖装配：注册全局 Repository、API 客户端和跨页面控制器。
 import 'package:get/get.dart';
 
+import '../session_controller.dart';
 import '../../core/logging/app_log.dart';
 import '../../core/network/api_transport.dart';
 import '../../core/network/app_api_client.dart';
@@ -128,5 +129,6 @@ final class AppBinding extends Bindings {
       ControlSessionController(),
       permanent: true,
     );
+    Get.put<SessionController>(SessionController(), permanent: true);
   }
 }

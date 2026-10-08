@@ -39,7 +39,7 @@ final class _TestContentCache implements ContentConfigurationCache {
 }
 
 void main() {
-  testWidgets('starts on the device route and navigates to video', (
+  testWidgets('starts on the anonymous home route and navigates to video', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -49,9 +49,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('My Devices'), findsOneWidget);
-    expect(find.text('No devices yet'), findsOneWidget);
-    expect(find.text('Device'), findsOneWidget);
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('No device connected'), findsOneWidget);
+    expect(find.text('Video'), findsOneWidget);
 
     await tester.tap(find.text('Video'));
     await tester.pumpAndSettle();
@@ -64,10 +64,10 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.text('Device'));
+    await tester.tap(find.text('Home').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('My Devices'), findsOneWidget);
-    expect(find.text('No devices yet'), findsOneWidget);
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('No device connected'), findsOneWidget);
   });
 }

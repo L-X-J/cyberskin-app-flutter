@@ -47,12 +47,16 @@ final class AppConfiguration {
   /// 创建启动配置。
   AppConfiguration({
     this.version,
+    this.loggedIn = false,
     List<AppAgreement> agreements = const <AppAgreement>[],
     this.features = const AppFeatureFlags(),
   }) : agreements = List<AppAgreement>.unmodifiable(agreements);
 
   /// 服务端生成的配置版本。
   final String? version;
+
+  /// 服务端确认的当前 App 会话状态；旧缓存缺失时按未登录处理。
+  final bool loggedIn;
 
   /// 协议文档入口列表。
   final List<AppAgreement> agreements;

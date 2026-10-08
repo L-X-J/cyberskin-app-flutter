@@ -6,14 +6,18 @@ import 'package:get/get.dart';
 
 import '../../features/control/presentation/widgets/device_control_pill.dart';
 import '../app_routes.dart';
+import '../session_controller.dart';
 
 /// 产品主导航中的两个一级目的地。
 enum AppTab {
   /// 设备控制与设备管理。
-  device,
+  home,
 
   /// 视频内容体验。
   video,
+
+  /// 用户账户与个人资料。
+  profile,
 }
 
 /// 带 GetX 导航和全局设备控制条的共享页面壳层。
@@ -53,26 +57,43 @@ final class AppScaffold extends StatelessWidget {
           NavigationBar(
             selectedIndex: currentTab.index,
             onDestinationSelected: (index) {
-              final route = index == AppTab.device.index
-                  ? AppRoutes.device
-                  : AppRoutes.video;
+              final route = switch (AppTab.values[index]) {
+                AppTab.home => AppRoutes.home,
+                AppTab.video => AppRoutes.video,
+                AppTab.profile => _profileRoute(),
+              };
               unawaited(Get.offNamed<void>(route));
             },
             destinations: const [
               NavigationDestination(
-                icon: Icon(Icons.bluetooth_outlined),
-                selectedIcon: Icon(Icons.bluetooth_connected),
-                label: 'Device',
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Home',
               ),
               NavigationDestination(
                 icon: Icon(Icons.video_library_outlined),
                 selectedIcon: Icon(Icons.video_library),
                 label: 'Video',
               ),
+              NavigationDestination(
+                icon: Icon(Icons.account_circle_outlined),
+                selectedIcon: Icon(Icons.account_circle),
+                label: 'Profile',
+              ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  String _profileRoute() {
+    if (!Get.isRegistered<SessionController>()) {
+      return AppRoutes.login;
+    }
+    final session = Get.find<SessionController>();
+    return session.state.value == SessionState.authenticated
+        ? AppRoutes.profile
+        : AppRoutes.login;
   }
 }

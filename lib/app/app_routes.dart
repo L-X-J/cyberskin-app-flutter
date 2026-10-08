@@ -1,18 +1,30 @@
 // 应用壳层路由表：集中声明顶层页面及其依赖绑定，避免页面自行拼接路由。
 import 'package:get/get.dart';
 
+import '../features/auth/presentation/login_binding.dart';
+import '../features/auth/presentation/login_page.dart';
 import '../features/device/presentation/device_home_page.dart';
+import '../features/home/presentation/home_binding.dart';
+import '../features/home/presentation/home_page.dart';
 import '../features/init/presentation/init_page.dart';
+import '../features/profile/presentation/profile_binding.dart';
 import '../features/profile/presentation/profile_page.dart';
 import '../features/video/presentation/video_page.dart';
 import 'bindings/device_binding.dart';
 import 'bindings/init_binding.dart';
 import 'init_route_transition.dart';
+import 'route_auth_middleware.dart';
 
 /// 归属于应用壳层的命名路由。
 abstract final class AppRoutes {
   /// 应用启动初始化路由。
   static const String init = '/init';
+
+  /// 匿名可浏览的应用主页。
+  static const String home = '/home';
+
+  /// 登录页面。
+  static const String login = '/login';
 
   /// 设备主页路由。
   static const String device = '/device';
@@ -33,13 +45,29 @@ abstract final class AppRoutes {
       transitionDuration: const Duration(milliseconds: 420),
     ),
     GetPage<dynamic>(
+      name: login,
+      page: () => const LoginPage(),
+      binding: LoginBinding(),
+    ),
+    GetPage<dynamic>(
+      name: home,
+      page: () => const HomePage(),
+      binding: HomeBinding(),
+    ),
+    GetPage<dynamic>(
       name: device,
       page: () => const DeviceHomePage(),
       binding: DeviceBinding(),
       customTransition: DeviceRouteTransition(),
       transitionDuration: const Duration(milliseconds: 1200),
+      middlewares: <GetMiddleware>[RouteAuthMiddleware()],
     ),
     GetPage<dynamic>(name: video, page: () => const VideoPage()),
-    GetPage<dynamic>(name: profile, page: () => const ProfilePage()),
+    GetPage<dynamic>(
+      name: profile,
+      page: () => const ProfilePage(),
+      binding: ProfileBinding(),
+      middlewares: <GetMiddleware>[RouteAuthMiddleware()],
+    ),
   ];
 }

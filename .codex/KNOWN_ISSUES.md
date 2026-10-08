@@ -19,3 +19,11 @@ Cause: `AppLottieBackground` 按产品契约内部无限循环，测试框架无
 Resolution: 存在无限背景的 Widget 测试应使用固定次数的 `tester.pump(...)` 或 `pump(duration)` 推进到目标状态，不要使用 `pumpAndSettle()`；只有先卸载背景或禁用动画的测试才能使用 `pumpAndSettle()`。不得为了测试方便移除组件的无限循环契约。
 
 Important: 这是无限动画的预期测试语义，不是页面卡死或组件未完成加载。
+
+## Widget 测试截图的异步 raster 任务
+
+Symptom: 在 Widget 测试的假时间域内等待 `RenderRepaintBoundary.toImage()` / `Image.toByteData()` 时，截图任务可能挂起。
+
+Cause: raster 截图需要真实异步任务完成，不能只依赖 `tester.pump()` 推进假时间。
+
+Resolution: 先完成 `pump`，再通过 `tester.runAsync` 调用截图与编码，最后释放 `ui.Image`。可运行参考为 `test/features/auth/presentation/auth_submit_button_test.dart`，输出在 `build/ui/`。

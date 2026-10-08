@@ -59,6 +59,8 @@
 
 ## 官方参考
 
+公共按钮组件的样式与使用契约见 [液态玻璃按钮](components/liquid-glass-button.md)。
+
 - <https://docs.flutter.dev/ui/adaptive-responsive/best-practices>
 - <https://docs.flutter.dev/ui/adaptive-responsive/general>
 - <https://docs.flutter.dev/ui/adaptive-responsive/large-screens>

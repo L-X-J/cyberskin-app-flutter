@@ -4,10 +4,12 @@ import 'dart:async';
 import 'package:get/get.dart';
 
 import '../../../app/app_routes.dart';
+import '../../../app/session_controller.dart';
 import '../../../core/error/app_failure.dart';
 import '../../../core/result/result.dart';
 import '../../../features/content/domain/entities/app_content.dart';
 import '../../../features/content/domain/repositories/content_repository.dart';
+import '../../../features/device/domain/device.dart';
 
 /// 初始化阶段展示状态。
 enum InitStatus {
@@ -24,9 +26,15 @@ enum InitStatus {
 /// 负责启动配置缓存、每日刷新策略和首屏跳转的 GetX 控制器。
 final class InitController extends GetxController {
   /// 创建初始化控制器。
-  InitController(this._contentRepository, {this.navigateToNextPage});
+  InitController(
+    this._contentRepository, {
+    this.navigateToNextPage,
+    SessionController? sessionController,
+  }) : _sessionController = sessionController;
 
   final ContentRepository _contentRepository;
+
+  final SessionController? _sessionController;
 
   /// 可替换的进入下一页回调；生产环境为空时使用 GetX 注册路由。
   final Future<void> Function()? navigateToNextPage;
@@ -87,6 +95,7 @@ final class InitController extends GetxController {
     // 先读取磁盘缓存，使已有配置在后台刷新期间仍可立即被后续页面使用。
     final cached = await _contentRepository.readCachedConfiguration();
     configuration.value = cached;
+    _syncSession(cached);
     final now = DateTime.now();
     // 启动日期必须先于请求持久化，避免系统杀进程后把同一天再次误判为首次启动。
     final lastLaunchAt = await _contentRepository.readLastLaunchAt();
@@ -106,6 +115,7 @@ final class InitController extends GetxController {
     final result = await refreshFuture;
     if (result case Success<AppConfiguration>(:final value)) {
       configuration.value = value;
+      _syncSession(value);
       await _openNextPage();
       return;
     }
@@ -121,6 +131,12 @@ final class InitController extends GetxController {
     final result = await refreshFuture;
     if (result case Success<AppConfiguration>(:final value)) {
       configuration.value = value;
+      final wasAuthenticated =
+          _session?.state.value == SessionState.authenticated;
+      _syncSession(value);
+      if (wasAuthenticated && value.loggedIn == false) {
+        await Get.offAllNamed<void>(AppRoutes.login);
+      }
       return;
     }
     failure.value = result.failureOrNull;
@@ -136,7 +152,31 @@ final class InitController extends GetxController {
       await navigate();
       return;
     }
-    await Get.offAllNamed<void>(AppRoutes.device);
+    final session = _session?.state.value ?? SessionState.starting;
+    final route = switch (session) {
+      SessionState.authenticated => AppRoutes.home,
+      SessionState.anonymous =>
+        _deviceStatus == DeviceConnectionStatus.connected
+            ? AppRoutes.login
+            : AppRoutes.home,
+      SessionState.starting => AppRoutes.home,
+    };
+    await Get.offAllNamed<void>(route);
+  }
+
+  SessionController? get _session =>
+      _sessionController ??
+      (Get.isRegistered<SessionController>()
+          ? Get.find<SessionController>()
+          : null);
+
+  DeviceConnectionStatus get _deviceStatus =>
+      _session?.deviceStatus.value ?? DeviceConnectionStatus.disconnected;
+
+  void _syncSession(AppConfiguration? value) {
+    if (value != null) {
+      _session?.setConfiguration(value);
+    }
   }
 
   bool _isSameLocalDay(DateTime? value, DateTime now) {

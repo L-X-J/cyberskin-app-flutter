@@ -26,6 +26,11 @@ Cyberskin App 是面向美国男性用户的英文 Flutter 客户端，连接并
 
 ## Conventions
 
+- 公共液态玻璃按钮使用 `core/widgets/AppLiquidGlassButton`，基于 `flutter_liquid_glass_plus`。
+  `highlighted` 与 `subtle` 对应已确认的双内阴影/单内阴影两款主题；业务页面只选择变体，
+  不复制颜色或内阴影绘制。默认 standard 适配滚动表单，premium 仅用于支持 shader 的固定布局。
+  契约见 `docs/ui/components/liquid-glass-button.md`。
+
 - App 状态使用 GetX `GetxController` + `Rx`；路由和依赖使用 GetX；局部状态使用 `setState`。
 - API 请求统一从 GetX `GetConnect` 客户端进入，业务代码仍通过 Repository 访问。
 - API 基础地址通过 `--dart-define=CYBERSKIN_API_BASE_URL=...` 注入，不写入源码或文档中的环境常量。

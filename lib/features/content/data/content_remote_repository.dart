@@ -72,6 +72,7 @@ final class ContentRemoteRepository extends BaseRemoteRepository
     final featureJson = json['features'];
     return AppConfiguration(
       version: ApiJson.string(json, 'configVersion'),
+      loggedIn: ApiJson.boolean(json, 'loggedIn') ?? false,
       agreements: agreements == null
           ? const <AppAgreement>[]
           : ApiJson.objectList(agreements, field: 'agreements')
