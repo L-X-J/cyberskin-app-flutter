@@ -37,4 +37,5 @@ flutter:
   assets:
     - assets/images/
     - assets/images/auth/
+    - assets/images/control/
     - assets/lotties/

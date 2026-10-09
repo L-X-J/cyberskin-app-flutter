@@ -12,6 +12,7 @@ import '../features/profile/presentation/profile_page.dart';
 import '../features/video/presentation/video_page.dart';
 import 'bindings/device_binding.dart';
 import 'bindings/init_binding.dart';
+import 'floating_control_controller.dart';
 import 'init_route_transition.dart';
 import 'route_auth_middleware.dart';
 
@@ -34,6 +35,16 @@ abstract final class AppRoutes {
 
   /// 从设备主页进入的用户资料路由。
   static const String profile = '/profile';
+
+  /// 显式页面策略；新增二级页必须登记，登录和未声明页面默认隐藏。
+  static const Map<String, FloatingControlPolicy> floatingControlPolicies = {
+    home: FloatingControlPolicy.fixed,
+    device: FloatingControlPolicy.fixed,
+    video: FloatingControlPolicy.fixed,
+    profile: FloatingControlPolicy.draggable,
+    init: FloatingControlPolicy.hidden,
+    login: FloatingControlPolicy.hidden,
+  };
 
   /// 所有顶层路由及其局部依赖绑定。
   static final List<GetPage<dynamic>> pages = <GetPage<dynamic>>[

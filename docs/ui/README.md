@@ -60,6 +60,7 @@
 ## 官方参考
 
 公共按钮组件的样式与使用契约见 [液态玻璃按钮](components/liquid-glass-button.md)。
+全局设备快捷控件的 Ardot 基准、四态和定位契约见 [悬浮设备快捷控件](components/floating-device-control.md)。
 
 - <https://docs.flutter.dev/ui/adaptive-responsive/best-practices>
 - <https://docs.flutter.dev/ui/adaptive-responsive/general>

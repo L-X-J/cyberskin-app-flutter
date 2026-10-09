@@ -13,5 +13,6 @@
 - `app_effects.dart`：内阴影/外阴影/辉光的原始效果规格。
 - `app_theme_extensions.dart`：主题可访问的渐变、玻璃和效果集合。
 - `app_theme.dart`：组装唯一的 Material 3 Dark Theme。
+- `app_device_control_style.dart`：Ardot 设备快捷控件的组件级视觉规格、资源路径和大字体测量；不包含业务状态。
 
 边界：本目录只保存跨业务域稳定的视觉参数和主题映射，不保存页面布局、业务颜色条件、设备状态或效果绘制组件。内阴影数据不能直接当成外投影使用。

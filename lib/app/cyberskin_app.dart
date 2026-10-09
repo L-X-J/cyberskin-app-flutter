@@ -10,9 +10,11 @@ import '../features/device/domain/device_repository.dart';
 import 'app_route_logger.dart';
 import 'app_routes.dart';
 import 'bindings/app_binding.dart';
+import 'floating_control_controller.dart';
+import 'widgets/floating_device_control_overlay.dart';
 
 /// 组装 GetX 依赖、路由和主题的根组件。
-final class CyberskinApp extends StatelessWidget {
+final class CyberskinApp extends StatefulWidget {
   /// 创建应用根组件，并允许测试或环境入口替换设备 Repository。
   const CyberskinApp({
     super.key,
@@ -31,6 +33,16 @@ final class CyberskinApp extends StatelessWidget {
   final AppLog log;
 
   @override
+  State<CyberskinApp> createState() => _CyberskinAppState();
+}
+
+final class _CyberskinAppState extends State<CyberskinApp> {
+  final FloatingControlObserver _floatingObserver = FloatingControlObserver(
+    policies: AppRoutes.floatingControlPolicies,
+    resetRoutes: {AppRoutes.home},
+  );
+
+  @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
       title: 'Cyberskin',
@@ -38,13 +50,16 @@ final class CyberskinApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: AppRoutes.init,
       getPages: AppRoutes.pages,
-      routingCallback: (routing) => AppRouteLogger.record(log, routing),
+      routingCallback: (routing) => AppRouteLogger.record(widget.log, routing),
+      navigatorObservers: [_floatingObserver],
+      builder: (context, child) =>
+          FloatingDeviceControlOverlay(child: child ?? const SizedBox.shrink()),
       initialBinding: AppBinding(
-        deviceRepository: deviceRepository,
+        deviceRepository: widget.deviceRepository,
         contentConfigurationCache:
-            contentConfigurationCache ??
+            widget.contentConfigurationCache ??
             SharedPreferencesContentConfigurationCache(),
-        log: log,
+        log: widget.log,
       ),
     );
   }

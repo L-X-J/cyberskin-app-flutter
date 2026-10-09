@@ -1,7 +1,6 @@
 // 应用级依赖装配：注册全局 Repository、API 客户端和跨页面控制器。
 import 'package:get/get.dart';
 
-import '../session_controller.dart';
 import '../../core/logging/app_log.dart';
 import '../../core/network/api_transport.dart';
 import '../../core/network/app_api_client.dart';
@@ -29,6 +28,8 @@ import '../../features/version/data/version_remote_repository.dart';
 import '../../features/version/domain/repositories/version_repository.dart';
 import '../../features/video/data/video_remote_repository.dart';
 import '../../features/video/domain/repositories/video_repository.dart';
+import '../floating_control_controller.dart';
+import '../session_controller.dart';
 
 /// 注册应用生命周期内共享的 Repository、API 客户端和控制器。
 final class AppBinding extends Bindings {
@@ -130,5 +131,9 @@ final class AppBinding extends Bindings {
       permanent: true,
     );
     Get.put<SessionController>(SessionController(), permanent: true);
+    Get.put<FloatingControlController>(
+      FloatingControlController(),
+      permanent: true,
+    );
   }
 }
