@@ -22,7 +22,12 @@ final class _DisconnectedHome extends StatelessWidget {
   Widget build(BuildContext context) {
     return _HomeBackground(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          Get.mediaQuery.viewPadding.top + 28,
+          24,
+          24,
+        ),
         children: [
           _HomeHeader(
             title: 'Add Device',
@@ -44,14 +49,6 @@ final class _DisconnectedHome extends StatelessWidget {
               onTap: null,
             ),
           ],
-          const SizedBox(height: 10),
-          _InlineHint(
-            icon: isAuthenticated ? Icons.bluetooth_searching : Icons.login,
-            text: isAuthenticated
-                ? 'Tap Stop to manage the connection.'
-                : 'Sign in to connect a device.',
-            onTap: isAuthenticated ? onPrimaryAction : onLogin,
-          ),
         ],
       ),
     );
@@ -155,17 +152,21 @@ final class _HomeBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceDark,
-        gradient: RadialGradient(
-          center: Alignment(0.9, 0.25),
-          radius: 1.1,
-          colors: [Color(0xFF25163B), Color(0xFF101030), Color(0xFF020202)],
-          stops: [0, 0.55, 1],
+    return LiquidGlassLayer(
+      fake: true,
+      useBackdropGroup: true,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceDark,
+          gradient: RadialGradient(
+            center: Alignment(0.9, 0.25),
+            radius: 1.1,
+            colors: [Color(0xFF25163B), Color(0xFF101030), Color(0xFF020202)],
+            stops: [0, 0.55, 1],
+          ),
         ),
+        child: child,
       ),
-      child: child,
     );
   }
 }
@@ -200,20 +201,15 @@ final class _HomeHeader extends StatelessWidget {
             ],
           ),
         ),
-        IconButton(
-          onPressed: onProfile,
-          tooltip: 'Profile',
-          iconSize: 52,
-          padding: EdgeInsets.zero,
-          icon: const DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0x553D3A46),
-            ),
-            child: SizedBox.square(
-              dimension: 52,
-              child: Icon(Icons.person_outline, size: 32),
-            ),
+
+        LGButton.custom(
+          width: 50,
+          height: 50,
+          onTap: onProfile ?? () {},
+          child: AppImage.load(
+            'home/go_user_profile'.assetsPng,
+            width: 50,
+            height: 50,
           ),
         ),
       ],
@@ -230,8 +226,9 @@ final class _ScanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _LayeredGradientCard(
-      colors: const [Color(0xFFCE61D2), Color(0xFF6D186D)],
+    return AppLayeredGradientCard(
+      baseColor: const Color(0xFF6D186D),
+      topGradientColors: const [Colors.black, Color(0xFFCE61D2)],
       child: Padding(
         padding: const EdgeInsets.fromLTRB(26, 22, 20, 18),
         child: Column(
@@ -290,26 +287,17 @@ final class _DeviceModelGrid extends StatelessWidget {
     final entries = models.isEmpty
         ? const <_ModelPreview>[
             _ModelPreview(
-              'Cyberskin Air',
-              'assets/images/home/device_air.png',
-              Color(0xFFE83D23),
+              title: 'Cyberskin Air',
+              image: 'assets/images/home/device_air.png',
+              surfaceColor: AppLayeredGradientStyle.baseColor,
             ),
             _ModelPreview(
-              'Cyberskin Pro',
-              'assets/images/home/device_pro.png',
-              Color(0xFF8AD36B),
+              title: 'Cyberskin Pro',
+              image: 'assets/images/home/device_pro.png',
+              surfaceColor: Color(0xFF8AD36B),
             ),
           ]
-        : models
-              .take(2)
-              .map(
-                (model) => _ModelPreview(
-                  model.name ?? 'Cyberskin device',
-                  model.iconUrl,
-                  const Color(0xFF7EDE83),
-                ),
-              )
-              .toList(growable: false);
+        : models.take(2).map(_ModelPreview.fromModel).toList(growable: false);
     return Row(
       children: [
         for (var i = 0; i < entries.length; i++) ...[
@@ -323,46 +311,105 @@ final class _DeviceModelGrid extends StatelessWidget {
   }
 }
 
+/// 后台卡片色支持 RGB / ARGB；非法值由展示模型回退到设计默认值。
+Color? _hexToColor(String? hex) {
+  final clean = hex?.trim().replaceFirst(RegExp(r'^#'), '');
+  if (clean == null ||
+      !RegExp(r'^(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$').hasMatch(clean)) {
+    return null;
+  }
+  final value = int.tryParse(clean.length == 6 ? 'FF$clean' : clean, radix: 16);
+  return value == null ? null : Color(value);
+}
+
+/// 型号入口的不可变展示数据；后台字段在此转换为卡片内容。
 final class _ModelPreview {
-  const _ModelPreview(this.title, this.image, this.color);
+  const _ModelPreview({
+    required this.title,
+    required this.image,
+    required this.surfaceColor,
+    this.tags = const [],
+  });
+
+  factory _ModelPreview.fromModel(DeviceModelSummary model) => _ModelPreview(
+    title: model.name ?? 'Cyberskin device',
+    image: model.iconUrl,
+    surfaceColor:
+        _hexToColor(model.cardColor) ?? AppLayeredGradientStyle.baseColor,
+    tags: List.unmodifiable(
+      (model.tags ?? '')
+          .split(',')
+          .map((tag) => tag.trim())
+          .where((tag) => tag.isNotEmpty),
+    ),
+  );
   final String title;
   final String? image;
-  final Color color;
+  final Color surfaceColor;
+  final List<String> tags;
 }
 
 final class _ModelCard extends StatelessWidget {
   const _ModelCard({required this.preview, required this.onTap});
+
   final _ModelPreview preview;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _LayeredGradientCard(
-      colors: [preview.color, preview.color.withValues(alpha: 0.45)],
+    return AppLayeredGradientCard(
+      baseColor: preview.surfaceColor,
       height: 170,
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadius.card,
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 10, 10),
-              child: Text(preview.title, style: const TextStyle(fontSize: 16)),
-            ),
-            if (preview.image != null)
-              Positioned(
-                right: 8,
-                bottom: 0,
-                width: 108,
-                height: 120,
-                child: AppImage.load(preview.image, fit: BoxFit.contain),
+        child: LiquidGlassLayer(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 10, 10),
+                child: Text(
+                  preview.title,
+                  style: const TextStyle(fontSize: 16),
+                ),
               ),
-            const Positioned(
-              right: 12,
-              top: 20,
-              child: Icon(Icons.chevron_right, size: 18),
-            ),
-          ],
+              if (preview.tags.isNotEmpty)
+                Positioned(
+                  right: 16,
+                  bottom: 45,
+                  child: Text(
+                    preview.tags.join('\n'),
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.25,
+                      color: Colors.white.withValues(alpha: 0.25),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              if (preview.image != null)
+                Positioned(
+                  left: 0,
+                  bottom: 0,
+                  width: 108,
+                  height: 120,
+                  child: AppImage.load(preview.image, fit: BoxFit.contain),
+                ),
+
+              Positioned(
+                right: 20,
+                top: 20,
+                child: LGButton(
+                  icon: Icons.chevron_right,
+                  onTap: onTap,
+                  iconSize: 16,
+                  height: 20,
+                  width: 20,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -385,9 +432,10 @@ final class _ConnectedDeviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _LayeredGradientCard(
+    return AppLayeredGradientCard(
       height: 179,
-      colors: const [Color(0xFFC95FD0), Color(0xFF5E185F)],
+      baseColor: const Color(0xFF5E185F),
+      topGradientColors: const [Colors.black, Color(0xFFC95FD0)],
       child: InkWell(
         onTap: onOpen,
         borderRadius: AppRadius.card,
@@ -448,6 +496,7 @@ final class _FeatureCard extends StatelessWidget {
     required this.colors,
     required this.onTap,
   });
+
   final String title;
   final IconData icon;
   final List<Color> colors;
@@ -455,9 +504,10 @@ final class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _LayeredGradientCard(
+    return AppLayeredGradientCard(
       height: 170,
-      colors: colors,
+      baseColor: colors.last,
+      topGradientColors: [Colors.black, colors.first],
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadius.card,
@@ -480,6 +530,7 @@ final class _FeatureCard extends StatelessWidget {
 /// 训练摘要卡。
 final class _TrainingCard extends StatelessWidget {
   const _TrainingCard({required this.summary, required this.onTap});
+
   final TrainingSummary? summary;
   final VoidCallback onTap;
 
@@ -560,6 +611,7 @@ final class _TrainingCard extends StatelessWidget {
 /// 后台广告卡片；图片缺失时仍保留文本层级。
 final class _AdvertisementCard extends StatelessWidget {
   const _AdvertisementCard({required this.advertisement});
+
   final AppAdvertisement advertisement;
 
   @override
@@ -617,73 +669,10 @@ final class _AdvertisementCard extends StatelessWidget {
   }
 }
 
-/// 统一卡片双层表面：底层纯色/内阴影，上层径向渐变与模糊。
-///
-/// [height] 为空时卡片高度由 [child] 决定，可安全放进无界滚动的父级（如
-/// `ListView`）；此时不得使用 [StackFit.expand]，否则会把无限高约束传给子节点，
-/// 导致布局异常并使该 sliver 的 `geometry` 保持为 null。
-final class _LayeredGradientCard extends StatelessWidget {
-  const _LayeredGradientCard({
-    required this.colors,
-    required this.child,
-    this.height,
-  });
-  final List<Color> colors;
-  final Widget child;
-  final double? height;
-
-  @override
-  Widget build(BuildContext context) {
-    final expand = height != null;
-    return SizedBox(
-      height: height,
-      child: ClipRRect(
-        borderRadius: AppRadius.card,
-        child: Stack(
-          fit: expand ? StackFit.expand : StackFit.passthrough,
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: colors.last,
-                  borderRadius: AppRadius.card,
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _InnerGlowPainter(
-                  color: colors.first.withValues(alpha: 0.65),
-                ),
-              ),
-            ),
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: AppRadius.card,
-                  gradient: RadialGradient(
-                    center: const Alignment(0, -1),
-                    radius: 1.2,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.95),
-                      colors.first,
-                    ],
-                  ),
-                ),
-                child: child,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// 玻璃卡片表面。
 final class _GlassCard extends StatelessWidget {
   const _GlassCard({required this.child, this.height});
+
   final Widget child;
   final double? height;
 
@@ -706,6 +695,7 @@ final class _GlassCard extends StatelessWidget {
 /// 小型玻璃文字按钮。
 final class _TextButtonSurface extends StatelessWidget {
   const _TextButtonSurface({required this.label, required this.onTap});
+
   final String label;
   final VoidCallback onTap;
 
@@ -729,6 +719,7 @@ final class _TextButtonSurface extends StatelessWidget {
 /// 小型玻璃图标按钮。
 final class _IconButtonSurface extends StatelessWidget {
   const _IconButtonSurface({required this.icon, required this.onTap});
+
   final IconData icon;
   final VoidCallback onTap;
 
@@ -752,6 +743,7 @@ final class _IconButtonSurface extends StatelessWidget {
 /// 轻量空态/错误提示。
 final class _InlineHint extends StatelessWidget {
   const _InlineHint({required this.icon, required this.text, this.onTap});
+
   final IconData icon;
   final String text;
   final VoidCallback? onTap;
@@ -782,27 +774,4 @@ final class _InlineHint extends StatelessWidget {
       ),
     );
   }
-}
-
-final class _InnerGlowPainter extends CustomPainter {
-  const _InnerGlowPainter({required this.color});
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect.deflate(2), const Radius.circular(32)),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _InnerGlowPainter oldDelegate) =>
-      oldDelegate.color != color;
 }

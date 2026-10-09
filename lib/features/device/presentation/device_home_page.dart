@@ -151,7 +151,10 @@ final class _DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final battery = device.batteryPercent;
+    final cardColor = _parseColor(device.cardColor);
+    final tags = _parseTags(device.tags);
     return Card(
+      color: cardColor,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -179,9 +182,41 @@ final class _DeviceCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text('Battery $battery%'),
             ],
+            if (tags.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: tags
+                    .map(
+                      (tag) => Chip(
+                        label: Text(tag),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: EdgeInsets.zero,
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Color? _parseColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    final clean = hex.replaceFirst('#', '');
+    final value = int.tryParse(
+      clean.length == 6 ? 'FF$clean' : clean,
+      radix: 16,
+    );
+    return value == null ? null : Color(value);
+  }
+
+  List<String> _parseTags(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return const <String>[];
+    return raw.split(',').map((t) => t.trim()).where((t) => t.isNotEmpty).toList(growable: false);
   }
 }

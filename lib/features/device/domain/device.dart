@@ -71,6 +71,8 @@ final class Device {
     required this.status,
     required this.capabilities,
     this.batteryPercent,
+    this.cardColor,
+    this.tags,
   }) : assert(
          batteryPercent == null ||
              (batteryPercent >= 0 && batteryPercent <= 100),
@@ -93,4 +95,10 @@ final class Device {
 
   /// 最近一次获知的电量百分比。
   final int? batteryPercent;
+
+  /// 卡片色值（如 #FF5733）；未配置时为 null。
+  final String? cardColor;
+
+  /// 标签，多个用英文逗号拼接；未配置时为 null。
+  final String? tags;
 }

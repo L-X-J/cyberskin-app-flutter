@@ -1,19 +1,22 @@
 // 主页页面：按设备连接状态渲染可复用的设备、内容和广告卡片。
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart';
 import 'package:get/get.dart';
 
 import '../../../app/widgets/app_scaffold.dart';
+import '../../../core/extensions/string_extensions.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_layered_gradient_style.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/widgets/app_image.dart';
+import '../../../core/widgets/app_layered_gradient_card.dart';
 import '../../content/domain/entities/app_content.dart';
 import '../../device/domain/device.dart';
 import '../../device/domain/repositories/device_catalog_repository.dart';
 import '../../training/domain/entities/training.dart';
 import 'home_controller.dart';
 import 'home_dashboard.dart';
+
 part 'home_widgets.dart';
 
 /// 匿名可浏览的应用主页。

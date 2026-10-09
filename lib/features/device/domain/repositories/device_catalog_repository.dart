@@ -10,6 +10,8 @@ final class DeviceModelSummary {
     this.iconUrl,
     this.displayBackgroundUrl,
     this.hardwareUid,
+    this.cardColor,
+    this.tags,
   });
 
   /// 设备型号主键。
@@ -26,6 +28,12 @@ final class DeviceModelSummary {
 
   /// 硬件唯一标识。
   final String? hardwareUid;
+
+  /// 卡片色值（如 #FF5733）。
+  final String? cardColor;
+
+  /// 标签，多个用英文逗号拼接。
+  final String? tags;
 }
 
 /// 设备型号详情中的 BLE 连接参数。

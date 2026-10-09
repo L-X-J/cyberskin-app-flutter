@@ -27,6 +27,7 @@
 ## 视觉与素材
 
 - 设备彩色卡片不是整图资源，使用 Flutter 双层表面绘制：底层 `#D94126`，叠加 `#F9765F` 内阴影（blur 20，y=1），上层径向渐变自上而下由 `#000000` 至 `#D94126`，模糊半径 14。
+- 公共表面由 `AppLayeredGradientCard` 绘制，参数归 `AppLayeredGradientStyle`；型号卡消费后台 `cardColor`，默认上层终点跟随底色。径向中心为顶部中央，范围按短边归一化，使方形卡底部接近渐变终点，参考 `build/ui/img.png` 的明暗分布；设计未提供椭圆尺寸，精确光学效果仍需人工对照。图层 blur 使用 `AppBlur` 的统一工程映射，不宣称与设计工具的光学效果完全一致。
 - Ardot 导出的设备图、训练缩略图和广告产品图位于 `assets/images/home/`。
 - 设备型号、绑定设备、训练和广告内容均来自领域 Repository；无内容时显示可操作空态或设计示例占位。
 
@@ -42,4 +43,5 @@
 - 宽屏：内容由滚动列承载，不按设计稿宽度整页缩放。
 - 大字体：标题和卡片文本自然增高，底部 pill 由 AppScaffold 重新测量位置。
 - 截图目标：`build/ui/home_disconnected_402x874_text1.0.png`、`build/ui/home_connected_402x949_text1.0.png`。
+- 公共卡片像素回归：`test/core/widgets/app_layered_gradient_card_test.dart`；运行后生成 `build/ui/layered_gradient_card_red_170x170_text1.0.png`，验证渐变方向、前景清晰度、裁切、内阴影偏移与图层覆盖。该截图不是经设计确认的 Golden 基线。
 - 未验证项：默认字体与 MiSans 差异、内阴影与模糊的实机光学效果、真实 BLE 连接数据。

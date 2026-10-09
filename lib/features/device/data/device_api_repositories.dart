@@ -48,6 +48,8 @@ final class DeviceCatalogRemoteRepository extends BaseRemoteRepository
         iconUrl: ApiJson.string(json, 'iconUrl'),
         displayBackgroundUrl: ApiJson.string(json, 'displayBgUrl'),
         hardwareUid: ApiJson.string(json, 'hwUid'),
+        cardColor: ApiJson.string(json, 'cardColor'),
+        tags: ApiJson.string(json, 'tags'),
       );
 
   /// 解码设备详情，并冻结设备协议中尚未稳定化的开放配置字段。
@@ -127,6 +129,8 @@ final class DeviceCatalogRemoteRepository extends BaseRemoteRepository
         'iconUrl',
         'displayBgUrl',
         'hwUid',
+        'cardColor',
+        'tags',
         'hwExtUid',
         'lockRule',
         'ble',

@@ -38,4 +38,5 @@ flutter:
     - assets/images/
     - assets/images/auth/
     - assets/images/control/
+    - assets/images/home/
     - assets/lotties/
