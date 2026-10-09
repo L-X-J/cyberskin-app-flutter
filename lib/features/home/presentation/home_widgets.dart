@@ -306,7 +306,7 @@ final class _DeviceModelGrid extends StatelessWidget {
                 (model) => _ModelPreview(
                   model.name ?? 'Cyberskin device',
                   model.iconUrl,
-                  const Color(0xFF632D76),
+                  const Color(0xFF7EDE83),
                 ),
               )
               .toList(growable: false);
@@ -618,6 +618,10 @@ final class _AdvertisementCard extends StatelessWidget {
 }
 
 /// 统一卡片双层表面：底层纯色/内阴影，上层径向渐变与模糊。
+///
+/// [height] 为空时卡片高度由 [child] 决定，可安全放进无界滚动的父级（如
+/// `ListView`）；此时不得使用 [StackFit.expand]，否则会把无限高约束传给子节点，
+/// 导致布局异常并使该 sliver 的 `geometry` 保持为 null。
 final class _LayeredGradientCard extends StatelessWidget {
   const _LayeredGradientCard({
     required this.colors,
@@ -630,22 +634,27 @@ final class _LayeredGradientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final expand = height != null;
     return SizedBox(
       height: height,
       child: ClipRRect(
         borderRadius: AppRadius.card,
         child: Stack(
-          fit: StackFit.expand,
+          fit: expand ? StackFit.expand : StackFit.passthrough,
           children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: colors.last,
-                borderRadius: AppRadius.card,
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colors.last,
+                  borderRadius: AppRadius.card,
+                ),
               ),
             ),
-            CustomPaint(
-              painter: _InnerGlowPainter(
-                color: colors.first.withValues(alpha: 0.65),
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _InnerGlowPainter(
+                  color: colors.first.withValues(alpha: 0.65),
+                ),
               ),
             ),
             BackdropFilter(
