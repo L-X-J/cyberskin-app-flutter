@@ -1,0 +1,799 @@
+part of 'home_page.dart';
+
+/// 设备未连接状态；底部一级导航按产品规则隐藏。
+final class _DisconnectedHome extends StatelessWidget {
+  const _DisconnectedHome({
+    required this.dashboard,
+    required this.isLoading,
+    required this.isAuthenticated,
+    required this.onPrimaryAction,
+    required this.onLogin,
+    required this.onProfile,
+  });
+
+  final HomeDashboard dashboard;
+  final bool isLoading;
+  final bool isAuthenticated;
+  final VoidCallback onPrimaryAction;
+  final VoidCallback onLogin;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    return _HomeBackground(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        children: [
+          _HomeHeader(
+            title: 'Add Device',
+            subtitle: 'Please turn on Bluetooth',
+            onProfile: onProfile,
+          ),
+          const SizedBox(height: 28),
+          _ScanCard(isLoading: isLoading, onStop: onPrimaryAction),
+          const SizedBox(height: 16),
+          _DeviceModelGrid(
+            models: dashboard.deviceModels,
+            onTap: onPrimaryAction,
+          ),
+          if (dashboard.deviceModels.isEmpty) ...[
+            const SizedBox(height: 10),
+            const _InlineHint(
+              icon: Icons.bluetooth_disabled_outlined,
+              text: 'Turn on Bluetooth and keep the device nearby.',
+              onTap: null,
+            ),
+          ],
+          const SizedBox(height: 10),
+          _InlineHint(
+            icon: isAuthenticated ? Icons.bluetooth_searching : Icons.login,
+            text: isAuthenticated
+                ? 'Tap Stop to manage the connection.'
+                : 'Sign in to connect a device.',
+            onTap: isAuthenticated ? onPrimaryAction : onLogin,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 设备已连接状态；内容由 Repository 快照驱动。
+final class _ConnectedHome extends StatelessWidget {
+  const _ConnectedHome({
+    required this.dashboard,
+    required this.isLoading,
+    required this.failureMessage,
+    required this.onDeviceDetails,
+    required this.onProfile,
+    required this.onReload,
+  });
+
+  final HomeDashboard dashboard;
+  final bool isLoading;
+  final String? failureMessage;
+  final VoidCallback onDeviceDetails;
+  final VoidCallback onProfile;
+  final VoidCallback onReload;
+
+  @override
+  Widget build(BuildContext context) {
+    final device = dashboard.currentDevice;
+    final bound = dashboard.boundDevice;
+    final deviceName = device?.name ?? bound?.customName ?? bound?.modelName;
+    return _HomeBackground(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        children: [
+          const _HomeHeader(
+            title: 'My device',
+            subtitle: 'Good evening, stay relaxed',
+          ),
+          const SizedBox(height: 28),
+          _ConnectedDeviceCard(
+            name: deviceName ?? 'Cyberskin Air',
+            battery: device?.batteryPercent,
+            imageUrl: 'assets/images/home/device_pro_connected.png',
+            onOpen: onDeviceDetails,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _FeatureCard(
+                  title: 'Free control\nmode',
+                  icon: Icons.tune,
+                  colors: const [Color(0xFFE4472A), Color(0xFF8E171A)],
+                  onTap: onDeviceDetails,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _FeatureCard(
+                  title: 'Customrhythm',
+                  icon: Icons.show_chart,
+                  colors: const [Color(0xFFBEF77A), Color(0xFF4B9C58)],
+                  onTap: onDeviceDetails,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _TrainingCard(
+            summary: dashboard.trainings.isEmpty
+                ? null
+                : dashboard.trainings.first,
+            onTap: onDeviceDetails,
+          ),
+          if (dashboard.advertisements.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _AdvertisementCard(advertisement: dashboard.advertisements.first),
+          ],
+          if (failureMessage != null) ...[
+            const SizedBox(height: 12),
+            _InlineHint(
+              icon: Icons.sync_problem_outlined,
+              text: failureMessage!,
+              onTap: onReload,
+            ),
+          ],
+          if (isLoading) ...[
+            const SizedBox(height: 14),
+            const LinearProgressIndicator(minHeight: 2),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 主页背景层；装饰可裁切，内容仍由正常滚动布局负责。
+final class _HomeBackground extends StatelessWidget {
+  const _HomeBackground({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceDark,
+        gradient: RadialGradient(
+          center: Alignment(0.9, 0.25),
+          radius: 1.1,
+          colors: [Color(0xFF25163B), Color(0xFF101030), Color(0xFF020202)],
+          stops: [0, 0.55, 1],
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// 首页标题区和头像入口。
+final class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.title,
+    required this.subtitle,
+    this.onProfile,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback? onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 28, height: 1.2)),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 16, color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: onProfile,
+          tooltip: 'Profile',
+          iconSize: 52,
+          padding: EdgeInsets.zero,
+          icon: const DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0x553D3A46),
+            ),
+            child: SizedBox.square(
+              dimension: 52,
+              child: Icon(Icons.person_outline, size: 32),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 未连接扫描卡。
+final class _ScanCard extends StatelessWidget {
+  const _ScanCard({required this.isLoading, required this.onStop});
+
+  final bool isLoading;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LayeredGradientCard(
+      colors: const [Color(0xFFCE61D2), Color(0xFF6D186D)],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(26, 22, 20, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Searching for nearby devices ..',
+              style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '"No devices found. Device connection methods\ncan be viewed below."',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white70,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                _IconButtonSurface(icon: Icons.bluetooth, onTap: onStop),
+                const SizedBox(width: 8),
+                _TextButtonSurface(label: 'Stop', onTap: onStop),
+                const Spacer(),
+                SizedBox.square(
+                  dimension: 54,
+                  child: isLoading
+                      ? const CircularProgressIndicator(
+                          strokeWidth: 1,
+                          color: Colors.white,
+                        )
+                      : const Icon(
+                          Icons.bluetooth_disabled,
+                          color: Colors.white70,
+                        ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 未连接型号入口网格。
+final class _DeviceModelGrid extends StatelessWidget {
+  const _DeviceModelGrid({required this.models, required this.onTap});
+
+  final List<DeviceModelSummary> models;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = models.isEmpty
+        ? const <_ModelPreview>[
+            _ModelPreview(
+              'Cyberskin Air',
+              'assets/images/home/device_air.png',
+              Color(0xFFE83D23),
+            ),
+            _ModelPreview(
+              'Cyberskin Pro',
+              'assets/images/home/device_pro.png',
+              Color(0xFF8AD36B),
+            ),
+          ]
+        : models
+              .take(2)
+              .map(
+                (model) => _ModelPreview(
+                  model.name ?? 'Cyberskin device',
+                  model.iconUrl,
+                  const Color(0xFF632D76),
+                ),
+              )
+              .toList(growable: false);
+    return Row(
+      children: [
+        for (var i = 0; i < entries.length; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(
+            child: _ModelCard(preview: entries[i], onTap: onTap),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+final class _ModelPreview {
+  const _ModelPreview(this.title, this.image, this.color);
+  final String title;
+  final String? image;
+  final Color color;
+}
+
+final class _ModelCard extends StatelessWidget {
+  const _ModelCard({required this.preview, required this.onTap});
+  final _ModelPreview preview;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LayeredGradientCard(
+      colors: [preview.color, preview.color.withValues(alpha: 0.45)],
+      height: 170,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.card,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 10, 10),
+              child: Text(preview.title, style: const TextStyle(fontSize: 16)),
+            ),
+            if (preview.image != null)
+              Positioned(
+                right: 8,
+                bottom: 0,
+                width: 108,
+                height: 120,
+                child: AppImage.load(preview.image, fit: BoxFit.contain),
+              ),
+            const Positioned(
+              right: 12,
+              top: 20,
+              child: Icon(Icons.chevron_right, size: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 已连接设备主卡。
+final class _ConnectedDeviceCard extends StatelessWidget {
+  const _ConnectedDeviceCard({
+    required this.name,
+    required this.battery,
+    required this.imageUrl,
+    required this.onOpen,
+  });
+
+  final String name;
+  final int? battery;
+  final String imageUrl;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LayeredGradientCard(
+      height: 179,
+      colors: const [Color(0xFFC95FD0), Color(0xFF5E185F)],
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: AppRadius.card,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('⌁  · Connected', style: TextStyle(fontSize: 13)),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      _TextButtonSurface(
+                        label: '◴ ${battery ?? 67}%',
+                        onTap: onOpen,
+                      ),
+                      const SizedBox(width: 8),
+                      _IconButtonSurface(
+                        icon: Icons.power_settings_new,
+                        onTap: onOpen,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _TextButtonSurface(label: '▣  Product manual', onTap: onOpen),
+                ],
+              ),
+            ),
+            Positioned(
+              right: 16,
+              top: -6,
+              width: 132,
+              height: 166,
+              child: AppImage.load(imageUrl, fit: BoxFit.contain),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 自由控制与自定义节奏入口卡。
+final class _FeatureCard extends StatelessWidget {
+  const _FeatureCard({
+    required this.title,
+    required this.icon,
+    required this.colors,
+    required this.onTap,
+  });
+  final String title;
+  final IconData icon;
+  final List<Color> colors;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LayeredGradientCard(
+      height: 170,
+      colors: colors,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.card,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 16, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 17, height: 1.15)),
+              const Spacer(),
+              Icon(icon, size: 64, color: Colors.white70),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 训练摘要卡。
+final class _TrainingCard extends StatelessWidget {
+  const _TrainingCard({required this.summary, required this.onTap});
+  final TrainingSummary? summary;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = summary?.nameEn ?? "Rhythm Adaptation · Beginner's Guide";
+    final seconds = summary?.totalSeconds;
+    final duration = seconds == null
+        ? '12 minutes'
+        : '${seconds ~/ 60} minutes';
+    final stages = summary?.stageCount ?? 4;
+    final intensity = summary?.intensity ?? 'Low intensity';
+    return _GlassCard(
+      height: 136,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(26),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 12, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('Training mode', style: TextStyle(fontSize: 17)),
+                  const Spacer(),
+                  _TextButtonSurface(label: '▦ More', onTap: onTap),
+                ],
+              ),
+              const Spacer(),
+              _GlassCard(
+                height: 62,
+                child: Row(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: AppImage.load(
+                        'assets/images/home/training_thumb.png',
+                        width: 44,
+                        height: 44,
+                        radius: 22,
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '$duration · $stages stages · $intensity',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, size: 20),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 后台广告卡片；图片缺失时仍保留文本层级。
+final class _AdvertisementCard extends StatelessWidget {
+  const _AdvertisementCard({required this.advertisement});
+  final AppAdvertisement advertisement;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GlassCard(
+      height: 124,
+      child: Stack(
+        children: [
+          if (advertisement.imageUrl != null)
+            Positioned.fill(
+              child: AppImage.load(
+                advertisement.imageUrl,
+                fit: BoxFit.cover,
+                radius: 32,
+              ),
+            ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: AppRadius.card,
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withValues(alpha: 0.6),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 24, 100, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  advertisement.titleEn ?? 'The GalaxyVoy1',
+                  style: const TextStyle(fontSize: 17),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  advertisement.subtitleEn ?? 'New product launch',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  '12 modes of vibration heating',
+                  style: TextStyle(fontSize: 10, color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 统一卡片双层表面：底层纯色/内阴影，上层径向渐变与模糊。
+final class _LayeredGradientCard extends StatelessWidget {
+  const _LayeredGradientCard({
+    required this.colors,
+    required this.child,
+    this.height,
+  });
+  final List<Color> colors;
+  final Widget child;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: ClipRRect(
+        borderRadius: AppRadius.card,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.last,
+                borderRadius: AppRadius.card,
+              ),
+            ),
+            CustomPaint(
+              painter: _InnerGlowPainter(
+                color: colors.first.withValues(alpha: 0.65),
+              ),
+            ),
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: AppRadius.card,
+                  gradient: RadialGradient(
+                    center: const Alignment(0, -1),
+                    radius: 1.2,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.95),
+                      colors.first,
+                    ],
+                  ),
+                ),
+                child: child,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 玻璃卡片表面。
+final class _GlassCard extends StatelessWidget {
+  const _GlassCard({required this.child, this.height});
+  final Widget child;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26),
+          color: Colors.white.withValues(alpha: 0.08),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+/// 小型玻璃文字按钮。
+final class _TextButtonSurface extends StatelessWidget {
+  const _TextButtonSurface({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          child: Text(label, style: const TextStyle(fontSize: 12)),
+        ),
+      ),
+    );
+  }
+}
+
+/// 小型玻璃图标按钮。
+final class _IconButtonSurface extends StatelessWidget {
+  const _IconButtonSurface({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Icon(icon, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+/// 轻量空态/错误提示。
+final class _InlineHint extends StatelessWidget {
+  const _InlineHint({required this.icon, required this.text, this.onTap});
+  final IconData icon;
+  final String text;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: Colors.white70),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  text,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+final class _InnerGlowPainter extends CustomPainter {
+  const _InnerGlowPainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(2), const Radius.circular(32)),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _InnerGlowPainter oldDelegate) =>
+      oldDelegate.color != color;
+}

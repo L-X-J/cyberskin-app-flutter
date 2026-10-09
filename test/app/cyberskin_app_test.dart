@@ -1,7 +1,12 @@
+import 'dart:async';
+
+import 'package:cyberskin_app/app/app_routes.dart';
 import 'package:cyberskin_app/app/cyberskin_app.dart';
 import 'package:cyberskin_app/features/content/data/content_configuration_cache.dart';
 import 'package:cyberskin_app/features/content/domain/entities/app_content.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 
 /// 根组件测试使用的内存配置缓存。
 final class _TestContentCache implements ContentConfigurationCache {
@@ -49,25 +54,21 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Home'), findsWidgets);
-    expect(find.text('No device connected'), findsOneWidget);
-    expect(find.text('Video'), findsOneWidget);
+    expect(find.text('Add Device'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
 
-    await tester.tap(find.text('Video'));
+    unawaited(Get.toNamed<void>(AppRoutes.video));
     await tester.pumpAndSettle();
 
-    expect(find.text('Video experiences'), findsOneWidget);
-    expect(
-      find.text(
-        'Official, browser, and local video sources will be configured here.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Official'), findsOneWidget);
+    expect(find.text('Browser'), findsOneWidget);
+    expect(find.text('Local'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
 
-    await tester.tap(find.text('Home').last);
+    await tester.tap(find.text('Device'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Home'), findsWidgets);
-    expect(find.text('No device connected'), findsOneWidget);
+    expect(find.text('Add Device'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
   });
 }

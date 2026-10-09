@@ -9,6 +9,7 @@ import '../features/home/presentation/home_page.dart';
 import '../features/init/presentation/init_page.dart';
 import '../features/profile/presentation/profile_binding.dart';
 import '../features/profile/presentation/profile_page.dart';
+import '../features/video/presentation/video_binding.dart';
 import '../features/video/presentation/video_page.dart';
 import 'bindings/device_binding.dart';
 import 'bindings/init_binding.dart';
@@ -73,7 +74,11 @@ abstract final class AppRoutes {
       transitionDuration: const Duration(milliseconds: 1200),
       middlewares: <GetMiddleware>[RouteAuthMiddleware()],
     ),
-    GetPage<dynamic>(name: video, page: () => const VideoPage()),
+    GetPage<dynamic>(
+      name: video,
+      page: () => const VideoPage(),
+      binding: VideoBinding(),
+    ),
     GetPage<dynamic>(
       name: profile,
       page: () => const ProfilePage(),

@@ -14,7 +14,8 @@ final class ProfilePage extends GetView<ProfileController> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      currentTab: AppTab.profile,
+      currentTab: AppTab.home,
+      showBottomNavigation: false,
       appBar: AppBar(title: const Text('Profile')),
       body: Obx(() {
         if (controller.isLoading.value && controller.user.value == null) {

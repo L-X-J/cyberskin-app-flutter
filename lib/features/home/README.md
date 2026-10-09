@@ -1,9 +1,10 @@
 # home 主页模块
 
-主页是匿名可浏览的 App 一级入口，展示设备连接状态和后续业务入口。
+主页是匿名可浏览的 App 一级入口，展示设备连接状态、设备型号入口和已连接设备内容。
 
 ## 边界
 
-- `presentation` 只读取 `SessionController` 的设备状态，并把登录、设备详情事件交给路由。
-- 本次仅建立 `DeviceConnectionStatus` 的可替换占位状态，真实 BLE 扫描、连接和控制由设备域后续接入。
+- `presentation` 通过 `HomeController` 聚合设备、绑定设备、训练和广告 Repository，Widget 只消费不可变展示快照。
+- 未连接状态隐藏一级底部导航；已连接状态显示 Device / Video 导航，设备快捷 pill 继续由应用壳统一托管。
+- 设备彩色卡片由 Flutter 绘制多层渐变与内阴影，产品图和内容缩略图走正式素材流程。
 - 设备连接和设备详情路由受统一认证 Middleware 保护；未连接的匿名用户仍可浏览主页。
