@@ -59,11 +59,8 @@ final class _TestRepository extends BaseRemoteRepository {
   );
 }
 
-SessionCredentials _session() => SessionCredentials(
-  accessToken: 'token',
-  clientId: 'client',
-  expiresAt: DateTime.now().add(const Duration(hours: 1)),
-);
+SessionCredentials _session() =>
+    SessionCredentials(accessToken: 'token', clientId: 'client');
 
 void main() {
   test('maps business failures even when HTTP response is 200', () async {
@@ -83,6 +80,29 @@ void main() {
     expect(result.isFailure, isTrue);
     expect(result.failureOrNull?.code, FailureCode.business);
     expect(result.failureOrNull?.businessCode, 500);
+  });
+
+  test('keeps structured business message when HTTP status is 500', () async {
+    final repository = _TestRepository(
+      transport: _FakeTransport(
+        const ApiRawResponse(
+          statusCode: 500,
+          statusText: 'Internal Server Error',
+          body: <String, dynamic>{
+            'code': 500,
+            'msg': '验证码发送过于频繁，请稍后再试',
+            'data': null,
+          },
+        ),
+      ),
+      sessionStore: _MemorySessionStore(_session()),
+    );
+
+    final result = await repository.publicValue();
+
+    expect(result.failureOrNull?.code, FailureCode.business);
+    expect(result.failureOrNull?.businessCode, 500);
+    expect(result.failureOrNull?.message, '验证码发送过于频繁，请稍后再试');
   });
 
   test('clears session for business 401', () async {

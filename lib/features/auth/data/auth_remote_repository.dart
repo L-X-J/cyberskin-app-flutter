@@ -72,16 +72,8 @@ final class AuthRemoteRepository extends BaseRemoteRepository
     final json = ApiJson.object(data);
     final token = ApiJson.requiredString(json, 'token');
     final clientId = ApiJson.requiredString(json, 'clientId');
-    final expiresIn = ApiJson.requiredInteger(json, 'expireIn');
-    if (expiresIn <= 0) {
-      throw const FormatException('expireIn 必须大于零。');
-    }
     return _LoginPayload(
-      credentials: SessionCredentials(
-        accessToken: token,
-        clientId: clientId,
-        expiresAt: DateTime.now().toUtc().add(Duration(seconds: expiresIn)),
-      ),
+      credentials: SessionCredentials(accessToken: token, clientId: clientId),
       user: _decodeUser(json['user']),
     );
   }

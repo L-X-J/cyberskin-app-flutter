@@ -128,13 +128,16 @@ final class InitController extends GetxController {
   Future<void> _applyRefreshResult(
     Future<Result<AppConfiguration>> refreshFuture,
   ) async {
+    // 在等待响应前捕获会话状态：后台刷新发起时若用户尚未登录，
+    // 则响应返回 loggedIn=false 属于正常的匿名状态，不应触发跳转。
+    // 只有刷新发起时已经登录、且响应表明服务端已失效，才需要踢回登录页。
+    final wasAuthenticatedWhenStarted =
+        _session?.state.value == SessionState.authenticated;
     final result = await refreshFuture;
     if (result case Success<AppConfiguration>(:final value)) {
       configuration.value = value;
-      final wasAuthenticated =
-          _session?.state.value == SessionState.authenticated;
       _syncSession(value);
-      if (wasAuthenticated && value.loggedIn == false) {
+      if (wasAuthenticatedWhenStarted && value.loggedIn == false) {
         await Get.offAllNamed<void>(AppRoutes.login);
       }
       return;

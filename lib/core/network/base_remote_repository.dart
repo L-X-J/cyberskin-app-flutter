@@ -52,18 +52,39 @@ abstract base class BaseRemoteRepository {
           ),
         );
       }
+      ApiEnvelope<Object?> envelope;
+      try {
+        // 后端错误也可能带有标准 {code,msg,data} 包装；先解析它，
+        // 才不会把业务提示丢失为泛化的 HTTP 网络错误。
+        envelope = _decodeEnvelope(raw.body);
+      } on FormatException {
+        if (raw.statusCode == null ||
+            raw.statusCode! < 200 ||
+            raw.statusCode! >= 300) {
+          return Result.failure(
+            _failure(
+              FailureCode.network,
+              raw.statusText ?? '网络请求失败。',
+              httpStatus: raw.statusCode,
+            ),
+          );
+        }
+        rethrow;
+      }
       if (raw.statusCode == null ||
           raw.statusCode! < 200 ||
           raw.statusCode! >= 300) {
         return Result.failure(
           _failure(
-            FailureCode.network,
-            raw.statusText ?? '网络请求失败。',
+            FailureCode.business,
+            envelope.message.isEmpty
+                ? (raw.statusText ?? '网络请求失败。')
+                : envelope.message,
+            businessCode: envelope.code,
             httpStatus: raw.statusCode,
           ),
         );
       }
-      final envelope = _decodeEnvelope(raw.body);
       if (envelope.code == 401) {
         await sessionStore.clear();
         return Result.failure(

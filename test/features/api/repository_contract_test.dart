@@ -101,11 +101,8 @@ final class _MemoryContentCache implements ContentConfigurationCache {
   Future<void> writeLastLaunchAt(DateTime value) async => lastLaunchAt = value;
 }
 
-SessionCredentials _session() => SessionCredentials(
-  accessToken: 'token',
-  clientId: 'client-id',
-  expiresAt: DateTime.now().add(const Duration(hours: 1)),
-);
+SessionCredentials _session() =>
+    SessionCredentials(accessToken: 'token', clientId: 'client-id');
 
 Map<String, dynamic> _success(Object? data) => <String, dynamic>{
   'code': 200,
