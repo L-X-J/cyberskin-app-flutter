@@ -1,4 +1,6 @@
 // App 登录凭证的安全持久化边界与 flutter_secure_storage 实现。
+import 'dart:async';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// API 鉴权请求所需的不可变凭证集合。
@@ -23,6 +25,13 @@ abstract interface class SessionCredentialStore {
 
   /// 删除本地会话，登出和 401 时都必须调用。
   Future<void> clear();
+
+  /// 凭证被清空时广播一次；`save` 不触发，用于区分「新登录」与「会话失效」。
+  ///
+  /// 传输层在 401 时只能看到存储边界，无法感知展示层会话；通过该事件让
+  /// 上层把 `authenticated` 收敛为 `anonymous`，避免出现「凭证已删但仍显示
+  /// 已登录」的分叉状态。
+  Stream<void> get invalidated;
 }
 
 /// 通过系统 Keychain/Keystore 持久化登录凭证的默认实现。
@@ -39,6 +48,13 @@ final class SecureSessionCredentialStore implements SessionCredentialStore {
 
   /// 底层 Keychain/Keystore 访问器；仅由本实现持有，避免凭证泄漏到业务层。
   final FlutterSecureStorage _storage;
+
+  /// 失效事件广播器；只承载「凭证被删除」信号，不暴露任何凭证内容。
+  final StreamController<void> _invalidations =
+      StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get invalidated => _invalidations.stream;
 
   @override
   Future<SessionCredentials?> read() async {
@@ -57,13 +73,22 @@ final class SecureSessionCredentialStore implements SessionCredentialStore {
 
   @override
   Future<void> save(SessionCredentials credentials) async {
-    await clear();
+    // 用私有删除避免触发失效事件：登录属于状态建立，不是会话失效。
+    await _deleteKeys();
     await _storage.write(key: _tokenKey, value: credentials.accessToken);
     await _storage.write(key: _clientIdKey, value: credentials.clientId);
   }
 
   @override
   Future<void> clear() async {
+    await _deleteKeys();
+    if (!_invalidations.isClosed) {
+      _invalidations.add(null);
+    }
+  }
+
+  /// 仅删除底层键值，不广播；供 [save] 与 [clear] 共享。
+  Future<void> _deleteKeys() async {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _clientIdKey);
   }

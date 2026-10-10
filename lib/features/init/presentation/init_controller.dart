@@ -29,8 +29,8 @@ final class InitController extends GetxController {
   InitController(
     this._contentRepository, {
     this.navigateToNextPage,
-    SessionController? sessionController,
-  }) : _sessionController = sessionController;
+    this._sessionController,
+  });
 
   final ContentRepository _contentRepository;
 
@@ -92,22 +92,29 @@ final class InitController extends GetxController {
     status.value = InitStatus.loading;
     failure.value = null;
 
+    // 先从本地凭证恢复会话状态，确保受保护路由的判定基于当前凭证而非缓存。
+    await _session?.restore();
+
     // 先读取磁盘缓存，使已有配置在后台刷新期间仍可立即被后续页面使用。
     final cached = await _contentRepository.readCachedConfiguration();
     configuration.value = cached;
-    _syncSession(cached);
+    if (cached != null) {
+      await _syncSession(cached);
+    }
     final now = DateTime.now();
     // 启动日期必须先于请求持久化，避免系统杀进程后把同一天再次误判为首次启动。
     final lastLaunchAt = await _contentRepository.readLastLaunchAt();
     final firstLaunchToday = !_isSameLocalDay(lastLaunchAt, now);
     await _contentRepository.writeLastLaunchAt(now);
 
+    // 在发出请求前捕获当前会话状态，用于判断响应是否已过期。
+    final sessionStateAtStart = _session?.state.value;
     // 请求一经发出，Repository 在成功时会负责覆盖配置缓存和刷新时间。
     final refreshFuture = _contentRepository.refreshConfiguration();
     // 非首次启动且已有缓存时立即放行页面，请求结果只更新状态，不阻塞用户。
     if (!firstLaunchToday && cached != null) {
       await _openNextPage();
-      unawaited(_applyRefreshResult(refreshFuture));
+      unawaited(_applyRefreshResult(refreshFuture, sessionStateAtStart));
       return;
     }
 
@@ -115,7 +122,7 @@ final class InitController extends GetxController {
     final result = await refreshFuture;
     if (result case Success<AppConfiguration>(:final value)) {
       configuration.value = value;
-      _syncSession(value);
+      await _syncSession(value, authenticatedAtStart: sessionStateAtStart);
       await _openNextPage();
       return;
     }
@@ -127,23 +134,15 @@ final class InitController extends GetxController {
   /// 应用后台刷新结果；失败只记录状态，不撤销已经可用的缓存。
   Future<void> _applyRefreshResult(
     Future<Result<AppConfiguration>> refreshFuture,
+    SessionState? sessionStateAtStart,
   ) async {
-    // 捕获发起刷新时的会话版本与认证状态，用于判断响应是否已经过期。
-    final revisionAtIssue = _session?.revision;
-    final wasAuthenticatedWhenIssued =
-        _session?.state.value == SessionState.authenticated;
     final result = await refreshFuture;
     if (result case Success<AppConfiguration>(:final value)) {
-      // 在途期间用户完成登录或登出会改变版本号；本次响应基于旧凭证，
-      // 必须整体丢弃，否则启动时发出的匿名响应会覆盖刚建立的登录态。
-      if (revisionAtIssue != _session?.revision) {
-        return;
-      }
       configuration.value = value;
-      _syncSession(value);
-      // 只有携带凭证发出的刷新返回 loggedIn=false，才代表会话已在服务端失效；
-      // 匿名刷新返回 false 属于正常匿名态，不能把用户从首页踢到登录页。
-      if (!value.loggedIn && wasAuthenticatedWhenIssued) {
+      await _syncSession(value, authenticatedAtStart: sessionStateAtStart);
+      // 只有已认证会话刷新返回 loggedIn=false，才代表服务端会话失效，需踢到登录。
+      if (!value.loggedIn &&
+          sessionStateAtStart == SessionState.authenticated) {
         await Get.offAllNamed<void>(AppRoutes.login);
       }
       return;
@@ -182,10 +181,14 @@ final class InitController extends GetxController {
   DeviceConnectionStatus get _deviceStatus =>
       _session?.deviceStatus.value ?? DeviceConnectionStatus.disconnected;
 
-  void _syncSession(AppConfiguration? value) {
-    if (value != null) {
-      _session?.setConfiguration(value);
-    }
+  Future<void> _syncSession(
+    AppConfiguration value, {
+    SessionState? authenticatedAtStart,
+  }) async {
+    await _session?.setConfiguration(
+      value,
+      authenticatedAtStart: authenticatedAtStart,
+    );
   }
 
   bool _isSameLocalDay(DateTime? value, DateTime now) {

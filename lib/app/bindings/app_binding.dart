@@ -130,7 +130,10 @@ final class AppBinding extends Bindings {
       ControlSessionController(),
       permanent: true,
     );
-    Get.put<SessionController>(SessionController(), permanent: true);
+    Get.put<SessionController>(
+      SessionController(sessionStore: sessionStore),
+      permanent: true,
+    );
     Get.put<FloatingControlController>(
       FloatingControlController(),
       permanent: true,

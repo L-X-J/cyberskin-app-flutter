@@ -274,9 +274,10 @@ final class LoginController extends GetxController {
     final result = await request();
     signingIn.value = false;
     if (result.isSuccess) {
-      // 登录响应已持久化凭证；刷新公开配置可让后续启动和缓存明确记录 loggedIn=true。
-      await _contentRepository.refreshConfiguration();
+      // 登录响应已持久化凭证；无注入存储的测试会话由显式状态切换收敛。
+      await _session.refreshFromCredentials();
       _session.markAuthenticated();
+      // 配置刷新由首页自动触发，此处不重复发起，避免竞态覆盖刚建立的登录态。
       await Get.offAllNamed<void>(AppRoutes.home);
       return;
     }
