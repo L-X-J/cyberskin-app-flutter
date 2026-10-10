@@ -4,8 +4,10 @@
 
 文件职责：
 
-- `home_page.dart`：渲染未连接和已连接两种主页视觉状态，以及设备、训练和广告卡片。
-- `home_widgets.dart`：主页状态卡、型号展示数据、设备卡、训练卡和广告卡，作为 `home_page.dart` 的 part 文件共享私有边界；彩色表面复用公共 `AppLayeredGradientCard`。
+- `home_page.dart`：持有首页一级 Device / Video 内容切换，渲染主页壳层与动画过渡。
+- `home_disconnected_view.dart`：未连接状态、扫描卡和型号入口；作为 `home_page.dart` 的 part 文件共享私有边界。
+- `home_connected_view.dart`：已连接状态、设备卡、训练卡和广告卡；作为 `home_page.dart` 的 part 文件共享私有边界。
+- `app/widgets/app_glass_surfaces.dart`：跨一级页面复用的玻璃卡片、紧凑操作和提示表面；主页不再维护第二套实现。
 - `home_controller.dart`：聚合 SessionController 与设备、内容、训练 Repository 的状态。
 - `home_dashboard.dart`：冻结主页可渲染数据，避免 Widget 持有可变 Repository 结果。
 - `home_binding.dart`：装配主页 Controller 与领域 Repository。

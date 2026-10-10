@@ -6,6 +6,8 @@ import '../../device/domain/device_repository.dart';
 import '../../device/domain/repositories/device_catalog_repository.dart';
 import '../../device/domain/repositories/user_device_repository.dart';
 import '../../training/domain/repositories/training_repository.dart';
+import '../../video/domain/repositories/video_repository.dart';
+import '../../video/presentation/video_controller.dart';
 import 'home_controller.dart';
 
 /// 注册主页生命周期内的展示层控制器。
@@ -15,6 +17,9 @@ final class HomeBinding extends Bindings {
 
   @override
   void dependencies() {
+    if (!Get.isRegistered<VideoController>()) {
+      Get.put<VideoController>(VideoController(Get.find<VideoRepository>()));
+    }
     Get.put<HomeController>(
       HomeController(
         Get.find<SessionController>(),

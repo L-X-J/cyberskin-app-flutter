@@ -1,59 +1,5 @@
+// 主页已连接状态及设备、训练和广告展示组件。
 part of 'home_page.dart';
-
-/// 设备未连接状态；底部一级导航按产品规则隐藏。
-final class _DisconnectedHome extends StatelessWidget {
-  const _DisconnectedHome({
-    required this.dashboard,
-    required this.isLoading,
-    required this.isAuthenticated,
-    required this.onPrimaryAction,
-    required this.onLogin,
-    required this.onProfile,
-  });
-
-  final HomeDashboard dashboard;
-  final bool isLoading;
-  final bool isAuthenticated;
-  final VoidCallback onPrimaryAction;
-  final VoidCallback onLogin;
-  final VoidCallback onProfile;
-
-  @override
-  Widget build(BuildContext context) {
-    return _HomeBackground(
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          24,
-          Get.mediaQuery.viewPadding.top + 28,
-          24,
-          24,
-        ),
-        children: [
-          _HomeHeader(
-            title: 'Add Device',
-            subtitle: 'Please turn on Bluetooth',
-            onProfile: onProfile,
-          ),
-          const SizedBox(height: 28),
-          _ScanCard(isLoading: isLoading, onStop: onPrimaryAction),
-          const SizedBox(height: 16),
-          _DeviceModelGrid(
-            models: dashboard.deviceModels,
-            onTap: onPrimaryAction,
-          ),
-          if (dashboard.deviceModels.isEmpty) ...[
-            const SizedBox(height: 10),
-            const _InlineHint(
-              icon: Icons.bluetooth_disabled_outlined,
-              text: 'Turn on Bluetooth and keep the device nearby.',
-              onTap: null,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 /// 设备已连接状态；内容由 Repository 快照驱动。
 final class _ConnectedHome extends StatelessWidget {
@@ -62,6 +8,7 @@ final class _ConnectedHome extends StatelessWidget {
     required this.isLoading,
     required this.failureMessage,
     required this.onDeviceDetails,
+    required this.onDeviceManual,
     required this.onProfile,
     required this.onReload,
   });
@@ -70,6 +17,7 @@ final class _ConnectedHome extends StatelessWidget {
   final bool isLoading;
   final String? failureMessage;
   final VoidCallback onDeviceDetails;
+  final VoidCallback onDeviceManual;
   final VoidCallback onProfile;
   final VoidCallback onReload;
 
@@ -78,9 +26,13 @@ final class _ConnectedHome extends StatelessWidget {
     final device = dashboard.currentDevice;
     final bound = dashboard.boundDevice;
     final deviceName = device?.name ?? bound?.customName ?? bound?.modelName;
+    final bottomInset = AppScaffold.contentBottomPaddingOf(
+      context,
+      showBottomNavigation: true,
+    );
     return _HomeBackground(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        padding: EdgeInsets.fromLTRB(24, 28, 24, bottomInset),
         children: [
           const _HomeHeader(
             title: 'My device',
@@ -92,6 +44,7 @@ final class _ConnectedHome extends StatelessWidget {
             battery: device?.batteryPercent,
             imageUrl: 'assets/images/home/device_pro_connected.png',
             onOpen: onDeviceDetails,
+            onManual: onDeviceManual,
           ),
           const SizedBox(height: 16),
           Row(
@@ -128,7 +81,7 @@ final class _ConnectedHome extends StatelessWidget {
           ],
           if (failureMessage != null) ...[
             const SizedBox(height: 12),
-            _InlineHint(
+            AppInlineHint(
               icon: Icons.sync_problem_outlined,
               text: failureMessage!,
               onTap: onReload,
@@ -202,10 +155,13 @@ final class _HomeHeader extends StatelessWidget {
           ),
         ),
 
-        LGButton.custom(
+        AppLiquidGlassButton(
+          label: 'Profile',
+          variant: AppLiquidGlassButtonVariant.translucent,
           width: 50,
           height: 50,
-          onTap: onProfile ?? () {},
+          borderRadius: 25,
+          onPressed: onProfile ?? () {},
           child: AppImage.load(
             'home/go_user_profile'.assetsPng,
             width: 50,
@@ -226,49 +182,65 @@ final class _ScanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppLayeredGradientCard(
-      baseColor: const Color(0xFF6D186D),
-      topGradientColors: const [Colors.black, Color(0xFFCE61D2)],
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(26, 22, 20, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Searching for nearby devices ..',
-              style: TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              '"No devices found. Device connection methods\ncan be viewed below."',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.white70,
-                height: 1.2,
+    return LiquidGlassLayer(
+      useBackdropGroup: true,
+      fake: true,
+      child: AppLayeredGradientCard.scan(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(26, 22, 20, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Searching for nearby devices ..',
+                style: TextStyle(fontSize: 18),
               ),
-            ),
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                _IconButtonSurface(icon: Icons.bluetooth, onTap: onStop),
-                const SizedBox(width: 8),
-                _TextButtonSurface(label: 'Stop', onTap: onStop),
-                const Spacer(),
-                SizedBox.square(
-                  dimension: 54,
-                  child: isLoading
-                      ? const CircularProgressIndicator(
-                          strokeWidth: 1,
-                          color: Colors.white,
-                        )
-                      : const Icon(
-                          Icons.bluetooth_disabled,
-                          color: Colors.white70,
-                        ),
+              const SizedBox(height: 6),
+              const Text(
+                '"No devices found. Device connection methods\ncan be viewed below."',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white70,
+                  height: 1.2,
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  AppLiquidGlassButton(
+                    label: 'Bluetooth scan',
+                    icon: Icons.bluetooth,
+                    onPressed: onStop,
+                    variant: AppLiquidGlassButtonVariant.translucent,
+                    width: 40,
+                    height: 40,
+                    iconSize: 16,
+                    borderRadius: 12,
+                  ),
+
+                  const SizedBox(width: 8),
+                  AppTextButtonSurface(
+                    label: 'Stop',
+                    onPressed: onStop,
+                    width: 104,
+                    height: 40,
+                  ),
+                  const Spacer(),
+                  SizedBox.square(
+                    dimension: 54,
+                    child: isLoading
+                        ? const Center(
+                            child: AppFlowerLoadingIndicator(size: 42),
+                          )
+                        : const Icon(
+                            Icons.bluetooth_disabled,
+                            color: Colors.white70,
+                          ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -400,12 +372,15 @@ final class _ModelCard extends StatelessWidget {
               Positioned(
                 right: 20,
                 top: 20,
-                child: LGButton(
+                child: AppLiquidGlassButton(
+                  label: 'Open model',
                   icon: Icons.chevron_right,
-                  onTap: onTap,
+                  onPressed: onTap,
+                  variant: AppLiquidGlassButtonVariant.translucent,
                   iconSize: 16,
                   height: 20,
                   width: 20,
+                  borderRadius: 10,
                 ),
               ),
             ],
@@ -423,12 +398,14 @@ final class _ConnectedDeviceCard extends StatelessWidget {
     required this.battery,
     required this.imageUrl,
     required this.onOpen,
+    required this.onManual,
   });
 
   final String name;
   final int? battery;
   final String imageUrl;
   final VoidCallback onOpen;
+  final VoidCallback onManual;
 
   @override
   Widget build(BuildContext context) {
@@ -458,19 +435,23 @@ final class _ConnectedDeviceCard extends StatelessWidget {
                   const Spacer(),
                   Row(
                     children: [
-                      _TextButtonSurface(
+                      AppTextButtonSurface(
                         label: '◴ ${battery ?? 67}%',
-                        onTap: onOpen,
+                        onPressed: onOpen,
                       ),
                       const SizedBox(width: 8),
-                      _IconButtonSurface(
+                      AppIconButtonSurface(
                         icon: Icons.power_settings_new,
-                        onTap: onOpen,
+                        onPressed: onOpen,
+                        label: 'Power',
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  _TextButtonSurface(label: '▣  Product manual', onTap: onOpen),
+                  AppTextButtonSurface(
+                    label: '▣  Product manual',
+                    onPressed: onManual,
+                  ),
                 ],
               ),
             ),
@@ -543,7 +524,7 @@ final class _TrainingCard extends StatelessWidget {
         : '${seconds ~/ 60} minutes';
     final stages = summary?.stageCount ?? 4;
     final intensity = summary?.intensity ?? 'Low intensity';
-    return _GlassCard(
+    return AppGlassCard(
       height: 136,
       child: InkWell(
         onTap: onTap,
@@ -557,11 +538,11 @@ final class _TrainingCard extends StatelessWidget {
                 children: [
                   const Text('Training mode', style: TextStyle(fontSize: 17)),
                   const Spacer(),
-                  _TextButtonSurface(label: '▦ More', onTap: onTap),
+                  AppTextButtonSurface(label: '▦ More', onPressed: onTap),
                 ],
               ),
               const Spacer(),
-              _GlassCard(
+              AppGlassCard(
                 height: 62,
                 child: Row(
                   children: [
@@ -616,7 +597,7 @@ final class _AdvertisementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _GlassCard(
+    return AppGlassCard(
       height: 124,
       child: Stack(
         children: [
@@ -664,113 +645,6 @@ final class _AdvertisementCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// 玻璃卡片表面。
-final class _GlassCard extends StatelessWidget {
-  const _GlassCard({required this.child, this.height});
-
-  final Widget child;
-  final double? height;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: height,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(26),
-          color: Colors.white.withValues(alpha: 0.08),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: child,
-      ),
-    );
-  }
-}
-
-/// 小型玻璃文字按钮。
-final class _TextButtonSurface extends StatelessWidget {
-  const _TextButtonSurface({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          child: Text(label, style: const TextStyle(fontSize: 12)),
-        ),
-      ),
-    );
-  }
-}
-
-/// 小型玻璃图标按钮。
-final class _IconButtonSurface extends StatelessWidget {
-  const _IconButtonSurface({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(9),
-          child: Icon(icon, size: 20),
-        ),
-      ),
-    );
-  }
-}
-
-/// 轻量空态/错误提示。
-final class _InlineHint extends StatelessWidget {
-  const _InlineHint({required this.icon, required this.text, this.onTap});
-
-  final IconData icon;
-  final String text;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: Colors.white70),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  text,
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
