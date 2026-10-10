@@ -1,6 +1,7 @@
 // 设备详情路由的局部依赖装配。
 import 'package:get/get.dart';
 
+import '../../content/domain/repositories/content_repository.dart';
 import '../domain/repositories/device_catalog_repository.dart';
 import 'device_detail_controller.dart';
 import 'device_detail_route_arguments.dart';
@@ -12,15 +13,23 @@ final class DeviceDetailBinding extends Bindings {
 
   @override
   void dependencies() {
-    final arguments = Get.arguments;
-    if (arguments is! DeviceDetailRouteArguments || arguments.modelId <= 0) {
+    final modelId = int.tryParse(Get.parameters['modelId'] ?? '');
+    if (modelId == null || modelId <= 0) {
       return;
     }
+    final arguments = Get.arguments;
+    final routeModelId = arguments is DeviceDetailRouteArguments
+        ? arguments.modelId
+        : modelId;
+    final routeSummary = arguments is DeviceDetailRouteArguments
+        ? arguments.summary
+        : null;
     Get.put<DeviceDetailController>(
       DeviceDetailController(
         Get.find<DeviceCatalogRepository>(),
-        modelId: arguments.modelId,
-        summary: arguments.summary,
+        modelId: routeModelId,
+        summary: routeSummary,
+        contentRepository: Get.find<ContentRepository>(),
       ),
     );
   }

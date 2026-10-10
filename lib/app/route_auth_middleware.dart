@@ -16,6 +16,7 @@ final class RouteAuthMiddleware extends GetMiddleware {
       return const RouteSettings(name: AppRoutes.init);
     }
     final session = Get.find<SessionController>();
+    print("session.state.value--->${session.state.value}");
     return switch (session.state.value) {
       SessionState.starting => const RouteSettings(name: AppRoutes.init),
       SessionState.anonymous => const RouteSettings(name: AppRoutes.login),

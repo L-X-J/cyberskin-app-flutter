@@ -35,10 +35,16 @@ final class SessionController extends GetxController {
   }
 
   /// 标记当前会话已认证。
-  void markAuthenticated() => state.value = SessionState.authenticated;
+  void markAuthenticated() {
+    state.value = SessionState.authenticated;
+    print("markAuthenticated");
+  }
 
   /// 标记当前会话为匿名，并清理路由保护所依赖的认证状态。
-  void markAnonymous() => state.value = SessionState.anonymous;
+  void markAnonymous() {
+    state.value = SessionState.anonymous;
+    print("markAnonymous");
+  }
 
   /// 更新设备连接占位状态，供未来 BLE Adapter 接入时替换。
   void setDeviceConnectionStatus(DeviceConnectionStatus status) {

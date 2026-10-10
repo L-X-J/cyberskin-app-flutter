@@ -3,11 +3,9 @@ import 'package:get/get.dart';
 
 import '../features/auth/presentation/login_binding.dart';
 import '../features/auth/presentation/login_page.dart';
-import '../features/device/presentation/device_home_page.dart';
 import '../features/device/presentation/device_detail_binding.dart';
 import '../features/device/presentation/device_detail_page.dart';
-import '../features/device/presentation/device_manual_binding.dart';
-import '../features/device/presentation/device_manual_page.dart';
+import '../features/device/presentation/device_home_page.dart';
 import '../features/home/presentation/home_binding.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/init/presentation/init_page.dart';
@@ -95,8 +93,10 @@ abstract final class AppRoutes {
     ),
     GetPage<dynamic>(
       name: deviceManual,
-      page: () => const DeviceManualPage(),
-      binding: DeviceManualBinding(),
+      page: () => const DeviceDetailPage(),
+      binding: DeviceDetailBinding(),
+      customTransition: DeviceDetailRouteTransition(),
+      transitionDuration: const Duration(milliseconds: 520),
     ),
     GetPage<dynamic>(
       name: video,

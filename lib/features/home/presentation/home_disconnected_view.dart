@@ -18,7 +18,6 @@ final class _DisconnectedHome extends StatelessWidget {
   final bool isAuthenticated;
   final VoidCallback onPrimaryAction;
   final ValueChanged<DeviceModelSummary> onDeviceModelDetails;
-  final ValueChanged<DeviceModelSummary> onDeviceModelDetails;
   final VoidCallback onLogin;
   final VoidCallback onProfile;
 

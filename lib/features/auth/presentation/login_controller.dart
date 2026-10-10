@@ -1,6 +1,7 @@
 // 登录流程控制器：编排发码、验证码提交、重发冷却及配置协议链接。
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -274,10 +275,21 @@ final class LoginController extends GetxController {
     final result = await request();
     signingIn.value = false;
     if (result.isSuccess) {
-      // 登录响应已持久化凭证；刷新公开配置可让后续启动和缓存明确记录 loggedIn=true。
-      await _contentRepository.refreshConfiguration();
+      debugPrint('[AUTH] login success — calling refreshConfiguration');
+      final refreshResult = await _contentRepository.refreshConfiguration();
+      debugPrint(
+        '[AUTH] refreshConfiguration done — loggedIn=${refreshResult.valueOrNull?.loggedIn}',
+      );
+      debugPrint(
+        '[AUTH] calling markAuthenticated, session before=${_session.state.value}',
+      );
       _session.markAuthenticated();
+      debugPrint(
+        '[AUTH] markAuthenticated done, session after=${_session.state.value}',
+      );
+      debugPrint('[AUTH] calling offAllNamed(/home)');
       await Get.offAllNamed<void>(AppRoutes.home);
+      debugPrint('[AUTH] offAllNamed(/home) returned');
       return;
     }
     failure.value = result.failureOrNull;

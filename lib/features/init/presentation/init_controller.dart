@@ -1,6 +1,7 @@
 // 应用初始化页的状态与启动配置刷新编排。
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../../../app/app_routes.dart';
@@ -128,16 +129,20 @@ final class InitController extends GetxController {
   Future<void> _applyRefreshResult(
     Future<Result<AppConfiguration>> refreshFuture,
   ) async {
-    // 在等待响应前捕获会话状态：后台刷新发起时若用户尚未登录，
-    // 则响应返回 loggedIn=false 属于正常的匿名状态，不应触发跳转。
-    // 只有刷新发起时已经登录、且响应表明服务端已失效，才需要踢回登录页。
-    final wasAuthenticatedWhenStarted =
-        _session?.state.value == SessionState.authenticated;
+    // 记录请求发出时的会话状态，用于判断响应是否仍有效。
+    final sessionAtStart = _session?.state.value;
     final result = await refreshFuture;
     if (result case Success<AppConfiguration>(:final value)) {
       configuration.value = value;
-      _syncSession(value);
-      if (wasAuthenticatedWhenStarted && value.loggedIn == false) {
+      // loggedIn=true 时无条件同步；loggedIn=false 时只在 session 没有发生
+      // 状态跃迁的情况下才同步并踢出，防止启动前发出的匿名请求在用户登录后
+      // 才返回，把刚建立的已认证 session 错误地标记为失效。
+      final sessionNow = _session?.state.value;
+      if (value.loggedIn) {
+        _syncSession(value);
+      } else if (sessionAtStart == SessionState.authenticated &&
+          sessionNow == SessionState.authenticated) {
+        _syncSession(value);
         await Get.offAllNamed<void>(AppRoutes.login);
       }
       return;

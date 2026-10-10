@@ -106,6 +106,7 @@ final class _HomeBody extends StatelessWidget {
     required this.isLoading,
     required this.failureMessage,
     required this.onPrimaryAction,
+    required this.onDeviceModelDetails,
     required this.onDeviceDetails,
     required this.onDeviceManual,
     required this.onLogin,

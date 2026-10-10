@@ -379,6 +379,12 @@ final class _ModelCard extends StatelessWidget {
                     child: AppImage.load(preview.image, fit: BoxFit.contain),
                   ),
                 ),
+              Positioned(
+                left: 5,
+                right: 20,
+                bottom: 40,
+                child: AppImage.load("home/icons_lius".assetsSvg, width: 50),
+              ),
 
               Positioned(
                 right: 20,
