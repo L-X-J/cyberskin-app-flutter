@@ -1,15 +1,15 @@
 # Project Status
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
-Current Focus: 完成主页与视频页 UI 状态接入；继续接入真实 BLE、播放器和平台 OAuth。
+Current Focus: 接入真实 BLE、视频播放器/本地选择、平台 OAuth；玻璃与模糊实机光学验收。
 
-In Progress: 主页已接入设备、型号、训练、广告和视频 Repository 的展示边界，未连接/已连接主页及 Official/Browser/Local 视频 UI 已实现。Google/Apple 入口等待平台插件和控制台配置；悬浮控件和主页内阴影/模糊仍需 iOS/Android 实机或模拟器人工视觉对照。
+In Progress: Google/Apple OAuth 入口等待平台插件和控制台配置；玻璃、内阴影和模糊仍需 iOS/Android 实机光学对照。
 
-Recently Completed: 已完成匿名主页、会话资料、认证路由及设备连接状态占位模型。全局悬浮设备快捷控件已完成四态与连接中过渡态、路由策略和拖动边界。主页和视频页复用 Device / Video 导航，主页彩色卡片按设计要求用 Flutter 双层渐变和内阴影绘制，Ardot 设备与视频素材已进入 assets。
+Recently Completed: 修复 AuthSubmitButton AnimatedContainer 有界/无界约束插值崩溃。重构液态玻璃按钮与分层渐变卡片并抽离 GradientStyle token。新增花形加载指示器、玻璃面层与主 Tab 导航，扩展 AppScaffold 布局。拆分主页连接/未连接视图，移除 home_widgets 集中文件。新增设备说明书页面及控制器，扩展设备主页卡片与标签。重构视频页布局，更新路由与资料页入口。优化 BaseRemoteRepository 错误处理与会话凭证存储。全仓库 flutter test 123 项通过，所有变更已按功能分组提交。
 
-Next: 配置真实 Google/Apple 平台插件与后端 OAuth 环境变量；继续实现 BLE 插件、视频播放器/本地选择和后台能力模型。真实联调使用 `CYBERSKIN_LIVE_API_BASE_URL`，不要提交固定服务地址或测试凭证。
+Next: 配置真实 Google/Apple 平台插件与后端 OAuth 环境变量；继续实现 BLE 插件、视频播放器/本地选择和后台能力模型。玻璃、模糊、默认字体与 MiSans 的差异仍需 iOS/Android 实机光学验收。真实联调使用 `CYBERSKIN_LIVE_API_BASE_URL`，不要提交固定服务地址或测试凭证。
 
 Blockers: 真实 BLE/API 集成仍需设备与环境配置；当前机器已发现 iPhone 18 Pro 模拟器，可运行 UI 验证，但不能替代真实硬件联调。
 
-Relevant Files: `AGENTS.md`, `docs/ui/components/floating-device-control.md`, `lib/app/floating_control_controller.dart`, `lib/app/widgets/floating_device_control_overlay.dart`, `lib/features/control/domain/device_quick_control.dart`, `lib/features/control/presentation/widgets/device_control_pill.dart`, `lib/core/theme/app_device_control_style.dart`, `lib/features/auth`, `lib/features/device`。
+Relevant Files: `lib/features/auth/presentation/auth_submit_button.dart`, `lib/app/widgets/`, `lib/core/widgets/`, `lib/features/device/presentation/`, `lib/features/home/presentation/`, `lib/features/video/presentation/`。

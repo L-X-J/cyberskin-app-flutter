@@ -29,7 +29,16 @@ Cyberskin App 是面向美国男性用户的英文 Flutter 客户端，连接并
 - 公共液态玻璃按钮使用 `core/widgets/AppLiquidGlassButton`，基于 `flutter_liquid_glass_plus`。
   `highlighted` 与 `subtle` 对应已确认的双内阴影/单内阴影两款主题；业务页面只选择变体，
   不复制颜色或内阴影绘制。默认 standard 适配滚动表单，premium 仅用于支持 shader 的固定布局。
-  契约见 `docs/ui/components/liquid-glass-button.md`。
+  tint 背景由变体绘制，`LGButton.custom` 保留玻璃外缘和交互；不要在其子树手绘填充/边框。
+  默认 `LiquidGlassSettings` 使用 thickness 30、lightIntensity 0.65，以保证紧凑按钮仍有可见的
+  包内轮廓；translucent 变体的填充为 `#1FFFFFFF`，不叠加设计未提供的上缘内高光。登录返回入口
+  也必须复用该公共组件。视频页的本地选择/重试入口和资料页的重试/退出入口同样复用
+  translucent 变体；认证页的 `Resend code` 保留为无实体背景的文本链接。契约见
+  `docs/ui/components/liquid-glass-button.md`。
+
+- 一级 Device / Video 导航与全局设备快捷 pill 由 `AppScaffold` 共同协调：常规宽度并排，
+  横向空间或大字体不足时导航移到 pill 上方；页面滚动内容通过
+  `AppScaffold.contentBottomPaddingOf` 预留 Dock 和系统底部安全区，背景保持铺满 viewport。
 
 - App 状态使用 GetX `GetxController` + `Rx`；路由和依赖使用 GetX；局部状态使用 `setState`。
 - API 请求统一从 GetX `GetConnect` 客户端进入，业务代码仍通过 Repository 访问。
