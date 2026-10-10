@@ -23,17 +23,44 @@ final class AppLayeredGradientCard extends StatelessWidget {
     this.topGradientStops = const [0.0, 1.0],
     this.topGradientCenter = AppLayeredGradientStyle.gradientCenter,
     this.topGradientRadius = AppLayeredGradientStyle.gradientRadius,
+    this.topGradientAspectRatio = 1,
     this.topLayerBlur = AppLayeredGradientStyle.layerBlur,
     this.innerShadowColor = AppLayeredGradientStyle.innerShadowColor,
     this.innerShadowBlur = AppLayeredGradientStyle.innerShadowBlur,
     this.innerShadowOffset = AppLayeredGradientStyle.innerShadowOffset,
+    this.innerShadowSpread = 0,
     this.innerShadowOpacity = 1,
     this.borderRadius = AppRadius.card,
     this.height,
   }) : assert(topGradientRadius > 0),
+       assert(topGradientAspectRatio > 0),
        assert(topLayerBlur >= 0),
        assert(innerShadowBlur >= 0),
+       assert(innerShadowSpread >= 0),
        assert(innerShadowOpacity >= 0 && innerShadowOpacity <= 1);
+
+  /// 使用扫描卡已确认的配色、色标与阴影；尺寸仍由布局和内容决定。
+  const AppLayeredGradientCard.scan({
+    Key? key,
+    required Widget child,
+    double? height,
+  }) : this(
+         key: key,
+         child: child,
+         height: height,
+         baseColor: AppScanCardStyle.baseColor,
+         topGradientColors: AppScanCardStyle.gradientColors,
+         topGradientStops: AppScanCardStyle.gradientStops,
+         topGradientCenter: AppScanCardStyle.gradientCenter,
+         topGradientRadius: AppScanCardStyle.gradientRadius,
+         topGradientAspectRatio: AppScanCardStyle.gradientAspectRatio,
+         topLayerBlur: AppScanCardStyle.layerBlur,
+         innerShadowColor: AppScanCardStyle.innerShadowColor,
+         innerShadowBlur: AppScanCardStyle.innerShadowBlur,
+         innerShadowOffset: AppScanCardStyle.innerShadowOffset,
+         innerShadowSpread: AppScanCardStyle.innerShadowSpread,
+         innerShadowOpacity: AppScanCardStyle.innerShadowOpacity,
+       );
 
   /// 卡片内部内容。
   final Widget child;
@@ -53,6 +80,9 @@ final class AppLayeredGradientCard extends StatelessWidget {
   /// 上层径向渐变半径。
   final double topGradientRadius;
 
+  /// 上层径向渐变横纵比；大于一时将暗区拉伸为横向椭圆。
+  final double topGradientAspectRatio;
+
   /// 上层渐变层的设计 blur 值，映射为 Flutter 的 sigma。
   final double topLayerBlur;
 
@@ -64,6 +94,9 @@ final class AppLayeredGradientCard extends StatelessWidget {
 
   /// 底层内阴影偏移。
   final Offset innerShadowOffset;
+
+  /// 内阴影向内扩散的逻辑像素；默认零，保持其他卡片原有表面。
+  final double innerShadowSpread;
 
   /// 底层内阴影不透明度。
   final double innerShadowOpacity;
@@ -96,10 +129,12 @@ final class AppLayeredGradientCard extends StatelessWidget {
                   topGradientStops: topGradientStops,
                   topGradientCenter: topGradientCenter,
                   topGradientRadius: topGradientRadius,
+                  topGradientAspectRatio: topGradientAspectRatio,
                   topLayerBlur: topLayerBlur,
                   innerShadowColor: innerShadowColor,
                   innerShadowBlur: innerShadowBlur,
                   innerShadowOffset: innerShadowOffset,
+                  innerShadowSpread: innerShadowSpread,
                   innerShadowOpacity: innerShadowOpacity,
                   borderRadius: borderRadius,
                 ),
@@ -121,10 +156,12 @@ final class _LayeredGradientCardPainter extends CustomPainter {
     required this.topGradientStops,
     required this.topGradientCenter,
     required this.topGradientRadius,
+    required this.topGradientAspectRatio,
     required this.topLayerBlur,
     required this.innerShadowColor,
     required this.innerShadowBlur,
     required this.innerShadowOffset,
+    required this.innerShadowSpread,
     required this.innerShadowOpacity,
     required this.borderRadius,
   });
@@ -134,10 +171,12 @@ final class _LayeredGradientCardPainter extends CustomPainter {
   final List<double> topGradientStops;
   final Alignment topGradientCenter;
   final double topGradientRadius;
+  final double topGradientAspectRatio;
   final double topLayerBlur;
   final Color innerShadowColor;
   final double innerShadowBlur;
   final Offset innerShadowOffset;
+  final double innerShadowSpread;
   final double innerShadowOpacity;
   final BorderRadius borderRadius;
 
@@ -160,10 +199,16 @@ final class _LayeredGradientCardPainter extends CustomPainter {
   void _paintInnerShadow(Canvas canvas, RRect shape) {
     final sigma = innerShadowBlur * AppBlur.flutterSigmaScale;
     final offset = innerShadowOffset;
+    // 内阴影的正扩散收缩透明孔洞，使白色遮罩向内部延伸。
+    // 极小卡片限制收缩量，避免产生负尺寸的 RRect。
+    final spread = innerShadowSpread.clamp(
+      0.0,
+      shape.outerRect.shortestSide / 2,
+    );
     final mask = Path()
       ..fillType = PathFillType.evenOdd
       ..addRect(shape.outerRect.inflate(sigma * 4 + offset.distance + 1))
-      ..addRRect(shape.shift(offset));
+      ..addRRect(shape.deflate(spread).shift(offset));
     final paint = Paint()
       ..color = innerShadowColor.withValues(
         alpha: innerShadowColor.a * innerShadowOpacity,
@@ -188,6 +233,9 @@ final class _LayeredGradientCardPainter extends CustomPainter {
         ..shader = RadialGradient(
           center: topGradientCenter,
           radius: topGradientRadius,
+          transform: topGradientAspectRatio == 1
+              ? null
+              : _EllipticalGradientTransform(topGradientAspectRatio),
           colors: topGradientColors,
           stops: topGradientStops,
         ).createShader(layerBounds),
@@ -202,11 +250,29 @@ final class _LayeredGradientCardPainter extends CustomPainter {
         !listEquals(oldDelegate.topGradientStops, topGradientStops) ||
         oldDelegate.topGradientCenter != topGradientCenter ||
         oldDelegate.topGradientRadius != topGradientRadius ||
+        oldDelegate.topGradientAspectRatio != topGradientAspectRatio ||
         oldDelegate.topLayerBlur != topLayerBlur ||
         oldDelegate.innerShadowColor != innerShadowColor ||
         oldDelegate.innerShadowBlur != innerShadowBlur ||
         oldDelegate.innerShadowOffset != innerShadowOffset ||
+        oldDelegate.innerShadowSpread != innerShadowSpread ||
         oldDelegate.innerShadowOpacity != innerShadowOpacity ||
         oldDelegate.borderRadius != borderRadius;
+  }
+}
+
+/// 在着色器坐标内扩大横轴，使径向渐变渲染为横向椭圆。
+final class _EllipticalGradientTransform extends GradientTransform {
+  const _EllipticalGradientTransform(this.aspectRatio);
+
+  final double aspectRatio;
+
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
+    final center = bounds.center;
+    return Matrix4.identity()
+      ..translateByDouble(center.dx, center.dy, 0, 1)
+      ..scaleByDouble(aspectRatio, 1, 1, 1)
+      ..translateByDouble(-center.dx, -center.dy, 0, 1);
   }
 }

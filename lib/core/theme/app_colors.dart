@@ -55,6 +55,9 @@ abstract final class AppColors {
     0.20,
   );
 
+  /// 紧凑液态玻璃按钮填充：设计师确认的 #1FFFFFFF。
+  static const Color liquidGlassButtonTranslucentFill = Color(0x1FFFFFFF);
+
   /// 辅助蓝紫色。
   static const Color accentBlue = Color(0xFF5358AD);
 
