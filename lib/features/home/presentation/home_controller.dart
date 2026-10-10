@@ -11,6 +11,7 @@ import '../../content/domain/repositories/content_repository.dart';
 import '../../device/domain/device.dart';
 import '../../device/domain/device_repository.dart';
 import '../../device/domain/repositories/device_catalog_repository.dart';
+import '../../device/presentation/device_detail_route_arguments.dart';
 import '../../device/domain/repositories/user_device_repository.dart';
 import '../../device/presentation/device_manual_route_arguments.dart';
 import '../../training/domain/repositories/training_repository.dart';
@@ -135,6 +136,21 @@ final class HomeController extends GetxController {
 
   /// 打开受保护的设备详情页。
   void openDevice() => unawaited(Get.toNamed<void>(AppRoutes.device));
+
+  /// 打开未连接页型号卡对应的设备详情，并保留入口摘要供 Hero 使用。
+  void openDeviceModelDetails(DeviceModelSummary model) {
+    final modelId = model.id;
+    if (modelId == null || modelId <= 0) {
+      requestConnection();
+      return;
+    }
+    unawaited(
+      Get.toNamed<void>(
+        AppRoutes.deviceDetail.replaceFirst(':modelId', '$modelId'),
+        arguments: DeviceDetailRouteArguments(modelId: modelId, summary: model),
+      ),
+    );
+  }
 
   /// 打开后台配置的产品说明；缺少型号 ID 时回退到设备主页。
   void openDeviceManual(int? modelId, {String? productName}) {

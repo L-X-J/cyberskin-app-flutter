@@ -59,3 +59,34 @@ final class DeviceRouteTransition extends CustomTransition {
     );
   }
 }
+
+/// 设备型号详情页转场；Hero 负责设备图标从入口卡片放大到详情头图。
+final class DeviceDetailRouteTransition extends CustomTransition {
+  /// 创建设备详情页进入转场。
+  DeviceDetailRouteTransition();
+
+  @override
+  Widget buildTransition(
+    BuildContext context,
+    Curve? curve,
+    Alignment? alignment,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final enter = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+    );
+    return FadeTransition(
+      opacity: enter,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.025),
+          end: Offset.zero,
+        ).animate(enter),
+        child: child,
+      ),
+    );
+  }
+}

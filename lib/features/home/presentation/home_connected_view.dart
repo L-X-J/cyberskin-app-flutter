@@ -252,7 +252,7 @@ final class _DeviceModelGrid extends StatelessWidget {
   const _DeviceModelGrid({required this.models, required this.onTap});
 
   final List<DeviceModelSummary> models;
-  final VoidCallback onTap;
+  final ValueChanged<DeviceModelSummary> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -262,11 +262,13 @@ final class _DeviceModelGrid extends StatelessWidget {
               title: 'Cyberskin Air',
               image: 'assets/images/home/device_air.png',
               surfaceColor: AppLayeredGradientStyle.baseColor,
+              model: DeviceModelSummary(name: 'Cyberskin Air'),
             ),
             _ModelPreview(
               title: 'Cyberskin Pro',
               image: 'assets/images/home/device_pro.png',
               surfaceColor: Color(0xFF8AD36B),
+              model: DeviceModelSummary(name: 'Cyberskin Pro'),
             ),
           ]
         : models.take(2).map(_ModelPreview.fromModel).toList(growable: false);
@@ -275,7 +277,10 @@ final class _DeviceModelGrid extends StatelessWidget {
         for (var i = 0; i < entries.length; i++) ...[
           if (i > 0) const SizedBox(width: 12),
           Expanded(
-            child: _ModelCard(preview: entries[i], onTap: onTap),
+            child: _ModelCard(
+              preview: entries[i],
+              onTap: () => onTap(entries[i].model),
+            ),
           ),
         ],
       ],
@@ -300,6 +305,7 @@ final class _ModelPreview {
     required this.title,
     required this.image,
     required this.surfaceColor,
+    required this.model,
     this.tags = const [],
   });
 
@@ -308,6 +314,7 @@ final class _ModelPreview {
     image: model.iconUrl,
     surfaceColor:
         _hexToColor(model.cardColor) ?? AppLayeredGradientStyle.baseColor,
+    model: model,
     tags: List.unmodifiable(
       (model.tags ?? '')
           .split(',')
@@ -318,6 +325,7 @@ final class _ModelPreview {
   final String title;
   final String? image;
   final Color surfaceColor;
+  final DeviceModelSummary model;
   final List<String> tags;
 }
 
@@ -366,7 +374,10 @@ final class _ModelCard extends StatelessWidget {
                   bottom: 0,
                   width: 108,
                   height: 120,
-                  child: AppImage.load(preview.image, fit: BoxFit.contain),
+                  child: Hero(
+                    tag: 'device-model-${preview.model.id ?? preview.title}',
+                    child: AppImage.load(preview.image, fit: BoxFit.contain),
+                  ),
                 ),
 
               Positioned(
