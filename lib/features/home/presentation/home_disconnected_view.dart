@@ -8,6 +8,7 @@ final class _DisconnectedHome extends StatelessWidget {
     required this.isLoading,
     required this.isAuthenticated,
     required this.onPrimaryAction,
+    required this.onDeviceModelDetails,
     required this.onLogin,
     required this.onProfile,
   });
@@ -16,6 +17,8 @@ final class _DisconnectedHome extends StatelessWidget {
   final bool isLoading;
   final bool isAuthenticated;
   final VoidCallback onPrimaryAction;
+  final ValueChanged<DeviceModelSummary> onDeviceModelDetails;
+  final ValueChanged<DeviceModelSummary> onDeviceModelDetails;
   final VoidCallback onLogin;
   final VoidCallback onProfile;
 
@@ -44,7 +47,7 @@ final class _DisconnectedHome extends StatelessWidget {
           const SizedBox(height: 16),
           _DeviceModelGrid(
             models: dashboard.deviceModels,
-            onTap: onPrimaryAction,
+            onTap: onDeviceModelDetails,
           ),
           if (dashboard.deviceModels.isEmpty) ...[
             const SizedBox(height: 10),

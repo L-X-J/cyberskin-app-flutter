@@ -66,6 +66,7 @@ final class HomePage extends GetView<HomeController> {
                   isLoading: controller.isLoading.value,
                   failureMessage: controller.failure.value?.message,
                   onPrimaryAction: controller.requestConnection,
+                  onDeviceModelDetails: controller.openDeviceModelDetails,
                   onDeviceDetails: controller.openDevice,
                   onDeviceManual: () => controller.openDeviceManual(
                     controller.dashboard.value.boundDevice?.deviceModelId,
@@ -118,6 +119,7 @@ final class _HomeBody extends StatelessWidget {
   final bool isLoading;
   final String? failureMessage;
   final VoidCallback onPrimaryAction;
+  final ValueChanged<DeviceModelSummary> onDeviceModelDetails;
   final VoidCallback onDeviceDetails;
   final VoidCallback onDeviceManual;
   final VoidCallback onLogin;
@@ -144,6 +146,7 @@ final class _HomeBody extends StatelessWidget {
             isLoading: isLoading,
             isAuthenticated: isAuthenticated,
             onPrimaryAction: onPrimaryAction,
+            onDeviceModelDetails: onDeviceModelDetails,
             onLogin: onLogin,
             onProfile: onProfile,
           );
