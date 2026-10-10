@@ -32,13 +32,15 @@ void main() {
       await tester.tap(find.byType(LGButton));
       expect(submitted, 1);
       await render(loading: true);
+      await tester.pump(const Duration(milliseconds: 200));
       await tester.tap(find.byType(LGButton));
       expect(submitted, 1);
       expect(find.bySemanticsLabel('Next, loading'), findsOneWidget);
-      expect(
-        tester.getSize(find.byType(AuthSubmitButton)),
-        const Size(353, 58),
-      );
+      expect(tester.getSize(find.byType(LGButton)), const Size(58, 58));
+      expect(find.text('Next'), findsNothing);
+      await render(loading: false);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(tester.getSize(find.byType(LGButton)), const Size(353, 58));
     },
   );
 
@@ -120,11 +122,11 @@ void main() {
         expect(redAt(196, 10), 0);
         expect(redAt(196, 87), 0);
         expect(redAt(21, 21), 0);
-        // 中央保留背景透出；顶部应能看到 Y=4 的白色内高光。
+        // 中央保留背景透出；设计未提供白色上缘内高光。
         if (variant == AppLiquidGlassButtonVariant.highlighted) {
           expect(redAt(100, 49), inInclusiveRange(41, 90));
-          expect(redAt(100, 23), greaterThan(redAt(100, 74)));
-        } else {
+          expect(redAt(100, 23), lessThanOrEqualTo(redAt(100, 74) + 2));
+        } else if (variant == AppLiquidGlassButtonVariant.subtle) {
           expect(redAt(100, 49), inInclusiveRange(24, 60));
           int blueAt(int x, int y) => pixels!.getUint8((y * 393 + x) * 4 + 2);
           expect(blueAt(100, 23), greaterThan(blueAt(100, 49)));

@@ -125,12 +125,10 @@ void main() {
   });
 
   test(
-    'keeps failed sends in the email step without starting cooldown',
+    'surfaces server Result.failure and ends sending without starting cooldown',
     () async {
       final auth = _FakeAuthRepository()
-        ..sendCodeResult = const Result.failure(
-          AppFailure(code: FailureCode.business, message: 'Try later.'),
-        );
+        ..pendingSend = Completer<Result<void>>();
       final controller = LoginController(
         auth,
         _FakeContentRepository(),
@@ -138,7 +136,26 @@ void main() {
       );
       addTearDown(controller.onClose);
       controller.email.value = 'a@b.test';
-      expect(await controller.sendCode(), isFalse);
+      final sending = controller.sendCode();
+      expect(controller.sendingCode.value, isTrue);
+      auth.pendingSend!.complete(
+        const Result.failure(
+          AppFailure(
+            code: FailureCode.business,
+            businessCode: 500,
+            message: 'Email service is unavailable.',
+          ),
+        ),
+      );
+
+      expect(await sending, isFalse);
+      expect(controller.sendingCode.value, isFalse);
+      expect(controller.failure.value?.businessCode, 500);
+      expect(
+        controller.failure.value?.message,
+        'Email service is unavailable.',
+      );
+      expect(controller.codeSent.value, isFalse);
       expect(controller.verificationEmail.value, isEmpty);
       expect(controller.resendSecondsRemaining.value, 0);
     },

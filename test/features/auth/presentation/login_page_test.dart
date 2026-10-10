@@ -142,10 +142,14 @@ void main() {
     expect(find.text('Next'), findsOneWidget);
     controller.sendingCode.value = true;
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
     expect(tester.widget<LGButton>(submit).enabled, isFalse);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(tester.getSize(submit), const Size(58, 58));
     controller.sendingCode.value = false;
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.getSize(submit), const Size(348, 58));
     final pill = tester
         .widgetList<Container>(
           find.ancestor(
@@ -160,12 +164,7 @@ void main() {
       BorderRadius.circular(100),
     );
 
-    await tester.tap(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is LGButton && widget.icon == Icons.arrow_back_ios_new,
-      ),
-    );
+    await tester.tap(find.byTooltip('Back'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
@@ -314,8 +313,10 @@ void main() {
         isTrue,
       );
       expect(tester.testTextInput.isVisible, isTrue);
+      final emailClientArgs =
+          tester.testTextInput.setClientArgs! as Map<Object?, Object?>;
       expect(
-        tester.testTextInput.setClientArgs!['inputType']['name'],
+        (emailClientArgs['inputType'] as Map<Object?, Object?>)['name'],
         'TextInputType.emailAddress',
       );
       await tester.enterText(find.byType(TextField), 'sent@example.test');
@@ -342,8 +343,10 @@ void main() {
         isTrue,
       );
       expect(tester.testTextInput.isVisible, isTrue);
+      final verificationClientArgs =
+          tester.testTextInput.setClientArgs! as Map<Object?, Object?>;
       expect(
-        tester.testTextInput.setClientArgs!['inputType']['name'],
+        (verificationClientArgs['inputType'] as Map<Object?, Object?>)['name'],
         'TextInputType.number',
       );
       expect(
@@ -422,11 +425,10 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final auth = _AuthRepository()
-      ..sendResult = const Result.failure(
-        AppFailure(code: FailureCode.business, message: 'Try later.'),
-      );
-    Get.put(LoginController(auth, _ContentRepository(), SessionController()));
+    final auth = _AuthRepository()..pendingSend = Completer<Result<void>>();
+    final controller = Get.put(
+      LoginController(auth, _ContentRepository(), SessionController()),
+    );
     await tester.pumpWidget(const GetMaterialApp(home: LoginPage()));
     await tester.pump();
     await tester.tap(find.bySemanticsLabel('Continue with email'));
@@ -436,9 +438,44 @@ void main() {
     await tester.enterText(find.byType(TextField), 'a@b.test');
     await tester.tap(find.text('Next'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(controller.sendingCode.value, isTrue);
+    expect(
+      tester.getSize(
+        find.descendant(
+          of: find.byType(AuthSubmitButton),
+          matching: find.byType(LGButton),
+        ),
+      ),
+      const Size(58, 58),
+    );
+
+    auth.pendingSend!.complete(
+      const Result.failure(
+        AppFailure(
+          code: FailureCode.business,
+          businessCode: 500,
+          message: 'Email service is unavailable.',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
     expect(find.byType(EmailAddressStep), findsOneWidget);
     expect(find.byType(EmailVerificationStep), findsNothing);
-    expect(find.text('Try later.'), findsOneWidget);
+    expect(controller.sendingCode.value, isFalse);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('Email service is unavailable.'), findsOneWidget);
+    expect(
+      tester.getSize(
+        find.descendant(
+          of: find.byType(AuthSubmitButton),
+          matching: find.byType(LGButton),
+        ),
+      ),
+      const Size(348, 58),
+    );
   });
 
   testWidgets('captures verification baseline with fixture state', (
