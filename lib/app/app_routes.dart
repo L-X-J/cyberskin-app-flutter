@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import '../features/auth/presentation/login_binding.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/device/presentation/device_home_page.dart';
+import '../features/device/presentation/device_manual_binding.dart';
+import '../features/device/presentation/device_manual_page.dart';
 import '../features/home/presentation/home_binding.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/init/presentation/init_page.dart';
@@ -31,6 +33,9 @@ abstract final class AppRoutes {
   /// 设备主页路由。
   static const String device = '/device';
 
+  /// 设备产品说明书路由，型号 ID 通过 `:modelId` 传入。
+  static const String deviceManual = '/device/manual/:modelId';
+
   /// 视频主页路由。
   static const String video = '/video';
 
@@ -41,6 +46,7 @@ abstract final class AppRoutes {
   static const Map<String, FloatingControlPolicy> floatingControlPolicies = {
     home: FloatingControlPolicy.fixed,
     device: FloatingControlPolicy.fixed,
+    deviceManual: FloatingControlPolicy.hidden,
     video: FloatingControlPolicy.fixed,
     profile: FloatingControlPolicy.draggable,
     init: FloatingControlPolicy.hidden,
@@ -73,6 +79,11 @@ abstract final class AppRoutes {
       customTransition: DeviceRouteTransition(),
       transitionDuration: const Duration(milliseconds: 1200),
       middlewares: <GetMiddleware>[RouteAuthMiddleware()],
+    ),
+    GetPage<dynamic>(
+      name: deviceManual,
+      page: () => const DeviceManualPage(),
+      binding: DeviceManualBinding(),
     ),
     GetPage<dynamic>(
       name: video,
