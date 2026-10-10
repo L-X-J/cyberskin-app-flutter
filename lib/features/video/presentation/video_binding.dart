@@ -11,6 +11,8 @@ final class VideoBinding extends Bindings {
 
   @override
   void dependencies() {
-    Get.put<VideoController>(VideoController(Get.find<VideoRepository>()));
+    if (!Get.isRegistered<VideoController>()) {
+      Get.put<VideoController>(VideoController(Get.find<VideoRepository>()));
+    }
   }
 }

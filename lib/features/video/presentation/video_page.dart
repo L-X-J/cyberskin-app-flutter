@@ -6,6 +6,7 @@ import '../../../app/widgets/app_scaffold.dart';
 import '../../../core/error/app_failure.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/widgets/app_image.dart';
+import '../../../core/widgets/app_liquid_glass_button.dart';
 import '../domain/entities/official_video.dart';
 import 'video_controller.dart';
 
@@ -22,25 +23,37 @@ final class VideoPage extends GetView<VideoController> {
         preferredSize: Size.zero,
         child: SizedBox.shrink(),
       ),
-      body: Obx(
-        () => switch (controller.selectedTab.value) {
-          VideoTab.official => _OfficialVideoView(
-            videos: controller.officialVideos.toList(growable: false),
-            isLoading: controller.isLoading.value,
-            failure: controller.failure.value,
-            onRetry: controller.loadOfficialVideos,
-            onSelect: controller.selectTab,
-          ),
-          VideoTab.browser => _BrowserVideoView(
-            value: controller.browserUrl.value,
-            onChanged: controller.setBrowserUrl,
-            onSelect: controller.selectTab,
-          ),
-          VideoTab.local => _LocalVideoView(onSelect: controller.selectTab),
-        },
-      ),
+      body: VideoTabContent(controller: controller),
     );
   }
+}
+
+/// 可嵌入一级壳层的视频内容区域；只订阅视频领域状态，不创建页面路由。
+final class VideoTabContent extends StatelessWidget {
+  /// 创建视频内容区域。
+  const VideoTabContent({super.key, required this.controller});
+
+  /// 当前视频展示状态。
+  final VideoController controller;
+
+  @override
+  Widget build(BuildContext context) => Obx(
+    () => switch (controller.selectedTab.value) {
+      VideoTab.official => _OfficialVideoView(
+        videos: controller.officialVideos.toList(growable: false),
+        isLoading: controller.isLoading.value,
+        failure: controller.failure.value,
+        onRetry: controller.loadOfficialVideos,
+        onSelect: controller.selectTab,
+      ),
+      VideoTab.browser => _BrowserVideoView(
+        value: controller.browserUrl.value,
+        onChanged: controller.setBrowserUrl,
+        onSelect: controller.selectTab,
+      ),
+      VideoTab.local => _LocalVideoView(onSelect: controller.selectTab),
+    },
+  );
 }
 
 final class _OfficialVideoView extends StatelessWidget {
@@ -96,7 +109,12 @@ final class _OfficialVideoView extends StatelessWidget {
                 )
               else
                 const _FrequencyOverlay(),
-              const SizedBox(height: 110),
+              SizedBox(
+                height: AppScaffold.contentBottomPaddingOf(
+                  context,
+                  showBottomNavigation: true,
+                ),
+              ),
             ],
           ),
         ),
@@ -183,7 +201,12 @@ final class _BrowserVideoViewState extends State<_BrowserVideoView> {
             ),
             const Spacer(),
             const _PrivacyCard(),
-            const SizedBox(height: 110),
+            SizedBox(
+              height: AppScaffold.contentBottomPaddingOf(
+                context,
+                showBottomNavigation: true,
+              ),
+            ),
           ],
         ),
       ),
@@ -212,14 +235,20 @@ final class _LocalVideoView extends StatelessWidget {
             const SizedBox(height: 18),
             const Text('Select local video', style: TextStyle(fontSize: 20)),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
+            AppLiquidGlassButton(
+              variant: AppLiquidGlassButtonVariant.translucent,
               onPressed: () {},
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Choose video'),
+              leadingIcon: Icons.upload_file,
+              label: 'Choose video',
             ),
             const Spacer(),
             const _PrivacyCard(),
-            const SizedBox(height: 110),
+            SizedBox(
+              height: AppScaffold.contentBottomPaddingOf(
+                context,
+                showBottomNavigation: true,
+              ),
+            ),
           ],
         ),
       ),
@@ -375,7 +404,11 @@ final class _VideoError extends StatelessWidget {
       children: [
         Text(message, textAlign: TextAlign.center),
         const SizedBox(height: 12),
-        OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
+        AppLiquidGlassButton(
+          variant: AppLiquidGlassButtonVariant.translucent,
+          onPressed: onRetry,
+          label: 'Try again',
+        ),
       ],
     );
   }

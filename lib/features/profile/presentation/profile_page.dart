@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/widgets/app_scaffold.dart';
+import '../../../core/widgets/app_liquid_glass_button.dart';
 import '../../auth/domain/app_user.dart';
 import 'profile_controller.dart';
 
@@ -31,9 +32,10 @@ final class ProfilePage extends GetView<ProfileController> {
                 children: [
                   Text(failure.message, textAlign: TextAlign.center),
                   const SizedBox(height: 16),
-                  OutlinedButton(
+                  AppLiquidGlassButton(
+                    variant: AppLiquidGlassButtonVariant.translucent,
                     onPressed: () => controller.load(),
-                    child: const Text('Try again'),
+                    label: 'Try again',
                   ),
                 ],
               ),
@@ -81,10 +83,11 @@ final class _ProfileBody extends StatelessWidget {
           Text(user!.email!, textAlign: TextAlign.center),
         ],
         const SizedBox(height: 32),
-        OutlinedButton.icon(
+        AppLiquidGlassButton(
+          variant: AppLiquidGlassButtonVariant.translucent,
           onPressed: isLoggingOut ? null : () => onLogout(),
-          icon: const Icon(Icons.logout),
-          label: Text(isLoggingOut ? 'Signing out' : 'Sign out'),
+          leadingIcon: Icons.logout,
+          label: isLoggingOut ? 'Signing out' : 'Sign out',
         ),
       ],
     );
