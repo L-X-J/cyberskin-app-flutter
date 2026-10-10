@@ -1,7 +1,6 @@
 // 应用初始化页的状态与启动配置刷新编排。
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../../../app/app_routes.dart';
@@ -129,20 +128,22 @@ final class InitController extends GetxController {
   Future<void> _applyRefreshResult(
     Future<Result<AppConfiguration>> refreshFuture,
   ) async {
-    // 记录请求发出时的会话状态，用于判断响应是否仍有效。
-    final sessionAtStart = _session?.state.value;
+    // 捕获发起刷新时的会话版本与认证状态，用于判断响应是否已经过期。
+    final revisionAtIssue = _session?.revision;
+    final wasAuthenticatedWhenIssued =
+        _session?.state.value == SessionState.authenticated;
     final result = await refreshFuture;
     if (result case Success<AppConfiguration>(:final value)) {
+      // 在途期间用户完成登录或登出会改变版本号；本次响应基于旧凭证，
+      // 必须整体丢弃，否则启动时发出的匿名响应会覆盖刚建立的登录态。
+      if (revisionAtIssue != _session?.revision) {
+        return;
+      }
       configuration.value = value;
-      // loggedIn=true 时无条件同步；loggedIn=false 时只在 session 没有发生
-      // 状态跃迁的情况下才同步并踢出，防止启动前发出的匿名请求在用户登录后
-      // 才返回，把刚建立的已认证 session 错误地标记为失效。
-      final sessionNow = _session?.state.value;
-      if (value.loggedIn) {
-        _syncSession(value);
-      } else if (sessionAtStart == SessionState.authenticated &&
-          sessionNow == SessionState.authenticated) {
-        _syncSession(value);
+      _syncSession(value);
+      // 只有携带凭证发出的刷新返回 loggedIn=false，才代表会话已在服务端失效；
+      // 匿名刷新返回 false 属于正常匿名态，不能把用户从首页踢到登录页。
+      if (!value.loggedIn && wasAuthenticatedWhenIssued) {
         await Get.offAllNamed<void>(AppRoutes.login);
       }
       return;
