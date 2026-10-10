@@ -31,7 +31,7 @@ final class _AppFlowerLoadingIndicatorState
     with SingleTickerProviderStateMixin {
   late final AnimationController _rotationController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1200),
+    duration: const Duration(milliseconds: 1800),
   )..repeat();
 
   @override
@@ -60,7 +60,7 @@ final class _AppFlowerLoadingIndicatorState
 final class _FlowerPainter extends CustomPainter {
   const _FlowerPainter({required this.color});
 
-  static const int _petalCount = 8;
+  static const int _petalCount = 10;
 
   final Color color;
 
@@ -70,9 +70,10 @@ final class _FlowerPainter extends CustomPainter {
 
     final shortestSide = size.shortestSide;
     final center = size.center(Offset.zero);
-    final petalWidth = shortestSide * 0.18;
-    final petalHeight = shortestSide * 0.38;
-    final radius = shortestSide * 0.22;
+    // 细线型花瓣使用更小的宽度，并放到外圈以匹配加载指示器的参考视觉。
+    final petalWidth = shortestSide * 0.02;
+    final petalHeight = shortestSide * 0.14;
+    final radius = shortestSide * 0.30;
     final petal = RRect.fromRectAndRadius(
       Rect.fromCenter(
         center: Offset(center.dx, center.dy - radius),

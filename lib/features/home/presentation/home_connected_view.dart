@@ -204,7 +204,7 @@ final class _ScanCard extends StatelessWidget {
                   height: 1.2,
                 ),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: isLoading ? 8 : 12),
               Row(
                 children: [
                   AppLiquidGlassButton(
@@ -227,10 +227,10 @@ final class _ScanCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   SizedBox.square(
-                    dimension: 54,
+                    dimension: 64,
                     child: isLoading
                         ? const Center(
-                            child: AppFlowerLoadingIndicator(size: 42),
+                            child: AppFlowerLoadingIndicator(size: 64),
                           )
                         : const Icon(
                             Icons.bluetooth_disabled,
@@ -336,76 +336,15 @@ final class _ModelCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return AppLayeredGradientCard(
-      baseColor: preview.surfaceColor,
-      height: 170,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.card,
-        child: LiquidGlassLayer(
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 10, 10),
-                child: Text(
-                  preview.title,
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
-              if (preview.tags.isNotEmpty)
-                Positioned(
-                  right: 16,
-                  bottom: 45,
-                  child: Text(
-                    preview.tags.join('\n'),
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.25,
-                      color: Colors.white.withValues(alpha: 0.25),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              if (preview.image != null)
-                Positioned(
-                  left: 0,
-                  bottom: 0,
-                  width: 108,
-                  height: 120,
-                  child: Hero(
-                    tag: 'device-model-${preview.model.id ?? preview.title}',
-                    child: AppImage.load(preview.image, fit: BoxFit.contain),
-                  ),
-                ),
-              Positioned(
-                left: 5,
-                right: 20,
-                bottom: 40,
-                child: AppImage.load("home/icons_lius".assetsSvg, width: 50),
-              ),
-
-              Positioned(
-                right: 20,
-                top: 20,
-                child: AppLiquidGlassButton(
-                  label: 'Open model',
-                  icon: Icons.chevron_right,
-                  onPressed: onTap,
-                  variant: AppLiquidGlassButtonVariant.translucent,
-                  iconSize: 16,
-                  height: 20,
-                  width: 20,
-                  borderRadius: 10,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => DeviceModelCard(
+    title: preview.title,
+    image: preview.image,
+    baseColor: preview.surfaceColor,
+    tags: preview.tags,
+    heroTag: 'device-model-${preview.model.id ?? preview.title}',
+    onTap: onTap,
+    variant: DeviceModelCardVariant.home,
+  );
 }
 
 /// 已连接设备主卡。

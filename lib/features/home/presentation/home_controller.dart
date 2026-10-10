@@ -11,8 +11,8 @@ import '../../content/domain/repositories/content_repository.dart';
 import '../../device/domain/device.dart';
 import '../../device/domain/device_repository.dart';
 import '../../device/domain/repositories/device_catalog_repository.dart';
-import '../../device/presentation/device_detail_route_arguments.dart';
 import '../../device/domain/repositories/user_device_repository.dart';
+import '../../device/presentation/device_detail_route_arguments.dart';
 import '../../device/presentation/device_manual_route_arguments.dart';
 import '../../training/domain/repositories/training_repository.dart';
 import 'home_dashboard.dart';
@@ -122,7 +122,7 @@ final class HomeController extends GetxController {
       advertisements: adsResult?.valueOrNull ?? const [],
     );
     failure.value = errors.isEmpty ? null : errors.first;
-    isLoading.value = false;
+    isLoading.value = true;
   }
 
   /// 响应用户刷新操作。
