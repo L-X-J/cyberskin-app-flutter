@@ -44,6 +44,6 @@
 - 设计稿的 MiSans 与项目默认字体有字宽差异；协议链接采用下划线表达可点击状态，其余规格依照 Ardot 节点 `382:28` / `382:37`。
 - 验证：Widget test 覆盖同页切换时背景 Element 不重建、协议按配置代码跳转、胶囊输入、320 x 568 和 1.5 倍文字；iOS 模拟器构建通过。
 - 验证码截图：`build/ui/login_verification_402x874_text1.0.png`，由 `login_page_test.dart` 通过 `tester.runAsync` 生成真实 Flutter 渲染。基准采用 402 x 874、顶部安全区 50、底部安全区 34、Roboto 测试字体、`zhang@apple.com`、00:54、空验证码、Lottie 背景；系统状态栏不自绘。已对照标题、3+3 分组、返回、倒计时和提交按钮，Lottie 动画帧与设计静态背景及默认字体与 MiSans 存在已知差异；真机键盘、H5 和真实发码仍待验收。
-- 邮箱主按钮参考 Ardot `382:32` / `382:33`（353 x 58）。设计师最新确认覆盖之前的多色玻璃推断：填充 `#D173AB` 20%；内阴影一 `#FFFFFF` 25%、偏移 (0, 4)、模糊 4、扩展 0；内阴影二 `#C59EFF` 40%、偏移 (0, 0)、模糊 20、扩展 10。未注明值按 0 处理。
-- 填充与效果的代码来源为 `AppColors.liquidGlassButtonFill`、`AppEffects.subtleInnerHighlight` 和 `AppEffects.liquidGlassButtonInnerGlow`。公共组件以 `LGButton.custom` 提供背景玻璃滤镜、按压形变与触摸辉光，表面叠加反向遮罩内阴影；设计 blur 按 blur / 2 映射到高斯 sigma。滚动表单使用 standard，不开启只适用于固定区域的 premium shader 模式。
+- 邮箱主按钮参考 Ardot `382:32` / `382:33`（353 x 58）。填充为 `#D173AB` 20%；仅保留内辉光 `#C59EFF` 40%、偏移 (0, 0)、模糊 20、扩展 10。设计未提供白色上缘内高光，未注明值按 0 处理。
+- 填充与效果的代码来源为 `AppColors.liquidGlassButtonFill` 和 `AppEffects.liquidGlassButtonInnerGlow`。圆角底色由变体绘制，`LGButton.custom` 以透明玻璃 tint 提供背景滤镜、原生边缘光、按压形变与触摸辉光，表面只叠加反向遮罩内阴影；不绘制设计未提供的上缘白色内高光或手工边框。设计 blur 按 blur / 2 映射到高斯 sigma。滚动表单使用 standard，不开启只适用于固定区域的 premium shader 模式。
 - 组件渲染截图由 `auth_submit_button_test.dart` 输出到 `build/ui/auth_submit_button_353x58.png`（393 x 98，含四周 20px 黑色背景）；FVM 环境使用 SDK 自带 Roboto 生成可读文字。玻璃需要实际背景参与合成；已核验填充、边缘高光、阴影裁切和文字居中，不作为整页 Golden 基线。完整页面与设计师的最终视觉确认仍待完成。

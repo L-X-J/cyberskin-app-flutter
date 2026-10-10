@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cyberskin_app/app/app_routes.dart';
 import 'package:cyberskin_app/app/floating_control_controller.dart';
 import 'package:cyberskin_app/app/session_controller.dart';
+import 'package:cyberskin_app/app/widgets/app_primary_tab_navigation.dart';
 import 'package:cyberskin_app/app/widgets/app_scaffold.dart';
 import 'package:cyberskin_app/app/widgets/floating_device_control_overlay.dart';
 import 'package:cyberskin_app/features/control/domain/device_session.dart';
@@ -104,7 +105,7 @@ void main() {
   }
 
   testWidgets(
-    'single host docks above navigation and fixed routes reject dragging',
+    'single host docks without overlapping navigation and fixed routes reject dragging',
     (tester) async {
       await render(tester);
       final pill = find.byType(DeviceControlPill);
@@ -115,10 +116,14 @@ void main() {
         rect.bottom,
         closeTo(floating.bodyBounds.value!.bottom - 12, 0.01),
       );
-      expect(
-        rect.bottom,
-        lessThan(tester.getTopLeft(find.byType(NavigationBar)).dy),
-      );
+      final navigation = tester.getRect(find.byType(AppPrimaryTabNavigation));
+      final overlapsHorizontally =
+          rect.left < navigation.right && navigation.left < rect.right;
+      if (overlapsHorizontally) {
+        expect(navigation.bottom + 12, lessThanOrEqualTo(rect.top));
+      } else {
+        expect(rect.bottom, closeTo(navigation.bottom, 0.01));
+      }
       await tester.drag(pill, const Offset(-120, -200));
       await tester.pump(const Duration(milliseconds: 300));
       expect(tester.getRect(pill), rect);
@@ -130,6 +135,21 @@ void main() {
         expect(tester.getRect(pill), before);
         expect(pill, findsOneWidget);
       }
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'narrow large-text layout stacks the docks above the bottom safe area',
+    (tester) async {
+      await render(tester, textScale: 2, viewport: const Size(320, 568));
+      final pill = tester.getRect(find.byType(DeviceControlPill));
+      final navigation = tester.getRect(find.byType(AppPrimaryTabNavigation));
+
+      expect(pill.bottom, lessThanOrEqualTo(568 - 34 - 12));
+      expect(navigation.bottom + 12, lessThanOrEqualTo(pill.top));
+      expect(navigation.left, 24);
+      expect(navigation.width, AppPrimaryTabNavigation.maxWidth);
       expect(tester.takeException(), isNull);
     },
   );

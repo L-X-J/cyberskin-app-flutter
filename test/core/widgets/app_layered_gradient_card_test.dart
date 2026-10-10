@@ -8,6 +8,65 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('scan preset renders its independent layered surface', (
+    tester,
+  ) async {
+    const card = AppLayeredGradientCard.scan(
+      height: 190,
+      child: SizedBox.shrink(),
+    );
+    expect(card.baseColor, const Color(0xFFCD68BD));
+    expect(card.topGradientColors, const [
+      Color(0xFF150616),
+      Color(0xFF733691),
+    ]);
+    expect(card.topGradientStops, [0.28, 1.0]);
+    expect(card.topGradientCenter, const Alignment(0, 0.16));
+    expect(card.topGradientRadius, 0.6);
+    expect(card.topGradientAspectRatio, 1.75);
+    expect(card.topLayerBlur, 30);
+    expect(card.innerShadowOffset, const Offset(0, 4));
+    expect(card.innerShadowBlur, 20);
+    expect(card.innerShadowSpread, 6);
+    expect(card.innerShadowColor, Colors.white);
+    expect(card.innerShadowOpacity, 0.3);
+    final pixels = await _render(
+      tester,
+      card,
+      width: 354,
+      output: 'scan_card_surface_354x190_text1.0',
+    );
+    int red(int x, int y) => pixels.getUint8((y * 354 + x) * 4);
+    expect(red(177, 76), lessThan(red(177, 170)));
+    expect(red(107, 114), lessThan(red(177, 44)));
+    expect(red(0, 0), 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('positive inset spread extends shadow inward and repaints', (
+    tester,
+  ) async {
+    AppLayeredGradientCard card(double spread) => AppLayeredGradientCard(
+      baseColor: Colors.black,
+      topGradientColors: const [Colors.transparent, Colors.transparent],
+      topLayerBlur: 0,
+      innerShadowColor: Colors.white,
+      innerShadowOpacity: 0.3,
+      innerShadowBlur: 0,
+      innerShadowOffset: Offset.zero,
+      innerShadowSpread: spread,
+      borderRadius: BorderRadius.zero,
+      height: 170,
+      child: const SizedBox.shrink(),
+    );
+    final initial = await _render(tester, card(0));
+    final spread = await _render(tester, card(6));
+    expect(_channel(initial, 3, 85), 0);
+    expect(_channel(spread, 3, 85), closeTo(77, 1));
+    expect(_channel(spread, 8, 85), 0);
+    expect(_channel(spread, 85, 85), 0);
+  });
+
   for (final width in [146.0, 170.0, 240.0]) {
     testWidgets('surface fits width $width with enlarged text', (tester) async {
       await tester.pumpWidget(
@@ -167,6 +226,7 @@ Future<ByteData> _render(
   WidgetTester tester,
   Widget card, {
   String? output,
+  double width = 170,
 }) async {
   const key = ValueKey('card-capture');
   await tester.pumpWidget(
@@ -176,7 +236,7 @@ Future<ByteData> _render(
           key: key,
           child: ColoredBox(
             color: Colors.black,
-            child: SizedBox(width: 170, child: card),
+            child: SizedBox(width: width, child: card),
           ),
         ),
       ),

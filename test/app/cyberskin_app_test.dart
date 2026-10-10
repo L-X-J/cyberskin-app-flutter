@@ -1,9 +1,9 @@
-import 'dart:async';
-
-import 'package:cyberskin_app/app/app_routes.dart';
 import 'package:cyberskin_app/app/cyberskin_app.dart';
+import 'package:cyberskin_app/app/session_controller.dart';
+import 'package:cyberskin_app/app/widgets/app_primary_tab_navigation.dart';
 import 'package:cyberskin_app/features/content/data/content_configuration_cache.dart';
 import 'package:cyberskin_app/features/content/domain/entities/app_content.dart';
+import 'package:cyberskin_app/features/device/domain/device.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -44,31 +44,46 @@ final class _TestContentCache implements ContentConfigurationCache {
 }
 
 void main() {
-  testWidgets('starts on the anonymous home route and navigates to video', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      CyberskinApp(contentConfigurationCache: _TestContentCache()),
-    );
-    // 初始化页包含无限循环背景，持续推进到设备页切换完成即可，不能等待静止。
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+  testWidgets(
+    'starts on the anonymous home route and switches content to video',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        CyberskinApp(contentConfigurationCache: _TestContentCache()),
+      );
+      // 初始化页包含无限循环背景，持续推进到设备页切换完成即可，不能等待静止。
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Add Device'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+      expect(find.text('Add Device'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
 
-    unawaited(Get.toNamed<void>(AppRoutes.video));
-    await tester.pumpAndSettle();
+      Get.find<SessionController>().setDeviceConnectionStatus(
+        DeviceConnectionStatus.connected,
+      );
+      await tester.pump();
+      await tester.tap(find.text('Video'));
+      await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Official'), findsOneWidget);
-    expect(find.text('Browser'), findsOneWidget);
-    expect(find.text('Local'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('Official'), findsOneWidget);
+      expect(find.text('Browser'), findsOneWidget);
+      expect(find.text('Local'), findsOneWidget);
+      expect(find.byType(AppPrimaryTabNavigation), findsOneWidget);
 
-    await tester.tap(find.text('Device'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Browser'));
+      await tester.pump();
+      expect(find.text('Please enter the link'), findsOneWidget);
+      expect(find.byType(AppPrimaryTabNavigation), findsOneWidget);
 
-    expect(find.text('Add Device'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
-  });
+      await tester.tap(find.text('Local'));
+      await tester.pump();
+      expect(find.text('Select local video'), findsOneWidget);
+      expect(find.byType(AppPrimaryTabNavigation), findsOneWidget);
+
+      await tester.tap(find.text('Device'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('My device'), findsOneWidget);
+      expect(find.byType(AppPrimaryTabNavigation), findsOneWidget);
+    },
+  );
 }
