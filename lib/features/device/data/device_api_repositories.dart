@@ -34,52 +34,11 @@ final class DeviceCatalogRemoteRepository extends BaseRemoteRepository
       );
 
   @override
-  Future<Result<DeviceManual>> getManual(int id) async {
-    final result = await request<DeviceManual>(
-      AppApiOperation.deviceManual,
-      pathParameters: <String, Object?>{'id': id},
-      decode: _decodeManual,
-    );
-    final manual = result.valueOrNull;
-    if (manual == null || manual.items.isEmpty) {
-      return result;
-    }
-
-    final resolvedItems = await Future.wait(
-      manual.items.map(_resolveManualItem),
-    );
-    return Result.ok(
-      DeviceManual(deviceModelId: manual.deviceModelId, items: resolvedItems),
-    );
-  }
-
-  /// 说明书的 URL 是 HTML 的真实内容源；只有 URL 不可用时才回退旧字段。
-  Future<DeviceManualItem> _resolveManualItem(DeviceManualItem item) async {
-    final rawUrl = item.contentUrl?.trim();
-    if (rawUrl == null || rawUrl.isEmpty) {
-      return item;
-    }
-    try {
-      final uri = Uri.parse(rawUrl);
-      if (uri.scheme != 'http' && uri.scheme != 'https') {
-        return item;
-      }
-      final html = await transport.fetchText(uri);
-      if (html.trim().isEmpty) {
-        return item;
-      }
-      return DeviceManualItem(
-        id: item.id,
-        tab: item.tab,
-        contentUrl: item.contentUrl,
-        contentHtml: html,
-        additionalProperties: item.additionalProperties,
-      );
-    } on Object {
-      // URL 内容属于单个说明书分段；失败时保留旧字段，避免一段内容拖垮整页。
-      return item;
-    }
-  }
+  Future<Result<DeviceManual>> getManual(int id) => request<DeviceManual>(
+    AppApiOperation.deviceManual,
+    pathParameters: <String, Object?>{'id': id},
+    decode: _decodeManual,
+  );
 
   /// 解码设备目录和详情复用的型号摘要字段。
   DeviceModelSummary _decodeSummary(Map<String, dynamic> json) =>
@@ -216,10 +175,9 @@ final class DeviceCatalogRemoteRepository extends BaseRemoteRepository
                     id: ApiJson.integer(item, 'id'),
                     tab: ApiJson.string(item, 'tab'),
                     contentUrl: ApiJson.string(item, 'contentUrl'),
-                    contentHtml: ApiJson.string(item, 'contentHtml'),
                     additionalProperties: ApiJson.additionalProperties(
                       item,
-                      <String>{'id', 'tab', 'contentUrl', 'contentHtml'},
+                      <String>{'id', 'tab', 'contentUrl'},
                     ),
                   ),
                 )

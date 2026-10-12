@@ -190,7 +190,6 @@ final class DeviceManualItem {
     this.id,
     this.tab,
     this.contentUrl,
-    this.contentHtml,
     Map<String, dynamic> additionalProperties = const <String, dynamic>{},
   }) : additionalProperties = Map<String, dynamic>.unmodifiable(
          additionalProperties,
@@ -202,11 +201,8 @@ final class DeviceManualItem {
   /// 开放的说明书分类字符串。
   final String? tab;
 
-  /// 发布的 HTML 对象地址。
+  /// 说明书 HTML 内容的远端地址。
   final String? contentUrl;
-
-  /// 服务端为兼容旧客户端回填的 HTML。
-  final String? contentHtml;
 
   /// 未被静态 OpenAPI 细化的条目字段。
   final Map<String, dynamic> additionalProperties;

@@ -7,8 +7,8 @@ import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart';
 import 'package:get/get.dart';
 
 import '../../../app/app_routes.dart';
-import '../../../app/widgets/app_scaffold.dart';
 import '../../../app/widgets/app_glass_surfaces.dart';
+import '../../../app/widgets/app_scaffold.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_typography.dart';
@@ -125,7 +125,7 @@ final class _DeviceContent extends StatelessWidget {
           gradient: RadialGradient(
             center: Alignment(0.9, 0.24),
             radius: 1.1,
-            colors: [Color(0xFF25163B), Color(0xFF101030), Color(0xFF020202)],
+            colors: [Color(0xFF020202), Color(0xFF101030), Color(0xFF25163B)],
             stops: [0, 0.55, 1],
           ),
         ),
