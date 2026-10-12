@@ -20,8 +20,8 @@
         "tags": [
           "App-节奏"
         ],
-        "summary": "查询节奏详情。",
-        "description": "查询节奏详情。",
+        "summary": "查询自定义节奏详情",
+        "description": "仅允许查询当前用户自己的节奏。",
         "operationId": "detail",
         "parameters": [
           {
@@ -48,7 +48,7 @@
             }
           },
           "200": {
-            "description": "节奏详情",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -71,8 +71,8 @@
         "tags": [
           "App-节奏"
         ],
-        "summary": "更新自定义节奏。",
-        "description": "更新自定义节奏。",
+        "summary": "更新自定义节奏",
+        "description": "仅允许更新当前用户自己的节奏；未传字段保持原值，segments 最多 30 条。",
         "operationId": "update",
         "parameters": [
           {
@@ -88,7 +88,6 @@
           }
         ],
         "requestBody": {
-          "description": "可选更新字段",
           "content": {
             "application/json": {
               "schema": {
@@ -110,7 +109,7 @@
             }
           },
           "200": {
-            "description": "更新后的节奏",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -133,8 +132,8 @@
         "tags": [
           "App-节奏"
         ],
-        "summary": "删除自定义节奏。",
-        "description": "删除自定义节奏。",
+        "summary": "删除自定义节奏",
+        "description": "仅允许软删除当前用户自己的节奏。",
         "operationId": "delete",
         "parameters": [
           {
@@ -161,7 +160,7 @@
             }
           },
           "200": {
-            "description": "无业务数据",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -186,8 +185,8 @@
         "tags": [
           "App-设备"
         ],
-        "summary": "重命名绑定设备。",
-        "description": "重命名绑定设备。",
+        "summary": "重命名绑定设备",
+        "description": "仅允许修改当前用户自己的绑定记录；customName 最长 64 字符。",
         "operationId": "rename",
         "parameters": [
           {
@@ -203,7 +202,6 @@
           }
         ],
         "requestBody": {
-          "description": "新的设备名称",
           "content": {
             "application/json": {
               "schema": {
@@ -225,7 +223,7 @@
             }
           },
           "200": {
-            "description": "无业务数据",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -248,8 +246,8 @@
         "tags": [
           "App-设备"
         ],
-        "summary": "解绑设备。",
-        "description": "解绑设备。",
+        "summary": "解绑设备",
+        "description": "仅允许删除当前用户自己的绑定记录，物理删除后可重新绑定同型号。",
         "operationId": "unbind",
         "parameters": [
           {
@@ -276,7 +274,7 @@
             }
           },
           "200": {
-            "description": "无业务数据；物理删除后允许再次绑定同型号",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -301,11 +299,10 @@
         "tags": [
           "App-认证"
         ],
-        "summary": "更新当前 App 用户资料。",
-        "description": "更新当前 App 用户资料。",
+        "summary": "更新用户资料",
+        "description": "更新昵称/头像，并将 profileCompleted 置为 true。需要 App 用户登录。",
         "operationId": "updateProfile",
         "requestBody": {
-          "description": "昵称与头像 URL，可选",
           "content": {
             "application/json": {
               "schema": {
@@ -327,7 +324,7 @@
             }
           },
           "200": {
-            "description": "无业务数据；更新后 profileCompleted=true",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -352,8 +349,8 @@
         "tags": [
           "App-节奏"
         ],
-        "summary": "查询当前用户自定义节奏。",
-        "description": "查询当前用户自定义节奏。",
+        "summary": "查询自定义节奏",
+        "description": "查询当前 App 用户的节奏；可通过 deviceModelId 过滤。需要 App 用户登录。",
         "operationId": "list",
         "parameters": [
           {
@@ -380,7 +377,7 @@
             }
           },
           "200": {
-            "description": "当前用户节奏列表，按 ID 倒序",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -403,11 +400,10 @@
         "tags": [
           "App-节奏"
         ],
-        "summary": "创建自定义节奏。",
-        "description": "创建自定义节奏。",
+        "summary": "创建自定义节奏",
+        "description": "创建当前 App 用户的节奏；deviceModelId 必须指向可用型号，segments 最多 30 条。",
         "operationId": "create",
         "requestBody": {
-          "description": "设备型号、名称和最多 30 条片段",
           "content": {
             "application/json": {
               "schema": {
@@ -429,7 +425,7 @@
             }
           },
           "200": {
-            "description": "新建节奏",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -454,11 +450,10 @@
         "tags": [
           "App-反馈"
         ],
-        "summary": "签发反馈图直传 PUT URL。\n <pre>\n POST /app/v1/oss/presign\n body: { \"filename\": \"a.png\", \"contentType\": \"image/png\", \"size\": 12345 }\n → { uploadUrl, objectKey, accessUrl, expireSeconds }\n </pre>",
-        "description": "签发反馈图直传 PUT URL。\n <pre>\n POST /app/v1/oss/presign\n body: { \"filename\": \"a.png\", \"contentType\": \"image/png\", \"size\": 12345 }\n → { uploadUrl, objectKey, accessUrl, expireSeconds }\n </pre>",
+        "summary": "签发反馈图上传 URL",
+        "description": "为当前 App 用户签发 feedback/{userId}/ 前缀的 PUT URL；仅允许 JPEG/PNG/WebP/GIF，大小上限 10MB。",
         "operationId": "presign",
         "requestBody": {
-          "description": "文件名、MIME 类型与可选文件大小",
           "content": {
             "application/json": {
               "schema": {
@@ -480,7 +475,7 @@
             }
           },
           "200": {
-            "description": "短时预签名 PUT URL 和对象访问信息",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -505,11 +500,10 @@
         "tags": [
           "App-反馈"
         ],
-        "summary": "PUT 完成后 HeadObject 校验对象存在，确认 accessUrl（不写 sys_oss）。\n 反馈提交仍用 <code>POST /app/v1/feedbacks</code> 的 <code>imageUrls[]</code>。\n <pre>\n POST /app/v1/oss/complete\n body: { \"objectKey\": \"…\", \"contentType\": \"image/png\", \"size\": 12345 }\n → { accessUrl, objectKey, size, contentType }\n </pre>",
-        "description": "PUT 完成后 HeadObject 校验对象存在，确认 accessUrl（不写 sys_oss）。\n 反馈提交仍用 <code>POST /app/v1/feedbacks</code> 的 <code>imageUrls[]</code>。\n <pre>\n POST /app/v1/oss/complete\n body: { \"objectKey\": \"…\", \"contentType\": \"image/png\", \"size\": 12345 }\n → { accessUrl, objectKey, size, contentType }\n </pre>",
+        "summary": "确认反馈图上传完成",
+        "description": "执行 HeadObject 校验对象存在；size/contentType 以对象真实元数据为准，客户端传入仅用于一致性断言。不写 sys_oss。",
         "operationId": "complete",
         "requestBody": {
-          "description": "presign 返回的 objectKey 与可选一致性声明",
           "content": {
             "application/json": {
               "schema": {
@@ -531,7 +525,7 @@
             }
           },
           "200": {
-            "description": "HeadObject 校验后的 accessUrl 与真实元数据",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -556,8 +550,8 @@
         "tags": [
           "App-设备"
         ],
-        "summary": "查询当前用户绑定设备。",
-        "description": "查询当前用户绑定设备。",
+        "summary": "查询已绑定设备",
+        "description": "返回当前 App 用户绑定的设备与型号摘要。需要 App 用户登录。",
         "operationId": "list_1",
         "responses": {
           "401": {
@@ -571,7 +565,7 @@
             }
           },
           "200": {
-            "description": "绑定记录及型号摘要，按绑定时间倒序",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -594,11 +588,10 @@
         "tags": [
           "App-设备"
         ],
-        "summary": "绑定设备型号。",
-        "description": "绑定设备型号。",
+        "summary": "绑定设备",
+        "description": "绑定 published 且 enabled 的设备型号；同一用户同型号不可重复绑定。需要 App 用户登录。",
         "operationId": "bind",
         "requestBody": {
-          "description": "设备型号 ID 与可选自定义名称",
           "content": {
             "application/json": {
               "schema": {
@@ -620,7 +613,7 @@
             }
           },
           "200": {
-            "description": "新建绑定记录",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -645,11 +638,10 @@
         "tags": [
           "App-反馈"
         ],
-        "summary": "提交 App 用户反馈。\n <pre>\n POST /app/v1/feedbacks\n body: { \"content\": \"…\", \"imageUrls\": [\"https://…\"] }\n → data: 新建反馈 id\n </pre>",
-        "description": "提交 App 用户反馈。\n <pre>\n POST /app/v1/feedbacks\n body: { \"content\": \"…\", \"imageUrls\": [\"https://…\"] }\n → data: 新建反馈 id\n </pre>",
+        "summary": "提交用户反馈",
+        "description": "userId 取自 App 登录态，status 固定 pending；imageUrls 应为 OSS complete 返回的访问 URL。",
         "operationId": "create_1",
         "requestBody": {
-          "description": "反馈正文与可选图片 URL",
           "content": {
             "application/json": {
               "schema": {
@@ -671,7 +663,7 @@
             }
           },
           "200": {
-            "description": "新建反馈 ID",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -696,8 +688,8 @@
         "tags": [
           "App-认证"
         ],
-        "summary": "退出当前 App 会话。",
-        "description": "退出当前 App 会话。",
+        "summary": "退出登录",
+        "description": "清理当前 Sa-Token 会话。需要 App 用户登录。",
         "operationId": "logout",
         "responses": {
           "401": {
@@ -711,7 +703,7 @@
             }
           },
           "200": {
-            "description": "无业务数据",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -736,11 +728,10 @@
         "tags": [
           "App-认证"
         ],
-        "summary": "使用 Google idToken 登录或注册。",
-        "description": "使用 Google idToken 登录或注册。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "Google 登录",
+        "description": "校验 Google idToken，按 provider+openId 或邮箱合并用户后签发 App Token。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "googleLogin",
         "requestBody": {
-          "description": "Google ID token",
           "content": {
             "application/json": {
               "schema": {
@@ -762,7 +753,7 @@
             }
           },
           "200": {
-            "description": "App Sa-Token、有效期、clientId 与用户信息",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -780,11 +771,10 @@
         "tags": [
           "App-认证"
         ],
-        "summary": "发送邮箱登录验证码。",
-        "description": "发送邮箱登录验证码。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "发送邮箱验证码",
+        "description": "发送 6 位邮箱登录验证码。fixedCodeEnabled=true 时不发邮件并使用固定验证码。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "sendEmailCode",
         "requestBody": {
-          "description": "接收验证码的邮箱",
           "content": {
             "application/json": {
               "schema": {
@@ -806,7 +796,7 @@
             }
           },
           "200": {
-            "description": "无业务数据；60 秒发送冷却，验证码默认 5 分钟有效",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -824,11 +814,10 @@
         "tags": [
           "App-认证"
         ],
-        "summary": "使用邮箱验证码登录。",
-        "description": "使用邮箱验证码登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "邮箱验证码登录",
+        "description": "校验验证码并签发 App 用户 Sa-Token。后续请求同时携带 Authorization 与 clientid。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "emailLogin",
         "requestBody": {
-          "description": "邮箱与 6 位验证码",
           "content": {
             "application/json": {
               "schema": {
@@ -850,7 +839,7 @@
             }
           },
           "200": {
-            "description": "App Sa-Token、有效期、clientId 与用户信息",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -868,11 +857,10 @@
         "tags": [
           "App-认证"
         ],
-        "summary": "使用 Apple identityToken 登录或注册。",
-        "description": "使用 Apple identityToken 登录或注册。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "Apple 登录",
+        "description": "校验 Apple identityToken，按 provider+openId 或邮箱合并用户后签发 App Token。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "appleLogin",
         "requestBody": {
-          "description": "Apple identityToken 与可选首次授权资料",
           "content": {
             "application/json": {
               "schema": {
@@ -894,7 +882,7 @@
             }
           },
           "200": {
-            "description": "App Sa-Token、有效期、clientId 与用户信息",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -912,8 +900,8 @@
         "tags": [
           "App-首页"
         ],
-        "summary": "查询在线官方视频。",
-        "description": "查询在线官方视频。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "查询官方视频",
+        "description": "仅返回 online 视频，按 sort 升序分页。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "official",
         "parameters": [
           {
@@ -953,7 +941,7 @@
             }
           },
           "200": {
-            "description": "online 视频分页结果",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -971,8 +959,8 @@
         "tags": [
           "App-版本"
         ],
-        "summary": "检查 App 更新。",
-        "description": "检查 App 更新。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "检查 App 更新",
+        "description": "查询指定平台最新 published 版本并计算 hasUpdate/forceUpdate。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "check",
         "parameters": [
           {
@@ -1009,7 +997,7 @@
             }
           },
           "200": {
-            "description": "最新发布版本与 hasUpdate / forceUpdate",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1027,8 +1015,8 @@
         "tags": [
           "App-训练"
         ],
-        "summary": "查询已发布训练课程。",
-        "description": "查询已发布训练课程。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "查询训练课程列表",
+        "description": "仅返回 published 且 enabled 的课程摘要，按 sort 升序。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "list_2",
         "responses": {
           "401": {
@@ -1042,7 +1030,7 @@
             }
           },
           "200": {
-            "description": "已发布且启用的课程摘要，按 sort 升序",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1060,8 +1048,8 @@
         "tags": [
           "App-训练"
         ],
-        "summary": "查询训练课程详情。",
-        "description": "查询训练课程详情。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "查询训练课程详情",
+        "description": "仅返回 published 且 enabled 课程，包含 published stages 与 customMode。草稿不会对 App 暴露。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "detail_1",
         "parameters": [
           {
@@ -1088,7 +1076,7 @@
             }
           },
           "200": {
-            "description": "课程详情、已发布 stages 和 customMode 打点",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1106,8 +1094,8 @@
         "tags": [
           "App-设备"
         ],
-        "summary": "查询可用设备型号。",
-        "description": "查询可用设备型号。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "查询设备型号列表",
+        "description": "仅返回 published 且 enabled 的型号摘要。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "list_3",
         "responses": {
           "401": {
@@ -1121,7 +1109,7 @@
             }
           },
           "200": {
-            "description": "已发布且启用的型号摘要，按 ID 倒序",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1139,8 +1127,8 @@
         "tags": [
           "App-设备"
         ],
-        "summary": "查询设备型号详情。",
-        "description": "查询设备型号详情。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "查询设备型号详情",
+        "description": "返回 published 快照：能力、布局、BLE 特征值、One Click Climax 与详情页广告 advertisements（该型号绑定广告与通用广告按 sort 合并，无广告时为空数组）。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "detail_2",
         "parameters": [
           {
@@ -1167,7 +1155,7 @@
             }
           },
           "200": {
-            "description": "已发布能力、布局、BLE 与 One Click Climax 预设",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1185,8 +1173,8 @@
         "tags": [
           "App-设备"
         ],
-        "summary": "查询设备说明书。",
-        "description": "查询设备说明书。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "查询设备说明书",
+        "description": "返回该型号所有 published 说明书条目；contentHtml 为兼容旧客户端的服务端回填字段。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "manual",
         "parameters": [
           {
@@ -1213,7 +1201,7 @@
             }
           },
           "200": {
-            "description": "已发布 intro / connection / cleaning 图文条目",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1231,8 +1219,8 @@
         "tags": [
           "App-配置"
         ],
-        "summary": "查询 App 启动配置。",
-        "description": "查询 App 启动配置。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "查询 App 启动配置",
+        "description": "App 启动后首先调用；返回已发布协议入口、当前会话状态和基础功能开关。协议正文仍通过 /app/v1/cms/{code} 获取。接口无需登录，但会在携带有效 App 会话时返回 loggedIn=true。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "getConfig",
         "responses": {
           "401": {
@@ -1246,7 +1234,7 @@
             }
           },
           "200": {
-            "description": "协议入口、配置版本和功能开关",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1264,8 +1252,8 @@
         "tags": [
           "App-首页"
         ],
-        "summary": "按 code 查询已发布 CMS 页面。",
-        "description": "按 code 查询已发布 CMS 页面。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "查询已发布 CMS 页面",
+        "description": "仅返回 published 页面。contentHtml 由服务端按 contentUrl 回填，供旧客户端兼容。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "getByCode",
         "parameters": [
           {
@@ -1291,7 +1279,7 @@
             }
           },
           "200": {
-            "description": "标题、对象 URL 与服务端回填的 HTML",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1309,8 +1297,8 @@
         "tags": [
           "App-认证"
         ],
-        "summary": "查询当前 App 用户。",
-        "description": "查询当前 App 用户。",
+        "summary": "查询当前用户",
+        "description": "返回当前 App 登录用户资料。需要 App 用户登录。",
         "operationId": "me",
         "responses": {
           "401": {
@@ -1324,7 +1312,7 @@
             }
           },
           "200": {
-            "description": "当前登录用户资料摘要",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1349,8 +1337,8 @@
         "tags": [
           "App-首页"
         ],
-        "summary": "查询当前有效广告。",
-        "description": "查询当前有效广告。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "summary": "查询当前有效广告",
+        "description": "仅返回 online、未绑定设备型号（device_model_id 为空）且处于 startAt/endAt 投放窗口内的通用广告，按 sort 升序。绑定到具体型号的广告只在型号详情接口返回。无需登录。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "list_4",
         "responses": {
           "401": {
@@ -1364,7 +1352,7 @@
             }
           },
           "200": {
-            "description": "online 且处于投放时间窗口内的广告，按 sort 升序",
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
@@ -1448,20 +1436,16 @@
       },
       "RAppRhythmVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppRhythmVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppRhythmVo"
           }
         }
       },
@@ -1483,20 +1467,15 @@
       },
       "RVoid": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
-          "data": {
-            "description": "响应业务数据"
-          }
+          "data": {}
         }
       },
       "AppProfileUpdateBo": {
@@ -1610,20 +1589,16 @@
       },
       "RAppOssPresignVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppOssPresignVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppOssPresignVo"
           }
         }
       },
@@ -1684,20 +1659,16 @@
       },
       "RAppOssCompleteVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppOssCompleteVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppOssCompleteVo"
           }
         }
       },
@@ -1767,20 +1738,16 @@
       },
       "RAppUserDeviceVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppUserDeviceVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppUserDeviceVo"
           }
         }
       },
@@ -1813,21 +1780,17 @@
       },
       "RLong": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
             "type": "integer",
-            "format": "int64",
-            "description": "响应业务数据"
+            "format": "int64"
           }
         }
       },
@@ -1921,20 +1884,16 @@
       },
       "RAppLoginVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppLoginVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppLoginVo"
           }
         }
       },
@@ -2060,20 +2019,16 @@
       },
       "RAppVideoPageVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppVideoPageVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppVideoPageVo"
           }
         }
       },
@@ -2130,20 +2085,16 @@
       },
       "RAppVersionCheckVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppVersionCheckVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppVersionCheckVo"
           }
         }
       },
@@ -2199,20 +2150,16 @@
       },
       "RListAppTrainingSummaryVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
             "type": "array",
-            "description": "响应业务数据",
             "items": {
               "$ref": "#/components/schemas/AppTrainingSummaryVo"
             }
@@ -2291,39 +2238,31 @@
       },
       "RAppTrainingDetailVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppTrainingDetailVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppTrainingDetailVo"
           }
         }
       },
       "RListAppRhythmVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
             "type": "array",
-            "description": "响应业务数据",
             "items": {
               "$ref": "#/components/schemas/AppRhythmVo"
             }
@@ -2332,20 +2271,16 @@
       },
       "RListAppUserDeviceVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
             "type": "array",
-            "description": "响应业务数据",
             "items": {
               "$ref": "#/components/schemas/AppUserDeviceVo"
             }
@@ -2379,28 +2314,74 @@
             "type": "string",
             "description": "硬件唯一标识",
             "example": "ECA3FE9A0319C103"
+          },
+          "cardColor": {
+            "type": "string",
+            "description": "卡片色值",
+            "example": "#FF5733"
+          },
+          "tags": {
+            "type": "string",
+            "description": "标签（多个用英文逗号拼接）",
+            "example": "新品,推荐"
           }
         }
       },
       "RListAppDeviceSummaryVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
             "type": "array",
-            "description": "响应业务数据",
             "items": {
               "$ref": "#/components/schemas/AppDeviceSummaryVo"
             }
+          }
+        }
+      },
+      "AppAdVo": {
+        "type": "object",
+        "description": "App 广告位条目",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "广告 ID",
+            "example": 10001
+          },
+          "imageUrl": {
+            "type": "string",
+            "description": "广告图片 URL"
+          },
+          "titleEn": {
+            "type": "string",
+            "description": "英文标题"
+          },
+          "subtitleEn": {
+            "type": "string",
+            "description": "英文副标题"
+          },
+          "jumpType": {
+            "type": "string",
+            "description": "跳转类型",
+            "example": "url"
+          },
+          "jumpTarget": {
+            "type": "string",
+            "description": "跳转目标",
+            "example": "https://example.com/activity"
+          },
+          "sort": {
+            "type": "integer",
+            "format": "int32",
+            "description": "排序值，越小越靠前",
+            "example": 1
           }
         }
       },
@@ -2468,6 +2449,16 @@
             "description": "硬件唯一标识",
             "example": "ECA3FE9A0319C103"
           },
+          "cardColor": {
+            "type": "string",
+            "description": "卡片色值",
+            "example": "#FF5733"
+          },
+          "tags": {
+            "type": "string",
+            "description": "标签（多个用英文逗号拼接）",
+            "example": "新品,推荐"
+          },
           "hwExtUid": {
             "type": "string",
             "description": "扩展硬件标识；联合锁定时为蓝牙名称",
@@ -2523,25 +2514,28 @@
             "format": "int32",
             "description": "布局版本号",
             "example": 3
+          },
+          "advertisements": {
+            "type": "array",
+            "description": "详情页广告位：该型号绑定广告与通用广告按 sort 合并；无广告时为空数组",
+            "items": {
+              "$ref": "#/components/schemas/AppAdVo"
+            }
           }
         }
       },
       "RAppDeviceDetailVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppDeviceDetailVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppDeviceDetailVo"
           }
         }
       },
@@ -2591,20 +2585,16 @@
       },
       "RAppDeviceManualVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppDeviceManualVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppDeviceManualVo"
           }
         }
       },
@@ -2668,6 +2658,11 @@
             "description": "配置版本，由服务端生成；可用于客户端判断配置是否变化",
             "example": "20260922153000"
           },
+          "loggedIn": {
+            "type": "boolean",
+            "description": "当前 App 会话是否有效；配置接口本身无需登录",
+            "example": true
+          },
           "agreements": {
             "type": "array",
             "description": "协议与法律文档入口",
@@ -2683,20 +2678,16 @@
       },
       "RAppConfigVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppConfigVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppConfigVo"
           }
         }
       },
@@ -2731,98 +2722,46 @@
       },
       "RAppCmsPageVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppCmsPageVo",
-            "description": "响应业务数据"
+            "$ref": "#/components/schemas/AppCmsPageVo"
           }
         }
       },
       "RAppUserVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
-            "$ref": "#/components/schemas/AppUserVo",
-            "description": "响应业务数据"
-          }
-        }
-      },
-      "AppAdVo": {
-        "type": "object",
-        "description": "App 广告位条目",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "description": "广告 ID",
-            "example": 10001
-          },
-          "imageUrl": {
-            "type": "string",
-            "description": "广告图片 URL"
-          },
-          "titleEn": {
-            "type": "string",
-            "description": "英文标题"
-          },
-          "subtitleEn": {
-            "type": "string",
-            "description": "英文副标题"
-          },
-          "jumpType": {
-            "type": "string",
-            "description": "跳转类型",
-            "example": "url"
-          },
-          "jumpTarget": {
-            "type": "string",
-            "description": "跳转目标",
-            "example": "https://example.com/activity"
-          },
-          "sort": {
-            "type": "integer",
-            "format": "int32",
-            "description": "排序值，越小越靠前",
-            "example": 1
+            "$ref": "#/components/schemas/AppUserVo"
           }
         }
       },
       "RListAppAdVo": {
         "type": "object",
-        "description": "响应信息主体",
         "properties": {
           "code": {
             "type": "integer",
-            "format": "int32",
-            "description": "响应状态码"
+            "format": "int32"
           },
           "msg": {
-            "type": "string",
-            "description": "响应提示信息"
+            "type": "string"
           },
           "data": {
             "type": "array",
-            "description": "响应业务数据",
             "items": {
               "$ref": "#/components/schemas/AppAdVo"
             }

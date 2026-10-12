@@ -1,6 +1,41 @@
 // 设备型号目录的领域模型与远端访问抽象。
 import '../../../../core/result/result.dart';
 
+/// 设备详情页广告条目。
+final class DeviceModelAdvertisement {
+  /// 创建广告条目。
+  const DeviceModelAdvertisement({
+    this.id,
+    this.imageUrl,
+    this.titleEn,
+    this.subtitleEn,
+    this.jumpType,
+    this.jumpTarget,
+    this.sort,
+  });
+
+  /// 广告主键。
+  final int? id;
+
+  /// 广告图片地址。
+  final String? imageUrl;
+
+  /// 英文标题。
+  final String? titleEn;
+
+  /// 英文副标题。
+  final String? subtitleEn;
+
+  /// 跳转类型。
+  final String? jumpType;
+
+  /// 跳转目标。
+  final String? jumpTarget;
+
+  /// 展示顺序。
+  final int? sort;
+}
+
 /// 后台发布的设备型号摘要。
 final class DeviceModelSummary {
   /// 创建设备型号摘要。
@@ -88,6 +123,8 @@ final class DeviceModelDetail {
     Map<String, dynamic>? layout,
     Map<String, dynamic>? oneClickClimax,
     this.layoutVersion,
+    List<DeviceModelAdvertisement> advertisements =
+        const <DeviceModelAdvertisement>[],
     Map<String, dynamic> additionalProperties = const <String, dynamic>{},
   }) : supportedActions = List<Map<String, dynamic>>.unmodifiable(
          supportedActions.map(Map<String, dynamic>.unmodifiable),
@@ -102,6 +139,9 @@ final class DeviceModelDetail {
        oneClickClimax = oneClickClimax == null
            ? null
            : Map<String, dynamic>.unmodifiable(oneClickClimax),
+       advertisements = List<DeviceModelAdvertisement>.unmodifiable(
+         advertisements,
+       ),
        additionalProperties = Map<String, dynamic>.unmodifiable(
          additionalProperties,
        );
@@ -135,6 +175,9 @@ final class DeviceModelDetail {
 
   /// 后台布局版本。
   final int? layoutVersion;
+
+  /// 该型号已发布的详情页广告，按后端 sort 顺序排列。
+  final List<DeviceModelAdvertisement> advertisements;
 
   /// 未知详情字段，供前向兼容诊断使用。
   final Map<String, dynamic> additionalProperties;

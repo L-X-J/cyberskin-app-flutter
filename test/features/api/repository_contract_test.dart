@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cyberskin_app/core/logging/app_log.dart';
 import 'package:cyberskin_app/core/network/api_transport.dart';
 import 'package:cyberskin_app/core/network/app_api_operation.dart';
@@ -27,9 +29,19 @@ final class _MemorySessionStore implements SessionCredentialStore {
   _MemorySessionStore(this.value);
 
   SessionCredentials? value;
+  final StreamController<void> _invalidations =
+      StreamController<void>.broadcast();
 
   @override
-  Future<void> clear() async => value = null;
+  Stream<void> get invalidated => _invalidations.stream;
+
+  @override
+  Future<void> clear() async {
+    value = null;
+    if (!_invalidations.isClosed) {
+      _invalidations.add(null);
+    }
+  }
 
   @override
   Future<SessionCredentials?> read() async => value;
@@ -55,6 +67,13 @@ final class _RecordedRequest {
 
 final class _RecordingTransport implements ApiTransport {
   final List<_RecordedRequest> requests = <_RecordedRequest>[];
+  final List<Uri> textRequests = <Uri>[];
+
+  @override
+  Future<String> fetchText(Uri uri) async {
+    textRequests.add(uri);
+    return '<h2 style="text-align:center">Remote manual</h2>';
+  }
 
   @override
   Future<ApiRawResponse> send(
@@ -146,7 +165,10 @@ Object? _dataFor(AppApiOperation operation) => switch (operation) {
   AppApiOperation.deviceManual => <String, dynamic>{
     'deviceModelId': 2,
     'items': <Map<String, dynamic>>[
-      <String, dynamic>{'tab': 'intro'},
+      <String, dynamic>{
+        'tab': 'intro',
+        'contentUrl': 'https://cdn.example.test/manual/intro.html',
+      },
     ],
   },
   AppApiOperation.googleLogin ||
@@ -303,7 +325,11 @@ void main() {
       await training.getTraining(1);
       await catalog.listDeviceModels();
       await catalog.getDeviceModelDetail(2);
-      await catalog.getManual(2);
+      final manual = await catalog.getManual(2);
+      expect(
+        manual.valueOrNull?.items.single.contentHtml,
+        contains('Remote manual'),
+      );
       await content.readCachedConfiguration();
       await content.readLastRefreshAt();
       await content.refreshConfiguration();
@@ -316,6 +342,9 @@ void main() {
         AppApiOperation.values.toSet(),
       );
       expect(transport.requests, hasLength(29));
+      expect(transport.textRequests, <Uri>[
+        Uri.parse('https://cdn.example.test/manual/intro.html'),
+      ]);
       final videoRequest = transport.requests.singleWhere(
         (item) => item.operation == AppApiOperation.officialVideos,
       );

@@ -1,13 +1,13 @@
-// 设备产品说明书路由的局部依赖装配与型号参数解析。
+// 设备说明书路由的局部依赖装配。
 import 'package:get/get.dart';
 
 import '../domain/repositories/device_catalog_repository.dart';
 import 'device_manual_controller.dart';
 import 'device_manual_route_arguments.dart';
 
-/// 产品说明书页面路由级依赖绑定。
+/// 设备说明书页面的路由绑定。
 final class DeviceManualBinding extends Bindings {
-  /// 创建说明书绑定。
+  /// 创建设备说明书绑定。
   DeviceManualBinding();
 
   @override
@@ -17,14 +17,17 @@ final class DeviceManualBinding extends Bindings {
       return;
     }
     final arguments = Get.arguments;
-    final productName = arguments is DeviceManualRouteArguments
-        ? arguments.productName
+    final routeModelId = arguments is DeviceManualRouteArguments
+        ? arguments.modelId
+        : modelId;
+    final routeSummary = arguments is DeviceManualRouteArguments
+        ? arguments.summary
         : null;
     Get.put<DeviceManualController>(
       DeviceManualController(
         Get.find<DeviceCatalogRepository>(),
-        modelId: modelId,
-        productName: productName,
+        modelId: routeModelId,
+        summary: routeSummary,
       ),
     );
   }

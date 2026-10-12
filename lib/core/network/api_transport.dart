@@ -1,4 +1,6 @@
 // GetConnect 传输适配器，统一装配鉴权头与请求状态监控。
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
 
 import '../logging/app_log.dart';
@@ -35,6 +37,9 @@ abstract interface class ApiTransport {
     Map<String, Object?> queryParameters = const <String, Object?>{},
     Object? body,
   });
+
+  /// 读取公开内容地址中的原始文本，例如说明书 HTML。
+  Future<String> fetchText(Uri uri);
 }
 
 /// 生产环境的 GetConnect 传输实现。
@@ -58,6 +63,17 @@ final class GetConnectApiTransport implements ApiTransport {
 
   /// 脱敏后写入控制台与文件的日志接口。
   final AppLog log;
+
+  @override
+  Future<String> fetchText(Uri uri) async {
+    final response = await http
+        .get(uri, headers: const <String, String>{'Accept': 'text/html,*/*'})
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw HttpException('内容请求失败：HTTP ${response.statusCode}。', uri: uri);
+    }
+    return response.body;
+  }
 
   @override
   Future<ApiRawResponse> send(

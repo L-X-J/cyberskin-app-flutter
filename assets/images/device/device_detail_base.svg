@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="293"
+    height="58">
+    <clipPath id="clip_0">
+        <ellipse cx="146.5" cy="29" rx="146.5" ry="29" />
+    </clipPath>
+    <g clip-path="url(#clip_0)">
+        <defs>
+            <linearGradient id="gradient_0"
+                gradientTransform="matrix(-5.35696e-14 58 -30.157 9.30866e-09 147 2.65105e-14)"
+                gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#000" stop-opacity="0" />
+                <stop offset="0.0625" stop-color="#000" stop-opacity="0" />
+                <stop offset="1" stop-color="#FFF" />
+            </linearGradient>
+        </defs>
+        <path fill="url(#gradient_0)" fill-opacity="1"
+            d="M146.5 -1Q207.2793 -1 250.2853 7.5129Q294 16.1663 294 29Q294 41.8338 250.2853 50.4871Q207.2803 59 146.5 59Q85.7197 59 42.7147 50.4871Q-1 41.8335 -1 29Q-1 16.1664 42.7147 7.5129Q85.7197 -1 146.5 -1ZM146.5 1Q85.9158 1 43.103 9.4749Q21.781 13.6956 10.7332 19.2197Q1 24.0865 1 29Q1 33.9135 10.7332 38.7803Q21.781 44.3044 43.103 48.5251Q85.916 57 146.5 57Q207.084 57 249.897 48.5251Q271.2192 44.3044 282.2668 38.7803Q292 33.9135 292 29Q292 24.0865 282.2668 19.2197Q271.2192 13.6956 249.897 9.4749Q207.084 1 146.5 1Z" />
+    </g>
+</svg>

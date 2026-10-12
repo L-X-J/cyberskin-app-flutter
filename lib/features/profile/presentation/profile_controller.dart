@@ -53,8 +53,11 @@ final class ProfileController extends GetxController {
   Future<void> logout() async {
     if (isLoggingOut.value) return;
     isLoggingOut.value = true;
-    await _authRepository.logout();
-    _session.markAnonymous();
+    // 远端请求与本地清理并行，节省时间；远端失败不影响本地登出。
+    await Future.wait<void>([
+      _authRepository.logout(),
+      _session.logout(),
+    ]);
     isLoggingOut.value = false;
     await Get.offAllNamed<void>(AppRoutes.home);
   }

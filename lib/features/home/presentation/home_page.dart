@@ -13,6 +13,7 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/widgets/app_image.dart';
 import '../../../core/widgets/app_layered_gradient_card.dart';
 import '../../../core/widgets/app_liquid_glass_button.dart';
+import '../../device/presentation/device_model_card.dart';
 import '../../content/domain/entities/app_content.dart';
 import '../../device/domain/device.dart';
 import '../../device/domain/repositories/device_catalog_repository.dart';
@@ -66,14 +67,11 @@ final class HomePage extends GetView<HomeController> {
                   isLoading: controller.isLoading.value,
                   failureMessage: controller.failure.value?.message,
                   onPrimaryAction: controller.requestConnection,
-                  onDeviceModelDetails: controller.openDeviceModelDetails,
+                  onDeviceModelDetails: (model) =>
+                      controller.openDeviceManual(model.id, summary: model),
                   onDeviceDetails: controller.openDevice,
                   onDeviceManual: () => controller.openDeviceManual(
                     controller.dashboard.value.boundDevice?.deviceModelId,
-                    productName:
-                        controller.dashboard.value.currentDevice?.name ??
-                        controller.dashboard.value.boundDevice?.customName ??
-                        controller.dashboard.value.boundDevice?.modelName,
                   ),
                   onLogin: controller.openLogin,
                   onProfile: controller.openProfile,

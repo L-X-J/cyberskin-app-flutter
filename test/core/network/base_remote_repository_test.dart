@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cyberskin_app/core/error/app_failure.dart';
 import 'package:cyberskin_app/core/network/api_transport.dart';
 import 'package:cyberskin_app/core/network/app_api_operation.dart';
@@ -11,11 +13,19 @@ final class _MemorySessionStore implements SessionCredentialStore {
 
   SessionCredentials? value;
   int clearCount = 0;
+  final StreamController<void> _invalidations =
+      StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get invalidated => _invalidations.stream;
 
   @override
   Future<void> clear() async {
     clearCount++;
     value = null;
+    if (!_invalidations.isClosed) {
+      _invalidations.add(null);
+    }
   }
 
   @override
@@ -32,6 +42,9 @@ final class _FakeTransport implements ApiTransport {
 
   ApiRawResponse response;
   int calls = 0;
+
+  @override
+  Future<String> fetchText(Uri uri) async => throw UnimplementedError();
 
   @override
   Future<ApiRawResponse> send(

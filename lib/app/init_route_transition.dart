@@ -60,10 +60,10 @@ final class DeviceRouteTransition extends CustomTransition {
   }
 }
 
-/// 设备型号详情页转场；Hero 负责设备图标从入口卡片放大到详情头图。
-final class DeviceDetailRouteTransition extends CustomTransition {
-  /// 创建设备详情页进入转场。
-  DeviceDetailRouteTransition();
+/// 设备说明书页转场；Hero 负责设备图标从入口卡片放大到说明书头图。
+final class DeviceManualRouteTransition extends CustomTransition {
+  /// 创建设备说明书页进入转场。
+  DeviceManualRouteTransition();
 
   @override
   Widget buildTransition(

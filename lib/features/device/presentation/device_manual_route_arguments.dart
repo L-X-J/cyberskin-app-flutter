@@ -1,13 +1,14 @@
-// 设备说明书路由的展示参数：保留来源页面已有的设备名称，不承担领域加载。
+// 设备说明书路由参数：只携带入口卡片已有的展示信息。
+import '../domain/repositories/device_catalog_repository.dart';
 
-/// 进入产品说明书时可携带的展示参数。
-///
-/// 型号 ID 仍由路由 path 提供并由 Binding 校验；[productName] 仅用于在后台
-/// 手册没有名称时保持来源设备的真实展示名称。
+/// 设备说明书页面的非领域路由参数。
 final class DeviceManualRouteArguments {
-  /// 创建说明书展示参数。
-  const DeviceManualRouteArguments({this.productName});
+  /// 创建设备说明书路由参数。
+  const DeviceManualRouteArguments({required this.modelId, this.summary});
 
-  /// 来源设备或绑定记录提供的展示名称。
-  final String? productName;
+  /// 后台设备型号主键。
+  final int modelId;
+
+  /// 入口卡片已加载的摘要，用于首帧和 Hero 动画，不替代详情接口。
+  final DeviceModelSummary? summary;
 }

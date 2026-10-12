@@ -337,7 +337,7 @@ final class _ConnectedDeviceHero extends StatelessWidget {
                               '$modelId',
                             ),
                             arguments: DeviceManualRouteArguments(
-                              productName: device.name,
+                              modelId: modelId!,
                             ),
                           ),
                         )

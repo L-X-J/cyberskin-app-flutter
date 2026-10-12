@@ -29,9 +29,19 @@ import 'package:flutter_test/flutter_test.dart';
 /// 测试进程内保存登录会话，避免 live test 触碰系统 Keychain。
 final class _LiveSessionStore implements SessionCredentialStore {
   SessionCredentials? credentials;
+  final StreamController<void> _invalidations =
+      StreamController<void>.broadcast();
 
   @override
-  Future<void> clear() async => credentials = null;
+  Stream<void> get invalidated => _invalidations.stream;
+
+  @override
+  Future<void> clear() async {
+    credentials = null;
+    if (!_invalidations.isClosed) {
+      _invalidations.add(null);
+    }
+  }
 
   @override
   Future<SessionCredentials?> read() async => credentials;

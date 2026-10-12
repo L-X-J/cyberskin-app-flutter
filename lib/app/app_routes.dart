@@ -3,8 +3,8 @@ import 'package:get/get.dart';
 
 import '../features/auth/presentation/login_binding.dart';
 import '../features/auth/presentation/login_page.dart';
-import '../features/device/presentation/device_detail_binding.dart';
-import '../features/device/presentation/device_detail_page.dart';
+import '../features/device/presentation/device_manual_binding.dart';
+import '../features/device/presentation/device_manual_page.dart';
 import '../features/device/presentation/device_home_page.dart';
 import '../features/home/presentation/home_binding.dart';
 import '../features/home/presentation/home_page.dart';
@@ -33,9 +33,6 @@ abstract final class AppRoutes {
   /// 设备主页路由。
   static const String device = '/device';
 
-  /// 设备型号详情路由，型号 ID 通过 `:modelId` 传入。
-  static const String deviceDetail = '/device/detail/:modelId';
-
   /// 设备产品说明书路由，型号 ID 通过 `:modelId` 传入。
   static const String deviceManual = '/device/manual/:modelId';
 
@@ -49,7 +46,6 @@ abstract final class AppRoutes {
   static const Map<String, FloatingControlPolicy> floatingControlPolicies = {
     home: FloatingControlPolicy.fixed,
     device: FloatingControlPolicy.fixed,
-    deviceDetail: FloatingControlPolicy.hidden,
     deviceManual: FloatingControlPolicy.hidden,
     video: FloatingControlPolicy.fixed,
     profile: FloatingControlPolicy.draggable,
@@ -85,17 +81,10 @@ abstract final class AppRoutes {
       middlewares: <GetMiddleware>[RouteAuthMiddleware()],
     ),
     GetPage<dynamic>(
-      name: deviceDetail,
-      page: () => const DeviceDetailPage(),
-      binding: DeviceDetailBinding(),
-      customTransition: DeviceDetailRouteTransition(),
-      transitionDuration: const Duration(milliseconds: 520),
-    ),
-    GetPage<dynamic>(
       name: deviceManual,
-      page: () => const DeviceDetailPage(),
-      binding: DeviceDetailBinding(),
-      customTransition: DeviceDetailRouteTransition(),
+      page: () => const DeviceManualPage(),
+      binding: DeviceManualBinding(),
+      customTransition: DeviceManualRouteTransition(),
       transitionDuration: const Duration(milliseconds: 520),
     ),
     GetPage<dynamic>(

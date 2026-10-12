@@ -1,39 +1,44 @@
-# 设备介绍页
+# 设备说明书页
 
 ## 来源与状态
 
-- PRD：`docs/Cyberskin_PRD_v1.1.0.md` 第 5.2、10 章。
-- Ardot：`https://ardot.tencent.com/file/729272102282180?web_only=1&node_id=389%3A59`。
-- 节点：`389:59`（设备介绍）。最后读取：2026-10-10。
-- 验收状态：基准静态实现，已生成 Flutter 截图；后台内容媒体字段和真机字体仍待确认。
+- Ardot：<https://ardot.tencent.com/file/729272102282180?web_only=1&node_id=389%3A59>
+- 入口：未连接页的设备型号卡片，也可从设备页的说明书入口进入。
+- 路由：`/device/manual/:modelId`，使用 `DeviceManualPage`。
+- 动画：入口设备图和说明书头图使用同一 `Hero` tag；路由使用淡入、轻微上移，型号切换使用图片淡入切换。
+- 视觉实现：型号选择卡复用 `device_model_card.dart`，与首页 `_ModelCard` 使用同一套 `AppLayeredGradientCard + LiquidGlassLayer`；产品底座使用 Ardot `389:60` 导出的原始 SVG。
 
-## 基准环境
+## 布局与交互
 
-| 项目 | 值 | 说明 |
-| --- | --- | --- |
-| 逻辑尺寸 | 402 x 1042 | Ardot 设备介绍画板。 |
-| 平台与系统区域 | iOS 视觉参考，顶部 50、底部 34 | 页面无 AppBar，入口在壳层外捕获 `viewPadding.top` 后传入内容。 |
-| 字体与缩放 | Flutter 默认字体、1.0x | 项目未接入 MiSans。 |
-| 固定数据 | Cyberskin Air、Overview/Care/Wash | Widget test fake `DeviceCatalogRepository`。 |
-| 截图 | `build/ui/device_manual_402x1042_text1.0.png` | 已预加载产品及运营素材。 |
+- pinned sliver header 固定返回按钮；展开时显示产品标题，滚动收起后以紧凑标题替代。
+- 顶部展示当前型号大图和椭圆底座；型号列表横向滚动，按三项可见宽度布局，卡片顶部间隔为 44px，点击后重新加载该型号详情和说明书。
+- 底部固定 `Introduction`、`Connection`、`Wash` 三个说明书段落入口，内容使用接口返回的 HTML 富文本结构渲染。
+- 页面底部仅展示在线广告接口返回的第一张有效图片；没有广告数据时不渲染广告区域，也不保留本地默认图。
 
-## 页面区域
+## 数据边界
 
-- 返回：44 x 44 的透明玻璃圆形操作，使用命名路由的系统返回语义。
-- 产品视觉：居中设备、下方细线椭圆和三张媒体入口卡；入口数量遵循后台手册条目，最多在首屏展示前三项。
-- 标签：按后台条目顺序显示，选中态使用底部细线；不使用 Material `ChoiceChip` 破坏设计层级。
-- 正文：从 HTML 提取可读文本；优先读取 HTML 标题，缺失时使用 tab 标签。不存在正文时显示明确空态。
-- 运营位：当前没有说明书广告领域数据，使用本地素材作为视觉兜底。
+- 型号列表：已有 `GET /app/v1/device-models`。
+- 型号详情：已有 `GET /app/v1/device-models/{id}`，由 `DeviceCatalogRepository` 读取。
+- 说明书：已有 `GET /app/v1/device-models/{id}/manual`，接口文档明确返回 `intro / connection / cleaning` 三类 HTML。
+- 富文本以 `contentUrl` 为真实内容源：Repository 请求 URL 返回的原始 HTML，并写入领域模型的 `contentHtml` 供页面渲染；若 URL 无效或请求失败，才回退接口已有的 `contentHtml`。页面不直接发起 HTML 请求。
+- 广告：型号详情响应包含 `advertisements`。页面只展示当前型号返回的第一张有效 `imageUrl`；接口列表为空或图片地址缺失时完全隐藏广告位。
 
-## 数据、边界与适配
+## 后端建议
 
-- `DeviceManualController` 仅通过 `DeviceCatalogRepository.getManual` 读取条目、加载状态、失败和选中下标。
-- 型号 ID 只来自路由 path；`DeviceManualRouteArguments.productName` 仅保留来源页面已知名称，不能替代领域模型或用作数据请求条件。
-- 窄屏下三个媒体入口等分可用宽度，标题使用省略；正文和广告通过 `ListView` 向下滚动。长 HTML 不截断、不缩小正文。
-- 加载、失败和无条目状态不发起重复请求；窗口重排和截图不触发 BLE 或额外网络调用。
+`GET /app/v1/device-models/{id}` 的详情响应应返回型号关联广告字段，例如：
 
-## 已知限制
+```json
+{
+  "advertisements": [
+    {
+      "id": 1,
+      "imageUrl": "https://...",
+      "jumpType": "url",
+      "jumpTarget": "https://...",
+      "sort": 1
+    }
+  ]
+}
+```
 
-- 手册领域模型当前没有 hero/媒体字段，三张入口卡使用本地透明产品素材兜底。
-- 默认 Roboto 与设计 MiSans 的字宽、行高存在差异。
-- 后台 HTML 采用保守的可读文本 fallback，富文本排版和外部内容 URL 需要在内容协议明确后再扩展。
+当前客户端已从该详情响应读取广告；如果后端字段结构变化，应同步更新 `DeviceModelAdvertisement` 映射和 App OpenAPI 快照。

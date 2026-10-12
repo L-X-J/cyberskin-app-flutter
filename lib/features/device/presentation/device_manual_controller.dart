@@ -1,86 +1,147 @@
-// 设备产品说明书页面状态与说明书加载编排。
+// 设备说明书页面的状态和数据加载编排。
 import 'dart:async';
 
 import 'package:get/get.dart';
 
 import '../../../core/error/app_failure.dart';
+import '../../../core/result/result.dart';
 import '../domain/repositories/device_catalog_repository.dart';
 
-/// 产品说明书页面的 GetX 控制器。
-///
-/// 说明书条目由后台按发布顺序提供；Controller 只负责加载、选中项和错误状态，
-/// 不解析 HTTP 响应，也不把设备型号或标签复制成客户端业务常量。
+/// 设备说明书页的 GetX 控制器。
 final class DeviceManualController extends GetxController {
   /// 创建指定设备型号的说明书控制器。
   DeviceManualController(
     this._repository, {
     required this.modelId,
-    this.productName,
+    this.summary,
   });
 
   final DeviceCatalogRepository _repository;
 
-  /// 当前说明书对应的设备型号 ID。
+  /// 当前设备型号主键。
   final int modelId;
 
-  /// 来源页面已知的产品展示名称；不参与说明书的领域加载和缓存键。
-  final String? productName;
+  /// 入口卡片已经拥有的摘要，用于详情请求期间展示稳定首屏。
+  final DeviceModelSummary? summary;
 
-  /// 当前设备说明书快照。
+  /// 页面顶部可横向选择的已发布产品型号。
+  final RxList<DeviceModelSummary> models = <DeviceModelSummary>[].obs;
+
+  /// 当前选中的产品型号下标。
+  final RxInt selectedModelIndex = 0.obs;
+
+  /// 当前选中的产品型号。
+  final Rxn<DeviceModelSummary> selectedModel = Rxn<DeviceModelSummary>();
+
+  /// 后台发布的设备型号详情。
+  final Rxn<DeviceModelDetail> detail = Rxn<DeviceModelDetail>();
+
+  /// 当前型号的三段式产品说明书。
   final Rxn<DeviceManual> manual = Rxn<DeviceManual>();
 
-  /// 说明书请求是否正在执行。
+  /// 当前选中的说明书段落下标。
+  final RxInt selectedManualIndex = 0.obs;
+
+  /// 详情请求是否正在执行。
   final RxBool isLoading = false.obs;
 
-  /// 最近一次加载失败；成功或尚未加载时为空。
+  /// 最近一次详情请求失败。
   final Rxn<AppFailure> failure = Rxn<AppFailure>();
 
-  /// 当前选中的后台说明书条目下标。
-  final RxInt selectedTab = 0.obs;
+  int _requestGeneration = 0;
 
-  /// 路由依赖就绪后自动加载说明书。
+  /// 路由依赖就绪后自动加载详情。
   @override
   void onReady() {
     super.onReady();
     unawaited(load());
   }
 
-  /// 加载说明书；重复调用期间忽略并发请求。
+  /// 加载设备详情；重复调用期间忽略并发请求。
   Future<void> load() async {
     if (isLoading.value) {
       return;
     }
     isLoading.value = true;
     failure.value = null;
-
-    final result = await _repository.getManual(modelId);
-    final loadedManual = result.valueOrNull;
-    if (loadedManual != null) {
-      manual.value = loadedManual;
-      selectedTab.value = _safeSelectedTab(
-        selectedTab.value,
-        loadedManual.items.length,
-      );
-    } else {
-      failure.value = result.failureOrNull;
+    final listResult = await _repository.listDeviceModels();
+    final listedModels = listResult.valueOrNull ?? const <DeviceModelSummary>[];
+    final availableModels = listedModels.isEmpty
+        ? <DeviceModelSummary>[summary ?? DeviceModelSummary(id: modelId)]
+        : listedModels;
+    models.assignAll(availableModels);
+    final initialIndex = availableModels.indexWhere(
+      (model) => model.id == modelId,
+    );
+    await selectModel(
+      initialIndex < 0 ? 0 : initialIndex,
+      notifyLoading: false,
+    );
+    if (detail.value == null && manual.value == null) {
+      failure.value = listResult.failureOrNull;
     }
     isLoading.value = false;
   }
 
-  /// 响应错误状态中的重试操作。
+  /// 响应详情错误状态中的重试操作。
   Future<void> reload() => load();
 
-  /// 选择说明书条目；无条目或越界下标会被安全忽略。
-  void selectTab(int index) {
-    final length = manual.value?.items.length ?? 0;
-    if (index < 0 || index >= length) {
+  /// 选择产品型号并刷新该型号的详情与三段说明书。
+  Future<void> selectModel(int index, {bool notifyLoading = true}) async {
+    if (index < 0 ||
+        index >= models.length ||
+        isLoading.value && notifyLoading) {
       return;
     }
-    selectedTab.value = index;
+    final selected = models[index];
+    final selectedId = selected.id;
+    if (selectedId == null || selectedId <= 0) {
+      return;
+    }
+    selectedModelIndex.value = index;
+    selectedModel.value = selected;
+    selectedManualIndex.value = 0;
+    if (notifyLoading) {
+      isLoading.value = true;
+      failure.value = null;
+    }
+    final requestGeneration = ++_requestGeneration;
+    final results = await Future.wait<Result<dynamic>>([
+      _repository.getDeviceModelDetail(selectedId),
+      _repository.getManual(selectedId),
+    ]);
+    if (requestGeneration != _requestGeneration) {
+      return;
+    }
+    final loadedDetail = results[0].valueOrNull as DeviceModelDetail?;
+    final loadedManual = results[1].valueOrNull as DeviceManual?;
+    if (loadedDetail != null) {
+      detail.value = loadedDetail;
+    }
+    if (loadedManual != null) {
+      manual.value = loadedManual;
+      selectedManualIndex.value = _safeManualIndex(
+        selectedManualIndex.value,
+        loadedManual.items.length,
+      );
+    }
+    if (loadedDetail == null && loadedManual == null) {
+      failure.value = results[0].failureOrNull ?? results[1].failureOrNull;
+    }
+    if (notifyLoading) {
+      isLoading.value = false;
+    }
   }
 
-  /// 当刷新后的条目数量减少时，保留合法选中项并回退到首项。
-  int _safeSelectedTab(int index, int length) {
+  /// 选择当前型号的说明书段落。
+  void selectManual(int index) {
+    if (index < 0 || index >= 3) {
+      return;
+    }
+    selectedManualIndex.value = index;
+  }
+
+  int _safeManualIndex(int index, int length) {
     if (length == 0) {
       return 0;
     }

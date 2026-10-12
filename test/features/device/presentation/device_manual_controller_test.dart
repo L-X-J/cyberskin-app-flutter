@@ -1,87 +1,81 @@
-import 'package:cyberskin_app/core/error/app_failure.dart';
 import 'package:cyberskin_app/core/result/result.dart';
 import 'package:cyberskin_app/features/device/domain/repositories/device_catalog_repository.dart';
 import 'package:cyberskin_app/features/device/presentation/device_manual_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-final class _FakeDeviceCatalogRepository implements DeviceCatalogRepository {
-  _FakeDeviceCatalogRepository(this.result);
+final class _FakeCatalogRepository implements DeviceCatalogRepository {
+  _FakeCatalogRepository(this.result, {this.models = const []});
 
-  Result<DeviceManual> result;
-  int requestedModelId = 0;
-  int requestCount = 0;
-
-  @override
-  Future<Result<List<DeviceModelSummary>>> listDeviceModels() async =>
-      const Result.ok(<DeviceModelSummary>[]);
+  final Result<DeviceModelDetail> result;
+  final List<DeviceModelSummary> models;
+  int calls = 0;
+  int manualCalls = 0;
 
   @override
-  Future<Result<DeviceModelDetail>> getDeviceModelDetail(int id) async =>
-      const Result.failure(
-        const AppFailure(
-          code: FailureCode.unsupported,
-          message: 'Not used by this test.',
-        ),
-      );
+  Future<Result<DeviceModelDetail>> getDeviceModelDetail(int id) async {
+    calls++;
+    return result;
+  }
 
   @override
   Future<Result<DeviceManual>> getManual(int id) async {
-    requestedModelId = id;
-    requestCount++;
-    return result;
+    manualCalls++;
+    return Result.ok(
+      DeviceManual(
+        deviceModelId: id,
+        items: [
+          DeviceManualItem(tab: 'intro', contentHtml: '<p>Intro</p>'),
+          DeviceManualItem(tab: 'connection', contentHtml: '<p>Connect</p>'),
+          DeviceManualItem(tab: 'cleaning', contentHtml: '<p>Wash</p>'),
+        ],
+      ),
+    );
   }
+
+  @override
+  Future<Result<List<DeviceModelSummary>>> listDeviceModels() async =>
+      Result.ok(models);
 }
 
-DeviceManual _manual() => DeviceManual(
-  deviceModelId: 389,
-  items: <DeviceManualItem>[
-    DeviceManualItem(tab: 'Overview', contentHtml: '<p>First section</p>'),
-    DeviceManualItem(tab: 'Care', contentHtml: '<p>Second section</p>'),
-  ],
+DeviceModelDetail _detail() => DeviceModelDetail(
+  summary: const DeviceModelSummary(id: 7, name: 'Cyberskin Air'),
+  heatSupported: true,
+  heatLevels: const [1, 2, 3],
 );
 
 void main() {
-  test(
-    'loads the manual through the repository and preserves item order',
-    () async {
-      final repository = _FakeDeviceCatalogRepository(Result.ok(_manual()));
-      final controller = DeviceManualController(repository, modelId: 389);
-
-      await controller.load();
-
-      expect(repository.requestedModelId, 389);
-      expect(repository.requestCount, 1);
-      expect(controller.manual.value?.items.map((item) => item.tab), [
-        'Overview',
-        'Care',
-      ]);
-      expect(controller.selectedTab.value, 0);
-      expect(controller.failure.value, isNull);
-      expect(controller.isLoading.value, isFalse);
-    },
-  );
-
-  test('changes the selected tab and exposes repository failures', () async {
-    const failure = AppFailure(
-      code: FailureCode.network,
-      message: 'Network unavailable',
-    );
-    final repository = _FakeDeviceCatalogRepository(
-      const Result.failure(failure),
-    );
-    final controller = DeviceManualController(repository, modelId: 389);
+  test('loads model detail and exposes it as observable state', () async {
+    final repository = _FakeCatalogRepository(Result.ok(_detail()));
+    final controller = DeviceManualController(repository, modelId: 7);
 
     await controller.load();
-    expect(controller.failure.value, failure);
-    expect(controller.manual.value, isNull);
+
+    expect(repository.calls, 1);
+    expect(controller.detail.value?.summary.name, 'Cyberskin Air');
+    expect(controller.failure.value, isNull);
     expect(controller.isLoading.value, isFalse);
+  });
 
-    repository.result = Result.ok(_manual());
-    await controller.reload();
-    controller.selectTab(1);
-    controller.selectTab(99);
+  test('selecting another model refreshes detail and manual content', () async {
+    final repository = _FakeCatalogRepository(
+      Result.ok(_detail()),
+      models: const [
+        DeviceModelSummary(id: 7, name: 'Air'),
+        DeviceModelSummary(id: 8, name: 'Pro'),
+      ],
+    );
+    final controller = DeviceManualController(repository, modelId: 7);
 
-    expect(controller.selectedTab.value, 1);
-    expect(controller.manual.value?.items[1].tab, 'Care');
+    await controller.load();
+    await controller.selectModel(1);
+
+    expect(controller.selectedModel.value?.id, 8);
+    expect(repository.calls, 2);
+    expect(repository.manualCalls, 2);
+    expect(controller.manual.value?.items, hasLength(3));
+    controller.selectManual(1);
+    expect(controller.selectedManualIndex.value, 1);
+    controller.selectManual(2);
+    expect(controller.selectedManualIndex.value, 2);
   });
 }
