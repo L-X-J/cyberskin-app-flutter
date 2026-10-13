@@ -24,6 +24,7 @@ void main() {
     expect(card.topGradientCenter, const Alignment(0, 0.16));
     expect(card.topGradientRadius, 0.6);
     expect(card.topGradientAspectRatio, 1.75);
+    expect(card.topGradientOffsetY, 0.0);
     expect(card.topLayerBlur, 30);
     expect(card.innerShadowOffset, const Offset(0, 4));
     expect(card.innerShadowBlur, 20);
@@ -172,6 +173,10 @@ void main() {
         baseColor: Colors.red,
         topGradientColors: colors,
         topGradientStops: [0.49, 0.5],
+        topGradientCenter: Alignment.topCenter,
+        topGradientRadius: 1.0,
+        topGradientAspectRatio: 1.0,
+        topGradientOffsetY: 0,
         topLayerBlur: 0,
         height: 170,
         child: SizedBox.shrink(),
@@ -183,6 +188,10 @@ void main() {
         baseColor: Colors.red,
         topGradientColors: colors,
         topGradientStops: [0.49, 0.5],
+        topGradientCenter: Alignment.topCenter,
+        topGradientRadius: 1.0,
+        topGradientAspectRatio: 1.0,
+        topGradientOffsetY: 0,
         height: 170,
         child: SizedBox.shrink(),
       ),
@@ -193,9 +202,51 @@ void main() {
       greaterThan(_channel(sharp, 85, 80, 1)),
     );
     expect(_channel(blurred, 85, 90, 1), lessThan(_channel(sharp, 85, 90, 1)));
+  });
+
+  testWidgets('topGradientOffsetY shifts top gradient downwards', (
+    tester,
+  ) async {
+    const card = AppLayeredGradientCard(
+      baseColor: Colors.red,
+      child: SizedBox.shrink(),
+    );
+    expect(card.topGradientOffsetY, 0.0);
+
+    const colors = [Colors.black, Colors.white];
+    final unshifted = await _render(
+      tester,
+      const AppLayeredGradientCard(
+        baseColor: Colors.red,
+        topGradientColors: colors,
+        topGradientStops: [0.49, 0.5],
+        topGradientCenter: Alignment.topCenter,
+        topGradientRadius: 1.0,
+        topGradientAspectRatio: 1.0,
+        topGradientOffsetY: 0,
+        topLayerBlur: 0,
+        height: 170,
+        child: SizedBox.shrink(),
+      ),
+    );
+    final shifted = await _render(
+      tester,
+      const AppLayeredGradientCard(
+        baseColor: Colors.red,
+        topGradientColors: colors,
+        topGradientStops: [0.49, 0.5],
+        topGradientCenter: Alignment.topCenter,
+        topGradientRadius: 1.0,
+        topGradientAspectRatio: 1.0,
+        topGradientOffsetY: 10,
+        topLayerBlur: 0,
+        height: 170,
+        child: SizedBox.shrink(),
+      ),
+    );
     expect(
-      _channel(blurred, 85, 165, 1),
-      lessThan(_channel(sharp, 85, 165, 1)),
+      _channel(shifted, 85, 90, 1),
+      lessThan(_channel(unshifted, 85, 90, 1)),
     );
   });
 

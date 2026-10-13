@@ -22,8 +22,9 @@ final class AppLayeredGradientCard extends StatelessWidget {
     this.topGradientColors,
     this.topGradientStops = const [0.0, 1.0],
     this.topGradientCenter = AppLayeredGradientStyle.gradientCenter,
-    this.topGradientRadius = AppLayeredGradientStyle.gradientRadius,
-    this.topGradientAspectRatio = 1,
+    this.topGradientRadius,
+    this.topGradientAspectRatio = 0.7,
+    this.topGradientOffsetY = AppLayeredGradientStyle.gradientOffsetY,
     this.topLayerBlur = AppLayeredGradientStyle.layerBlur,
     this.innerShadowColor = AppLayeredGradientStyle.innerShadowColor,
     this.innerShadowBlur = AppLayeredGradientStyle.innerShadowBlur,
@@ -32,8 +33,8 @@ final class AppLayeredGradientCard extends StatelessWidget {
     this.innerShadowOpacity = 1,
     this.borderRadius = AppRadius.card,
     this.height,
-  }) : assert(topGradientRadius > 0),
-       assert(topGradientAspectRatio > 0),
+  }) : assert(topGradientRadius == null || topGradientRadius > 0),
+       assert(topGradientAspectRatio == null || topGradientAspectRatio > 0),
        assert(topLayerBlur >= 0),
        assert(innerShadowBlur >= 0),
        assert(innerShadowSpread >= 0),
@@ -54,6 +55,7 @@ final class AppLayeredGradientCard extends StatelessWidget {
          topGradientCenter: AppScanCardStyle.gradientCenter,
          topGradientRadius: AppScanCardStyle.gradientRadius,
          topGradientAspectRatio: AppScanCardStyle.gradientAspectRatio,
+         topGradientOffsetY: AppScanCardStyle.gradientOffsetY,
          topLayerBlur: AppScanCardStyle.layerBlur,
          innerShadowColor: AppScanCardStyle.innerShadowColor,
          innerShadowBlur: AppScanCardStyle.innerShadowBlur,
@@ -77,11 +79,14 @@ final class AppLayeredGradientCard extends StatelessWidget {
   /// 上层径向渐变中心。
   final Alignment topGradientCenter;
 
-  /// 上层径向渐变半径。
-  final double topGradientRadius;
+  /// 上层径向渐变半径；为空时自动按卡片高度与短边精准匹配 Figma 契约。
+  final double? topGradientRadius;
 
-  /// 上层径向渐变横纵比；大于一时将暗区拉伸为横向椭圆。
-  final double topGradientAspectRatio;
+  /// 上层径向渐变横纵比；为空时自动按卡片宽高比精准匹配 Figma 契约。
+  final double? topGradientAspectRatio;
+
+  /// 上层径向渐变垂直向下平移的逻辑像素。
+  final double topGradientOffsetY;
 
   /// 上层渐变层的设计 blur 值，映射为 Flutter 的 sigma。
   final double topLayerBlur;
@@ -130,6 +135,7 @@ final class AppLayeredGradientCard extends StatelessWidget {
                   topGradientCenter: topGradientCenter,
                   topGradientRadius: topGradientRadius,
                   topGradientAspectRatio: topGradientAspectRatio,
+                  topGradientOffsetY: topGradientOffsetY,
                   topLayerBlur: topLayerBlur,
                   innerShadowColor: innerShadowColor,
                   innerShadowBlur: innerShadowBlur,
@@ -157,6 +163,7 @@ final class _LayeredGradientCardPainter extends CustomPainter {
     required this.topGradientCenter,
     required this.topGradientRadius,
     required this.topGradientAspectRatio,
+    required this.topGradientOffsetY,
     required this.topLayerBlur,
     required this.innerShadowColor,
     required this.innerShadowBlur,
@@ -170,8 +177,9 @@ final class _LayeredGradientCardPainter extends CustomPainter {
   final List<Color> topGradientColors;
   final List<double> topGradientStops;
   final Alignment topGradientCenter;
-  final double topGradientRadius;
-  final double topGradientAspectRatio;
+  final double? topGradientRadius;
+  final double? topGradientAspectRatio;
+  final double topGradientOffsetY;
   final double topLayerBlur;
   final Color innerShadowColor;
   final double innerShadowBlur;
@@ -222,6 +230,15 @@ final class _LayeredGradientCardPainter extends CustomPainter {
   /// 将上层渐变作为独立图层模糊，再覆盖到底层之上。
   void _paintTopGradient(Canvas canvas, RRect shape) {
     final layerBounds = shape.outerRect;
+    final effectiveRadius =
+        topGradientRadius ??
+        (layerBounds.shortestSide > 0
+            ? layerBounds.height / layerBounds.shortestSide
+            : 1.0);
+    final effectiveAspectRatio =
+        topGradientAspectRatio ??
+        (layerBounds.height > 0 ? layerBounds.width / layerBounds.height : 1.0);
+
     // 仅模糊渐变图层，内容在滤镜外绘制；圆角边缘的 alpha 让底层透出。
     canvas.saveLayer(
       layerBounds,
@@ -232,10 +249,14 @@ final class _LayeredGradientCardPainter extends CustomPainter {
       Paint()
         ..shader = RadialGradient(
           center: topGradientCenter,
-          radius: topGradientRadius,
-          transform: topGradientAspectRatio == 1
+          radius: effectiveRadius,
+          transform: (effectiveAspectRatio == 1 && topGradientOffsetY == 0)
               ? null
-              : _EllipticalGradientTransform(topGradientAspectRatio),
+              : _TopGradientTransform(
+                  aspectRatio: effectiveAspectRatio,
+                  offsetY: topGradientOffsetY,
+                  alignment: topGradientCenter,
+                ),
           colors: topGradientColors,
           stops: topGradientStops,
         ).createShader(layerBounds),
@@ -251,6 +272,7 @@ final class _LayeredGradientCardPainter extends CustomPainter {
         oldDelegate.topGradientCenter != topGradientCenter ||
         oldDelegate.topGradientRadius != topGradientRadius ||
         oldDelegate.topGradientAspectRatio != topGradientAspectRatio ||
+        oldDelegate.topGradientOffsetY != topGradientOffsetY ||
         oldDelegate.topLayerBlur != topLayerBlur ||
         oldDelegate.innerShadowColor != innerShadowColor ||
         oldDelegate.innerShadowBlur != innerShadowBlur ||
@@ -261,18 +283,32 @@ final class _LayeredGradientCardPainter extends CustomPainter {
   }
 }
 
-/// 在着色器坐标内扩大横轴，使径向渐变渲染为横向椭圆。
-final class _EllipticalGradientTransform extends GradientTransform {
-  const _EllipticalGradientTransform(this.aspectRatio);
+/// 在着色器坐标内变换径向渐变：以渐变中心为轴心横轴拉伸（椭圆）及垂直平移。
+final class _TopGradientTransform extends GradientTransform {
+  const _TopGradientTransform({
+    required this.aspectRatio,
+    required this.offsetY,
+    required this.alignment,
+  });
 
   final double aspectRatio;
+  final double offsetY;
+  final Alignment alignment;
 
   @override
   Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
-    final center = bounds.center;
-    return Matrix4.identity()
-      ..translateByDouble(center.dx, center.dy, 0, 1)
-      ..scaleByDouble(aspectRatio, 1, 1, 1)
-      ..translateByDouble(-center.dx, -center.dy, 0, 1);
+    final center = alignment.withinRect(bounds);
+    final matrix = Matrix4.identity();
+    if (aspectRatio != 1) {
+      matrix
+        ..translateByDouble(center.dx, center.dy, 0, 1)
+        ..scaleByDouble(aspectRatio, 1, 1, 1)
+        ..translateByDouble(-center.dx, -center.dy, 0, 1);
+    }
+    if (offsetY != 0) {
+      // 在矩阵变换后加上着色器坐标平移 offsetY，使 Canvas 上的渐变图案向下平移 offsetY 逻辑像素。
+      matrix.translateByDouble(0, offsetY, 0, 1);
+    }
+    return matrix;
   }
 }

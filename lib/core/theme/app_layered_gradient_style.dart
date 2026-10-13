@@ -6,20 +6,17 @@ abstract final class AppLayeredGradientStyle {
   /// 底层纯色与上层渐变终点的默认颜色。
   static const baseColor = Color(0xFFD94126);
 
-  /// 上层从顶部黑色中心向外过渡到底色。
+  /// 上层从顶部纯黑色向外过渡到底色（依据 Figma aaa.svg）。
   static const gradientStart = Colors.black;
 
-  /// 顶部中央为径向渐变起点。
-  static const gradientCenter = Alignment.topCenter;
+  /// 顶部中央为径向渐变起点（依据 Figma aaa.svg: cx=73, cy=0）。
+  static const gradientCenter = Alignment(0, -1.2);
 
-  /// 以短边为径向范围，方形型号卡底部到达渐变终点。
-  ///
-  /// 根据 build/ui/img.png 的明暗分布调整；设计未标注椭圆尺寸，
-  /// 非方形卡片可由调用方覆盖，不将该值视为设计工具的原始几何参数。
-  static const gradientRadius = 1.0;
+  /// 渐变层垂直偏移逻辑像素。
+  static const gradientOffsetY = 1.0;
 
-  /// 上层图层模糊，使用 AppBlur 的统一工程映射。
-  static const layerBlur = 14.0;
+  /// 上层图层模糊，依据 Figma aaa.svg 的 feGaussianBlur stdDeviation="7.05"。
+  static const layerBlur = 7.05;
 
   /// 底层内阴影的颜色、模糊及偏移。
   static const innerShadowColor = Color(0xFFF9765F);
@@ -28,7 +25,7 @@ abstract final class AppLayeredGradientStyle {
   static const innerShadowBlur = 20.0;
 
   /// 底层内阴影向下偏移一个逻辑像素。
-  static const innerShadowOffset = Offset(0, 1);
+  static const innerShadowOffset = Offset(0, 10);
 }
 
 /// 首页扫描卡的独立双层表面规格，不影响型号卡默认样式。
@@ -50,10 +47,13 @@ abstract final class AppScanCardStyle {
   /// 以短边为尺度，保留约 17% 短边的暗核及其向外的模糊过渡。
   ///
   /// 参考图的黑色边缘在卡片中部收紧；`1.0` 会使暗核过宽。
-  static const gradientRadius = 0.6;
+  static const gradientRadius = 0.55;
 
   /// 椭圆暗区的横纵比；参考图横向扩散明显大于纵向。
-  static const gradientAspectRatio = 1.75;
+  static const gradientAspectRatio = 2.1;
+
+  /// 首页扫描卡的渐变垂直偏移逻辑像素。
+  static const gradientOffsetY = 20.0;
 
   /// 仅应用于上层渐变的模糊。
   static const layerBlur = 30.0;
