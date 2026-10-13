@@ -77,4 +77,27 @@ void main() {
     );
     await tester.pump();
   });
+
+  testWidgets(
+    'displays user-friendly network error instead of raw SocketException',
+    (tester) async {
+      final repository = _FakeContentRepository(
+        refreshFuture: Future.value(
+          const Result.failure(
+            AppFailure(
+              code: FailureCode.network,
+              message: 'SocketException: Failed host lookup: \'api.cyberskin.com\' (OS Error: No address associated with hostname, errno = 7)',
+            ),
+          ),
+        ),
+      );
+      Get.put(InitController(repository, navigateToNextPage: () async {}));
+
+      await tester.pumpWidget(const GetMaterialApp(home: InitPage()));
+      await tester.pump();
+
+      expect(find.text('网络连接失败，请检查网络设置。'), findsOneWidget);
+      expect(find.textContaining('SocketException'), findsNothing);
+    },
+  );
 }

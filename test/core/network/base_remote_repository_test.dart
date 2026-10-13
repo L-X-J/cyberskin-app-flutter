@@ -175,4 +175,23 @@ void main() {
       expect(transport.calls, 0);
     },
   );
+
+  test('sanitizes raw SocketException in statusText to user-friendly network message', () async {
+    final repository = _TestRepository(
+      transport: _FakeTransport(
+        const ApiRawResponse(
+          statusCode: null,
+          statusText:
+              'SocketException: OS Error: Connection refused, errno = 111',
+          body: 'Not JSON',
+        ),
+      ),
+      sessionStore: _MemorySessionStore(_session()),
+    );
+
+    final result = await repository.publicValue();
+
+    expect(result.failureOrNull?.code, FailureCode.network);
+    expect(result.failureOrNull?.message, '网络请求失败，请检查网络设置。');
+  });
 }

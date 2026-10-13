@@ -1,6 +1,7 @@
 // 应用初始化页面：在配置前置条件满足前阻止进入主应用。
 import 'dart:async';
 
+import 'package:cyberskin_app/core/error/app_failure.dart';
 import 'package:cyberskin_app/core/extensions/string_extensions.dart';
 import 'package:cyberskin_app/core/theme/app_colors.dart';
 import 'package:cyberskin_app/core/widgets/app_image.dart';
@@ -29,7 +30,7 @@ final class InitPage extends GetView<InitController> {
               if (status == InitStatus.failed) {
                 return Center(
                   child: _InitFailureState(
-                    message: controller.failure.value?.message ?? '无法加载应用配置。',
+                    message: _getDisplayMessage(controller.failure.value),
                     onRetry: controller.retry,
                   ),
                 );
@@ -40,6 +41,33 @@ final class InitPage extends GetView<InitController> {
         ],
       ),
     );
+  }
+
+  /// 根据 AppFailure 提取适合直观展示给用户的离线/失败提示，过滤底层的网络异常信息。
+  String _getDisplayMessage(AppFailure? failure) {
+    if (failure == null) {
+      return '网络连接失败，请检查网络设置。';
+    }
+    final message = failure.message.trim();
+    if (message.isEmpty || _isTechnicalError(message)) {
+      return '网络连接失败，请检查网络设置。';
+    }
+    return message;
+  }
+
+  bool _isTechnicalError(String message) {
+    final lower = message.toLowerCase();
+    return lower.contains('socketexception') ||
+        lower.contains('httpexception') ||
+        lower.contains('handshakeexception') ||
+        lower.contains('timeoutexception') ||
+        lower.contains('clientexception') ||
+        lower.contains('formatexception') ||
+        lower.contains('os error') ||
+        lower.contains('connection refused') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('connection reset') ||
+        lower.contains('network is unreachable');
   }
 }
 

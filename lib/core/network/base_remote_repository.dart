@@ -64,7 +64,7 @@ abstract base class BaseRemoteRepository {
           return Result.failure(
             _failure(
               FailureCode.network,
-              raw.statusText ?? '网络请求失败。',
+              _sanitizeNetworkMessage(raw.statusText),
               httpStatus: raw.statusCode,
             ),
           );
@@ -78,7 +78,7 @@ abstract base class BaseRemoteRepository {
           _failure(
             FailureCode.business,
             envelope.message.isEmpty
-                ? (raw.statusText ?? '网络请求失败。')
+                ? _sanitizeNetworkMessage(raw.statusText)
                 : envelope.message,
             businessCode: envelope.code,
             httpStatus: raw.statusCode,
@@ -165,4 +165,31 @@ abstract base class BaseRemoteRepository {
     httpStatus: httpStatus,
     cause: cause,
   );
+
+  /// 将传输层可能泄漏的底层 Raw Exception（如 SocketException）替换为用户可读的网络失败提示。
+  String _sanitizeNetworkMessage(String? statusText) {
+    if (statusText == null || statusText.trim().isEmpty) {
+      return '网络请求失败。';
+    }
+    final message = statusText.trim();
+    if (_isTechnicalException(message)) {
+      return '网络请求失败，请检查网络设置。';
+    }
+    return message;
+  }
+
+  bool _isTechnicalException(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('socketexception') ||
+        lower.contains('httpexception') ||
+        lower.contains('handshakeexception') ||
+        lower.contains('timeoutexception') ||
+        lower.contains('clientexception') ||
+        lower.contains('formatexception') ||
+        lower.contains('os error') ||
+        lower.contains('connection refused') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('connection reset') ||
+        lower.contains('network is unreachable');
+  }
 }
