@@ -134,6 +134,9 @@ final class InitController extends GetxController {
   }
 
   /// 应用后台刷新结果；失败只记录状态，不撤销已经可用的缓存。
+  ///
+  /// [sessionStateAtStart] 是请求发出时的会话快照，用于识别竞态：后台刷新期间
+  /// 用户可能已重新登录，此时不能拿旧的 loggedIn=false 把新会话踢到登录页。
   Future<void> _applyRefreshResult(
     Future<Result<AppConfiguration>> refreshFuture,
     SessionState? sessionStateAtStart,
@@ -142,9 +145,11 @@ final class InitController extends GetxController {
     if (result case Success<AppConfiguration>(:final value)) {
       configuration.value = value;
       await _syncSession(value, authenticatedAtStart: sessionStateAtStart);
-      // 只有已认证会话刷新返回 loggedIn=false，才代表服务端会话失效，需踢到登录。
+      // 只有已认证会话刷新返回 loggedIn=false，且当前仍未重新登录，才代表
+      // 服务端会话失效，需踢到登录；否则忽略这条已过期的匿名结果。
       if (!value.loggedIn &&
-          sessionStateAtStart == SessionState.authenticated) {
+          sessionStateAtStart == SessionState.authenticated &&
+          _session?.state.value != SessionState.authenticated) {
         await Get.offAllNamed<void>(AppRoutes.login);
       }
       return;
