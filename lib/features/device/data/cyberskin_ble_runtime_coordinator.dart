@@ -288,7 +288,10 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     final repository = _userDeviceRepository;
     if (repository == null) return true;
     final result = await repository.bind(
-      UserDeviceBindRequest(deviceModelId: device.profile.modelId),
+      UserDeviceBindRequest(
+        deviceModelId: device.profile.modelId,
+        deviceUid: device.remoteId,
+      ),
     );
     if (result.isFailure) {
       await manager.disconnect(device.remoteId);

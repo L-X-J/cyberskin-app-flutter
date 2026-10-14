@@ -39,10 +39,17 @@ final class UserDevice {
 /// 新增用户设备绑定的输入值对象。
 final class UserDeviceBindRequest {
   /// 创建绑定请求。
-  const UserDeviceBindRequest({required this.deviceModelId, this.customName});
+  const UserDeviceBindRequest({
+    required this.deviceModelId,
+    required this.deviceUid,
+    this.customName,
+  });
 
   /// 要绑定的设备型号主键。
   final int deviceModelId;
+
+  /// BLE 设备硬件标识，对应 remoteId（服务端必填）。
+  final String deviceUid;
 
   /// 可选自定义设备名称。
   final String? customName;
