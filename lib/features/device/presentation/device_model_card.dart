@@ -99,14 +99,6 @@ final class DeviceModelCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (image != null)
-                    Positioned(
-                      left: compact ? 14 : 0,
-                      bottom: compact ? 8 : 0,
-                      width: compact ? 84 : 108,
-                      height: compact ? 96 : 120,
-                      child: _HeroImage(tag: heroTag, image: image!),
-                    ),
                   if (!compact)
                     Positioned(
                       left: 5,
@@ -116,6 +108,14 @@ final class DeviceModelCard extends StatelessWidget {
                         'home/icons_lius'.assetsSvg,
                         width: 50,
                       ),
+                    ),
+                  if (image != null)
+                    Positioned(
+                      left: compact ? 14 : 0,
+                      bottom: compact ? 8 : 0,
+                      width: compact ? 84 : 108,
+                      height: compact ? 96 : 120,
+                      child: _HeroImage(tag: heroTag, image: image!),
                     ),
                   if (!compact)
                     Positioned(

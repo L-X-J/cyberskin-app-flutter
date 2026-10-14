@@ -12,3 +12,9 @@ API 扫描、缓存、BLE 连接及型号 Adapter 后续进入 `data/`；UI 不�
 - `domain/`：设备、能力和 Repository 契约；下含 `entities/`、`repositories/`；见各目录 README。
 - `presentation/`：设备主页、列表 Controller 和设备卡片；见 `presentation/README.md`。
 - 当前 Feature 根目录无 Dart 文件。
+
+## BLE runtime
+
+真实扫描、自动重连、GATT 服务/特征绑定、协议 Adapter 和语义指令发送由同级的
+`cyberskin_device_sdk` 包负责。`data/` 只把后端 `DeviceModelDetail.ble` 映射成 SDK
+profile，并把 SDK 事件转换成 Cyberskin 状态；页面不直接依赖 FlutterBluePlus。

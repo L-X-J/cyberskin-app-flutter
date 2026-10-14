@@ -12,3 +12,8 @@ UI 不得直接拼接或发送 BLE 指令。
 - `domain/`：设备会话状态；下含预留的 `entities/`、`repositories/`；见各目录 README。
 - `presentation/`：会话 Controller 和控制条 Widget；下含 `widgets/`；见各目录 README。
 - 当前 Feature 根目录的领域文件为 `domain/device_session.dart`，定义共享会话状态枚举。
+
+## BLE command boundary
+
+`data/ble_device_command_repository.dart` 是语义指令进入共享 BLE SDK 的唯一入口。控制器和
+页面只能发送 `t/v/s/h` 语义命令，不得拼接十六进制帧或按型号写协议分支。

@@ -2,6 +2,7 @@
 import 'package:get/get.dart';
 
 import '../../features/device/domain/device_repository.dart';
+import '../../features/device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../features/device/presentation/device_home_controller.dart';
 
 /// 设备标签页的路由级依赖绑定。
@@ -12,7 +13,10 @@ final class DeviceBinding extends Bindings {
   @override
   void dependencies() {
     Get.put<DeviceHomeController>(
-      DeviceHomeController(Get.find<DeviceRepository>()),
+      DeviceHomeController(
+        Get.find<DeviceRepository>(),
+        Get.find<CyberskinBleRuntimeCoordinator>(),
+      ),
     );
   }
 }

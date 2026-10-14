@@ -70,6 +70,10 @@ final class DeviceCatalogRemoteRepository extends BaseRemoteRepository
                 ApiJson.object(bleJson, field: 'ble'),
                 'type',
               ),
+              profileKey: ApiJson.string(
+                ApiJson.object(bleJson, field: 'ble'),
+                'profileKey',
+              ),
               readService: ApiJson.string(
                 ApiJson.object(bleJson, field: 'ble'),
                 'readService',
@@ -96,6 +100,7 @@ final class DeviceCatalogRemoteRepository extends BaseRemoteRepository
                 ApiJson.object(bleJson, field: 'ble'),
                 <String>{
                   'type',
+                  'profileKey',
                   'readService',
                   'readChar',
                   'writeService',
@@ -175,9 +180,10 @@ final class DeviceCatalogRemoteRepository extends BaseRemoteRepository
                     id: ApiJson.integer(item, 'id'),
                     tab: ApiJson.string(item, 'tab'),
                     contentUrl: ApiJson.string(item, 'contentUrl'),
+                    contentHtml: ApiJson.string(item, 'contentHtml'),
                     additionalProperties: ApiJson.additionalProperties(
                       item,
-                      <String>{'id', 'tab', 'contentUrl'},
+                      <String>{'id', 'tab', 'contentUrl', 'contentHtml'},
                     ),
                   ),
                 )

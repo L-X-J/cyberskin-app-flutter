@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import '../core/logging/app_log.dart';
 import '../core/theme/app_theme.dart';
 import '../features/content/data/content_configuration_cache.dart';
-import '../features/device/data/in_memory_device_repository.dart';
 import '../features/device/domain/device_repository.dart';
 import 'app_route_logger.dart';
 import 'app_routes.dart';
@@ -18,13 +17,13 @@ final class CyberskinApp extends StatefulWidget {
   /// 创建应用根组件，并允许测试或环境入口替换设备 Repository。
   const CyberskinApp({
     super.key,
-    this.deviceRepository = const InMemoryDeviceRepository(),
+    this.deviceRepository,
     this.contentConfigurationCache,
     this.log = const NoopAppLog(),
   });
 
   /// 当前应用环境使用的设备 Repository。
-  final DeviceRepository deviceRepository;
+  final DeviceRepository? deviceRepository;
 
   /// 启动配置缓存；为空时使用平台 SharedPreferences 实现。
   final ContentConfigurationCache? contentConfigurationCache;

@@ -1,4 +1,5 @@
 // 显式启用时对本地 App API 执行全 Repository 真实链路验证。
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cyberskin_app/core/logging/app_log.dart';

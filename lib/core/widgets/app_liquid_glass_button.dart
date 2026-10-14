@@ -36,6 +36,7 @@ final class AppLiquidGlassButton extends StatefulWidget {
     this.isLoading = false,
     this.height = 58,
     this.width,
+    this.maxWidth,
     this.borderRadius,
     this.icon,
     this.leadingIcon,
@@ -91,8 +92,11 @@ final class AppLiquidGlassButton extends StatefulWidget {
   /// 按钮高度；默认 58，紧凑操作可降至 32。
   final double height;
 
-  /// 固定宽度；为空时使用父级提供的有界宽度。
+  /// 固定宽度；为空时根据内容自适应。
   final double? width;
+
+  /// 可选最大宽度，约束自适应计算后的按钮宽度。
+  final double? maxWidth;
 
   /// 圆角；为空时使用高度的一半，呈胶囊形。
   final double? borderRadius;
@@ -180,27 +184,29 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
         ),
       );
     }
-    return SizedBox(
-      width: widget.width,
-      child: FocusableActionDetector(
-        enabled: _enabled,
-        onShowFocusHighlight: (value) => setState(() => _showFocus = value),
-        shortcuts: const {
-          SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-          SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
-        },
-        actions: {
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (_) {
-              if (_enabled) widget.onPressed!();
-              return null;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final resolvedW = _resolvedWidth(context, constraints, textStyle);
+        final radius = widget.borderRadius ?? widget.height / 2;
+        return SizedBox(
+          width: resolvedW,
+          height: widget.height,
+          child: FocusableActionDetector(
+            enabled: _enabled,
+            onShowFocusHighlight: (value) => setState(() => _showFocus = value),
+            shortcuts: const {
+              SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+              SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
             },
-          ),
-        },
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final radius = widget.borderRadius ?? widget.height / 2;
-            return DecoratedBox(
+            actions: {
+              ActivateIntent: CallbackAction<ActivateIntent>(
+                onInvoke: (_) {
+                  if (_enabled) widget.onPressed!();
+                  return null;
+                },
+              ),
+            },
+            child: DecoratedBox(
               // FakeGlass multiplies dark tints against its backdrop. Painting
               // the prescribed tint underneath keeps its value stable on black.
               decoration: BoxDecoration(
@@ -208,7 +214,7 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
                 borderRadius: BorderRadius.circular(radius),
               ),
               child: LGButton.custom(
-                width: _resolvedWidth(context, constraints, textStyle),
+                width: resolvedW,
                 height: widget.height,
                 label: widget.isLoading
                     ? '${widget.label}, loading'
@@ -238,10 +244,10 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
                   ),
                 ),
               ),
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -254,7 +260,7 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
             Theme.of(context).textTheme.labelLarge?.fontFamily,
       );
 
-  /// 紧凑文字按钮在 Row 等无界宽度中按内容定宽。
+  /// 紧凑文字按钮在 Row 等无界宽度中按内容定宽，并受最大宽度限制。
   double _resolvedWidth(
     BuildContext context,
     BoxConstraints constraints,
@@ -269,7 +275,19 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
       maxLines: 1,
     )..layout();
     final leadingWidth = widget.leadingIcon == null ? 0 : widget.iconSize + 6;
-    return textPainter.width + leadingWidth + widget.contentPadding.horizontal;
+    final measuredWidth =
+        textPainter.width.ceilToDouble() +
+        4 +
+        leadingWidth +
+        widget.contentPadding.horizontal;
+    var resolved = measuredWidth;
+    if (widget.maxWidth case final maxW?) {
+      resolved = resolved.clamp(0.0, maxW);
+    }
+    if (constraints.hasBoundedWidth) {
+      resolved = resolved.clamp(0.0, constraints.maxWidth);
+    }
+    return resolved;
   }
 }
 

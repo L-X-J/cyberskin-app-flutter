@@ -29,8 +29,8 @@ final class InitController extends GetxController {
   InitController(
     this._contentRepository, {
     this.navigateToNextPage,
-    this._sessionController,
-  });
+    SessionController? sessionController,
+  }) : _sessionController = sessionController;
 
   final ContentRepository _contentRepository;
 
@@ -99,7 +99,9 @@ final class InitController extends GetxController {
     final cached = await _contentRepository.readCachedConfiguration();
     configuration.value = cached;
     if (cached != null) {
-      await _syncSession(cached);
+      // 缓存可能是在匿名状态下写入的旧快照；同步时必须带上恢复后的会话快照，
+      // 否则旧的 loggedIn=false 会被误判为服务端刚确认的失效结果并清除 Keychain。
+      await _syncSession(cached, authenticatedAtStart: _session?.state.value);
     }
     final now = DateTime.now();
     // 启动日期必须先于请求持久化，避免系统杀进程后把同一天再次误判为首次启动。

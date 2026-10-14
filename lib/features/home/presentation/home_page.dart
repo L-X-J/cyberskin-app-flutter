@@ -1,31 +1,20 @@
 // 主页页面：按设备连接状态渲染可复用的设备、内容和广告卡片。
+import 'dart:async';
+
+import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart';
 import 'package:get/get.dart';
 
-import '../../../app/widgets/app_flower_loading_indicator.dart';
-import '../../../app/widgets/app_glass_surfaces.dart';
 import '../../../app/widgets/app_scaffold.dart';
-import '../../../core/extensions/string_extensions.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_layered_gradient_style.dart';
-import '../../../core/theme/app_radius.dart';
-import '../../../core/widgets/app_image.dart';
-import '../../../core/widgets/app_layered_gradient_card.dart';
-import '../../../core/widgets/app_liquid_glass_button.dart';
-import '../../device/presentation/device_model_card.dart';
-import '../../content/domain/entities/app_content.dart';
 import '../../device/domain/device.dart';
 import '../../device/domain/repositories/device_catalog_repository.dart';
-import '../../training/domain/entities/training.dart';
 import '../../video/domain/repositories/video_repository.dart';
 import '../../video/presentation/video_controller.dart';
 import '../../video/presentation/video_page.dart';
+import 'home_connected/home_connected_view.dart';
 import 'home_controller.dart';
 import 'home_dashboard.dart';
-
-part 'home_disconnected_view.dart';
-part 'home_connected_view.dart';
+import 'home_disconnected/home_disconnected_view.dart';
 
 /// 匿名可浏览的应用主页。
 final class HomePage extends GetView<HomeController> {
@@ -40,6 +29,9 @@ final class HomePage extends GetView<HomeController> {
       final connected =
           status == DeviceConnectionStatus.connected ||
           status == DeviceConnectionStatus.lowBattery;
+      final pendingDiscovery = controller.pendingDiscovery?.value;
+      final isScanning = controller.isScanning?.value ?? false;
+      final bleCardState = controller.bleCardState.value;
       return AppScaffold(
         currentTab: controller.selectedTab.value,
         showBottomNavigation: connected,
@@ -66,7 +58,16 @@ final class HomePage extends GetView<HomeController> {
                   dashboard: controller.dashboard.value,
                   isLoading: controller.isLoading.value,
                   failureMessage: controller.failure.value?.message,
-                  onPrimaryAction: controller.requestConnection,
+                  bleCardState: bleCardState,
+                  onPrimaryAction: () =>
+                      unawaited(controller.handleBlePrimaryAction()),
+                  onStopDiscovery: () => unawaited(controller.stopDiscovery()),
+                  pendingDiscovery: pendingDiscovery,
+                  onConfirmDiscovery: () =>
+                      unawaited(controller.confirmDiscovery()),
+                  onDismissDiscovery: () =>
+                      unawaited(controller.dismissDiscovery()),
+                  isScanning: isScanning,
                   onDeviceModelDetails: (model) =>
                       controller.openDeviceManual(model.id, summary: model),
                   onDeviceDetails: controller.openDevice,
@@ -103,7 +104,13 @@ final class _HomeBody extends StatelessWidget {
     required this.dashboard,
     required this.isLoading,
     required this.failureMessage,
+    required this.bleCardState,
     required this.onPrimaryAction,
+    required this.onStopDiscovery,
+    required this.pendingDiscovery,
+    required this.onConfirmDiscovery,
+    required this.onDismissDiscovery,
+    required this.isScanning,
     required this.onDeviceModelDetails,
     required this.onDeviceDetails,
     required this.onDeviceManual,
@@ -117,7 +124,13 @@ final class _HomeBody extends StatelessWidget {
   final HomeDashboard dashboard;
   final bool isLoading;
   final String? failureMessage;
+  final HomeBleCardState bleCardState;
   final VoidCallback onPrimaryAction;
+  final VoidCallback onStopDiscovery;
+  final BleDiscoveredDevice? pendingDiscovery;
+  final VoidCallback onConfirmDiscovery;
+  final VoidCallback onDismissDiscovery;
+  final bool isScanning;
   final ValueChanged<DeviceModelSummary> onDeviceModelDetails;
   final VoidCallback onDeviceDetails;
   final VoidCallback onDeviceManual;
@@ -131,7 +144,7 @@ final class _HomeBody extends StatelessWidget {
         status == DeviceConnectionStatus.connected ||
         status == DeviceConnectionStatus.lowBattery;
     return connected
-        ? _ConnectedHome(
+        ? HomeConnectedView(
             dashboard: dashboard,
             isLoading: isLoading,
             failureMessage: failureMessage,
@@ -140,14 +153,23 @@ final class _HomeBody extends StatelessWidget {
             onProfile: onProfile,
             onReload: onReload,
           )
-        : _DisconnectedHome(
+        : HomeDisconnectedView(
             dashboard: dashboard,
             isLoading: isLoading,
+            failureMessage: failureMessage,
             isAuthenticated: isAuthenticated,
+            bleCardState: bleCardState,
             onPrimaryAction: onPrimaryAction,
+            onStopDiscovery: onStopDiscovery,
+            pendingDiscovery: pendingDiscovery,
+            onConfirmDiscovery: onConfirmDiscovery,
+            onDismissDiscovery: onDismissDiscovery,
+            isScanning: isScanning,
             onDeviceModelDetails: onDeviceModelDetails,
+            onDeviceManual: onDeviceManual,
             onLogin: onLogin,
             onProfile: onProfile,
+            onReload: onReload,
           );
   }
 }

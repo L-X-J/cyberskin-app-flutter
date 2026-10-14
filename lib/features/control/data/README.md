@@ -1,6 +1,3 @@
-# control/data 目录
+# control data
 
-自由控制功能的数据层预留目录，当前尚无实现。
-
-后续用于设备控制 Repository、BLE Adapter 和命令执行状态转换。该层负责把领域控制意图
-映射为协议命令、处理连接异常并返回统一 `Result`，不得包含页面状态或 Widget 逻辑。
+控制数据层只把语义指令交给共享 `cyberskin_device_sdk`。具体设备协议、校验和、帧序列与 BLE 写入由 SDK 所有；这里不保存 FlutterBluePlus 对象，也不拼接十六进制帧。

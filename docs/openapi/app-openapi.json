@@ -2394,6 +2394,11 @@
             "description": "BLE 类型",
             "example": "BLE"
           },
+          "profileKey": {
+            "type": "string",
+            "description": "共享 BLE SDK 协议 profile key",
+            "example": "pechtak.generic.v1"
+          },
           "readService": {
             "type": "string",
             "description": "读服务 UUID",

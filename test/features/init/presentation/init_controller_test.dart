@@ -1,5 +1,7 @@
+import 'package:cyberskin_app/app/session_controller.dart';
 import 'package:cyberskin_app/core/error/app_failure.dart';
 import 'package:cyberskin_app/core/result/result.dart';
+import 'package:cyberskin_app/core/storage/session_credential_store.dart';
 import 'package:cyberskin_app/features/content/domain/entities/app_content.dart';
 import 'package:cyberskin_app/features/content/domain/repositories/content_repository.dart';
 import 'package:cyberskin_app/features/init/presentation/init_controller.dart';
@@ -45,6 +47,30 @@ final class _FakeContentRepository implements ContentRepository {
   @override
   Future<Result<List<AppAdvertisement>>> listAdvertisements() =>
       throw UnimplementedError();
+}
+
+/// 可观测的内存会话存储，用于验证启动缓存不会误清除已恢复凭证。
+final class _FakeSessionCredentialStore implements SessionCredentialStore {
+  _FakeSessionCredentialStore(this.value);
+
+  SessionCredentials? value;
+  int clearCount = 0;
+
+  @override
+  Stream<void> get invalidated => const Stream<void>.empty();
+
+  @override
+  Future<SessionCredentials?> read() async => value;
+
+  @override
+  Future<void> save(SessionCredentials credentials) async =>
+      value = credentials;
+
+  @override
+  Future<void> clear() async {
+    clearCount++;
+    value = null;
+  }
 }
 
 AppConfiguration _configuration(String version) => AppConfiguration(
@@ -159,4 +185,33 @@ void main() {
     expect(controller.configuration.value?.version, 'fresh');
     expect(navigationCount, 1);
   });
+
+  test(
+    'does not clear restored credentials from stale anonymous cache',
+    () async {
+      final store = _FakeSessionCredentialStore(
+        const SessionCredentials(accessToken: 'token', clientId: 'client'),
+      );
+      final session = SessionController(sessionStore: store);
+      final repository = _FakeContentRepository(
+        // 这是用户登录前匿名状态产生的常见旧缓存。
+        cached: _configuration('anonymous-cache'),
+        lastLaunchAt: DateTime.now(),
+        refreshResult: Result.ok(
+          AppConfiguration(version: 'fresh', loggedIn: true),
+        ),
+      );
+      final controller = InitController(
+        repository,
+        sessionController: session,
+        navigateToNextPage: () async {},
+      );
+
+      await controller.start();
+
+      expect(session.state.value, SessionState.authenticated);
+      expect(store.value?.accessToken, 'token');
+      expect(store.clearCount, 0);
+    },
+  );
 }

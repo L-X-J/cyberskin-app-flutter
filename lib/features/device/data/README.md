@@ -1,15 +1,10 @@
-# device/data 目录
+# device data
 
-设备管理的数据访问实现层。
+设备数据层负责 App API、BLE SDK profile 映射、用户设备绑定和运行态协调。
 
-`in_memory_device_repository.dart` 继续为当前 BLE 会话壳提供空设备列表；
-`device_api_repositories.dart` 实现后台设备型号目录和用户绑定 API。两类 Repository 的
-生命周期与字段完整性不同，不得合并。
+- `device_api_repositories.dart`：设备目录和用户绑定 API Repository。
+- `ble_known_device_store.dart`：使用 SharedPreferences 保存已确认的物理 remoteId。
+- `cyberskin_ble_runtime_coordinator.dart`：加载后端 profile、启动后台扫描、处理首次发现确认、完成 BLE 连接与后端绑定，并把 SDK 事件投影成 GetX 状态。
+- `connected_device_repository.dart`：合并用户绑定记录、设备详情和 BLE 连接状态，向领域层提供设备摘要。
 
-本地缓存和 BLE 数据源仍在此实现，并统一转换为领域契约与 `Result`；不得把连接句柄或
-原始响应泄漏给展示层。
-
-文件职责：
-
-- `device_api_repositories.dart`：实现后台设备型号目录和用户绑定设备 API 的两个远端 Repository。
-- `in_memory_device_repository.dart`：提供当前应用壳使用的内存设备列表占位实现，不连接真实 BLE。
+本目录不得直接拼接 BLE 十六进制帧；命令必须经 `cyberskin_device_sdk` 的 profile 生成。

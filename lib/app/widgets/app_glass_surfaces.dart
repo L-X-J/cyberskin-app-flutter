@@ -32,13 +32,16 @@ final class AppGlassCard extends StatelessWidget {
 
 /// 应用内统一的小型玻璃文字按钮。
 final class AppTextButtonSurface extends StatelessWidget {
-  /// 创建小型文字操作。
+  /// 创建小型文字操作；默认根据内容自适应宽度，且不超过 [maxWidth]。
   const AppTextButtonSurface({
     required this.label,
     required this.onPressed,
+    this.leadingIcon,
+    this.iconSize = 16,
     this.width,
+    this.maxWidth = 200,
     this.height = 32,
-    this.contentPadding = const EdgeInsets.symmetric(horizontal: 10),
+    this.contentPadding = const EdgeInsets.symmetric(horizontal: 12),
     this.textStyle = const TextStyle(fontSize: 12, color: Colors.white),
     super.key,
   });
@@ -46,11 +49,20 @@ final class AppTextButtonSurface extends StatelessWidget {
   /// 按钮文案。
   final String label;
 
-  /// 点击回调。
-  final VoidCallback onPressed;
+  /// 可选左侧图标。
+  final IconData? leadingIcon;
 
-  /// 可选固定宽度。
+  /// 图标大小。
+  final double iconSize;
+
+  /// 点击回调。如果为 null，按钮处于禁用状态。
+  final VoidCallback? onPressed;
+
+  /// 可选固定宽度。如果指定，将优先使用固定宽度。
   final double? width;
+
+  /// 可选最大宽度，默认为 200；在自适应内容模式下约束最大宽度。
+  final double? maxWidth;
 
   /// 按钮高度。
   final double height;
@@ -65,9 +77,12 @@ final class AppTextButtonSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppLiquidGlassButton(
       label: label,
+      leadingIcon: leadingIcon,
+      iconSize: iconSize,
       onPressed: onPressed,
       variant: AppLiquidGlassButtonVariant.translucent,
       width: width,
+      maxWidth: maxWidth,
       height: height,
       borderRadius: height / 2.6,
       contentPadding: contentPadding,

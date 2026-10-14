@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 
 import '../../../app/session_controller.dart';
 import '../../content/domain/repositories/content_repository.dart';
+import '../../device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../device/domain/device_repository.dart';
 import '../../device/domain/repositories/device_catalog_repository.dart';
 import '../../device/domain/repositories/user_device_repository.dart';
@@ -28,6 +29,7 @@ final class HomeBinding extends Bindings {
         deviceCatalogRepository: Get.find<DeviceCatalogRepository>(),
         trainingRepository: Get.find<TrainingRepository>(),
         contentRepository: Get.find<ContentRepository>(),
+        bleCoordinator: Get.find<CyberskinBleRuntimeCoordinator>(),
       ),
     );
   }

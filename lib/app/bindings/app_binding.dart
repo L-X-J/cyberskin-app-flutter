@@ -12,7 +12,11 @@ import '../../features/content/data/content_configuration_cache.dart';
 import '../../features/content/data/content_remote_repository.dart';
 import '../../features/content/domain/repositories/content_repository.dart';
 import '../../features/control/presentation/control_session_controller.dart';
+import '../../features/control/data/ble_device_command_repository.dart';
+import '../../features/control/domain/device_command_repository.dart';
 import '../../features/device/data/device_api_repositories.dart';
+import '../../features/device/data/cyberskin_ble_runtime_coordinator.dart';
+import '../../features/device/data/connected_device_repository.dart';
 import '../../features/device/domain/device_repository.dart';
 import '../../features/device/domain/repositories/device_catalog_repository.dart';
 import '../../features/device/domain/repositories/user_device_repository.dart';
@@ -41,7 +45,7 @@ final class AppBinding extends Bindings {
   });
 
   /// 当前运行环境使用的设备 Repository 具体实现。
-  final DeviceRepository deviceRepository;
+  final DeviceRepository? deviceRepository;
 
   /// 当前运行环境使用的启动配置缓存实现。
   final ContentConfigurationCache contentConfigurationCache;
@@ -60,7 +64,6 @@ final class AppBinding extends Bindings {
       monitor: monitor,
       log: log,
     );
-    Get.put<DeviceRepository>(deviceRepository, permanent: true);
     Get.put<AppApiClient>(client, permanent: true);
     Get.put<SessionCredentialStore>(sessionStore, permanent: true);
     Get.put<NetworkRequestMonitor>(monitor, permanent: true);
@@ -86,6 +89,22 @@ final class AppBinding extends Bindings {
         transport: transport,
         sessionStore: sessionStore,
       ),
+      permanent: true,
+    );
+    Get.put<CyberskinBleRuntimeCoordinator>(
+      CyberskinBleRuntimeCoordinator(
+        catalogRepository: Get.find<DeviceCatalogRepository>(),
+        userDeviceRepository: Get.find<UserDeviceRepository>(),
+      ),
+      permanent: true,
+    );
+    Get.put<DeviceRepository>(
+      deviceRepository ??
+          ConnectedDeviceRepository(
+            userDeviceRepository: Get.find<UserDeviceRepository>(),
+            catalogRepository: Get.find<DeviceCatalogRepository>(),
+            bleCoordinator: Get.find<CyberskinBleRuntimeCoordinator>(),
+          ),
       permanent: true,
     );
     Get.put<RhythmRepository>(
@@ -124,6 +143,10 @@ final class AppBinding extends Bindings {
     );
     Get.put<VersionRepository>(
       VersionRemoteRepository(transport: transport, sessionStore: sessionStore),
+      permanent: true,
+    );
+    Get.put<DeviceCommandRepository>(
+      BleDeviceCommandRepository(Get.find<CyberskinBleRuntimeCoordinator>()),
       permanent: true,
     );
     Get.put<ControlSessionController>(

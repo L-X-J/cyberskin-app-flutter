@@ -62,3 +62,13 @@ Alternatives: Controller 直接调用 GetConnect；每个 Repository 自行处�
 统一使用 package:http；直接向 UI 返回动态 JSON。
 
 Reconsider when: 后端删除统一包装或鉴权协议发生实质变化，或团队批准完成迁移方案的替代网络架构。
+
+## ADR-005: Shared BLE SDK owns transport and device protocols
+
+Status: Accepted
+
+Context: yuanqu_app and cyberskin-app-flutter use the same BLE devices, but only yuanqu had the complete scanner, GATT, provider and runtime implementation.
+
+Decision: Shared transport and protocol profiles live in the adjacent `cyberskin-device-sdk` package. Apps own API/profile mapping, persistence, UI and pairing orchestration.
+
+Reason: Prevents protocol drift and keeps GetX/API concerns out of reusable BLE code.

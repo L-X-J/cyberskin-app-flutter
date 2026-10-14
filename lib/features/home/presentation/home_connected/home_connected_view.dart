@@ -1,9 +1,21 @@
 // 主页已连接状态及设备、训练和广告展示组件。
-part of 'home_page.dart';
+import 'package:flutter/material.dart';
+
+import '../../../../app/widgets/app_glass_surfaces.dart';
+import '../../../../app/widgets/app_scaffold.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/widgets/app_image.dart';
+import '../../../../core/widgets/app_layered_gradient_card.dart';
+import '../../../content/domain/entities/app_content.dart';
+import '../../../training/domain/entities/training.dart';
+import '../home_dashboard.dart';
+import '../widgets/home_shared_widgets.dart';
 
 /// 设备已连接状态；内容由 Repository 快照驱动。
-final class _ConnectedHome extends StatelessWidget {
-  const _ConnectedHome({
+final class HomeConnectedView extends StatelessWidget {
+  /// 创建已连接状态组件。
+  const HomeConnectedView({
+    super.key,
     required this.dashboard,
     required this.isLoading,
     required this.failureMessage,
@@ -13,12 +25,25 @@ final class _ConnectedHome extends StatelessWidget {
     required this.onReload,
   });
 
+  /// 主页冻结可渲染数据。
   final HomeDashboard dashboard;
+
+  /// 是否加载中。
   final bool isLoading;
+
+  /// 失败错误信息。
   final String? failureMessage;
+
+  /// 打开设备回调。
   final VoidCallback onDeviceDetails;
+
+  /// 打开设备说明书回调。
   final VoidCallback onDeviceManual;
+
+  /// 打开个人中心回调。
   final VoidCallback onProfile;
+
+  /// 重试重新加载回调。
   final VoidCallback onReload;
 
   @override
@@ -30,11 +55,11 @@ final class _ConnectedHome extends StatelessWidget {
       context,
       showBottomNavigation: true,
     );
-    return _HomeBackground(
+    return HomeBackground(
       child: ListView(
         padding: EdgeInsets.fromLTRB(24, 28, 24, bottomInset),
         children: [
-          const _HomeHeader(
+          const HomeHeader(
             title: 'My device',
             subtitle: 'Good evening, stay relaxed',
           ),
@@ -97,256 +122,6 @@ final class _ConnectedHome extends StatelessWidget {
   }
 }
 
-/// 主页背景层；装饰可裁切，内容仍由正常滚动布局负责。
-final class _HomeBackground extends StatelessWidget {
-  const _HomeBackground({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return LiquidGlassLayer(
-      fake: true,
-      useBackdropGroup: true,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppColors.surfaceDark,
-          gradient: RadialGradient(
-            center: Alignment(0.9, 0.25),
-            radius: 1.1,
-            colors: [Color(0xFF25163B), Color(0xFF101030), Color(0xFF020202)],
-            stops: [0, 0.55, 1],
-          ),
-        ),
-        child: child,
-      ),
-    );
-  }
-}
-
-/// 首页标题区和头像入口。
-final class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({
-    required this.title,
-    required this.subtitle,
-    this.onProfile,
-  });
-
-  final String title;
-  final String subtitle;
-  final VoidCallback? onProfile;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontSize: 28, height: 1.2)),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 16, color: Colors.white70),
-              ),
-            ],
-          ),
-        ),
-
-        AppLiquidGlassButton(
-          label: 'Profile',
-          variant: AppLiquidGlassButtonVariant.translucent,
-          width: 50,
-          height: 50,
-          borderRadius: 25,
-          onPressed: onProfile ?? () {},
-          child: AppImage.load(
-            'home/go_user_profile'.assetsPng,
-            width: 50,
-            height: 50,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// 未连接扫描卡。
-final class _ScanCard extends StatelessWidget {
-  const _ScanCard({required this.isLoading, required this.onStop});
-
-  final bool isLoading;
-  final VoidCallback onStop;
-
-  @override
-  Widget build(BuildContext context) {
-    return LiquidGlassLayer(
-      useBackdropGroup: true,
-      fake: true,
-      child: AppLayeredGradientCard.scan(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(26, 22, 20, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Searching for nearby devices ..',
-                style: TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                '"No devices found. Device connection methods\ncan be viewed below."',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.white70,
-                  height: 1.2,
-                ),
-              ),
-              SizedBox(height: isLoading ? 8 : 12),
-              Row(
-                children: [
-                  AppLiquidGlassButton(
-                    label: 'Bluetooth scan',
-                    icon: Icons.bluetooth,
-                    onPressed: onStop,
-                    variant: AppLiquidGlassButtonVariant.translucent,
-                    width: 40,
-                    height: 40,
-                    iconSize: 16,
-                    borderRadius: 12,
-                  ),
-
-                  const SizedBox(width: 8),
-                  AppTextButtonSurface(
-                    label: 'Stop',
-                    onPressed: onStop,
-                    width: 104,
-                    height: 40,
-                  ),
-                  const Spacer(),
-                  SizedBox.square(
-                    dimension: 64,
-                    child: isLoading
-                        ? const Center(
-                            child: AppFlowerLoadingIndicator(size: 64),
-                          )
-                        : const Icon(
-                            Icons.bluetooth_disabled,
-                            color: Colors.white70,
-                          ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 未连接型号入口网格。
-final class _DeviceModelGrid extends StatelessWidget {
-  const _DeviceModelGrid({required this.models, required this.onTap});
-
-  final List<DeviceModelSummary> models;
-  final ValueChanged<DeviceModelSummary> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final entries = models.isEmpty
-        ? const <_ModelPreview>[
-            _ModelPreview(
-              title: 'Cyberskin Air',
-              image: 'assets/images/home/device_air.png',
-              surfaceColor: AppLayeredGradientStyle.baseColor,
-              model: DeviceModelSummary(name: 'Cyberskin Air'),
-            ),
-            _ModelPreview(
-              title: 'Cyberskin Pro',
-              image: 'assets/images/home/device_pro.png',
-              surfaceColor: Color(0xFF8AD36B),
-              model: DeviceModelSummary(name: 'Cyberskin Pro'),
-            ),
-          ]
-        : models.take(2).map(_ModelPreview.fromModel).toList(growable: false);
-    return Row(
-      children: [
-        for (var i = 0; i < entries.length; i++) ...[
-          if (i > 0) const SizedBox(width: 12),
-          Expanded(
-            child: _ModelCard(
-              preview: entries[i],
-              onTap: () => onTap(entries[i].model),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// 后台卡片色支持 RGB / ARGB；非法值由展示模型回退到设计默认值。
-Color? _hexToColor(String? hex) {
-  final clean = hex?.trim().replaceFirst(RegExp(r'^#'), '');
-  if (clean == null ||
-      !RegExp(r'^(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$').hasMatch(clean)) {
-    return null;
-  }
-  final value = int.tryParse(clean.length == 6 ? 'FF$clean' : clean, radix: 16);
-  return value == null ? null : Color(value);
-}
-
-/// 型号入口的不可变展示数据；后台字段在此转换为卡片内容。
-final class _ModelPreview {
-  const _ModelPreview({
-    required this.title,
-    required this.image,
-    required this.surfaceColor,
-    required this.model,
-    this.tags = const [],
-  });
-
-  factory _ModelPreview.fromModel(DeviceModelSummary model) => _ModelPreview(
-    title: model.name ?? 'Cyberskin device',
-    image: model.iconUrl,
-    surfaceColor:
-        _hexToColor(model.cardColor) ?? AppLayeredGradientStyle.baseColor,
-    model: model,
-    tags: List.unmodifiable(
-      (model.tags ?? '')
-          .split(',')
-          .map((tag) => tag.trim())
-          .where((tag) => tag.isNotEmpty),
-    ),
-  );
-  final String title;
-  final String? image;
-  final Color surfaceColor;
-  final DeviceModelSummary model;
-  final List<String> tags;
-}
-
-final class _ModelCard extends StatelessWidget {
-  const _ModelCard({required this.preview, required this.onTap});
-
-  final _ModelPreview preview;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => DeviceModelCard(
-    title: preview.title,
-    image: preview.image,
-    baseColor: preview.surfaceColor,
-    tags: preview.tags,
-    heroTag: 'device-model-${preview.model.id ?? preview.title}',
-    onTap: onTap,
-    variant: DeviceModelCardVariant.home,
-  );
-}
-
 /// 已连接设备主卡。
 final class _ConnectedDeviceCard extends StatelessWidget {
   const _ConnectedDeviceCard({
@@ -389,23 +164,15 @@ final class _ConnectedDeviceCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   const Text('⌁  · Connected', style: TextStyle(fontSize: 13)),
                   const Spacer(),
-                  Row(
-                    children: [
-                      AppTextButtonSurface(
-                        label: '◴ ${battery ?? 67}%',
-                        onPressed: onOpen,
-                      ),
-                      const SizedBox(width: 8),
-                      AppIconButtonSurface(
-                        icon: Icons.power_settings_new,
-                        onPressed: onOpen,
-                        label: 'Power',
-                      ),
-                    ],
+                  AppTextButtonSurface(
+                    label: '${battery ?? 67}%',
+                    leadingIcon: Icons.power_settings_new,
+                    onPressed: onOpen,
                   ),
                   const SizedBox(height: 8),
                   AppTextButtonSurface(
-                    label: '▣  Product manual',
+                    label: 'Product manual',
+                    leadingIcon: Icons.description_outlined,
                     onPressed: onManual,
                   ),
                 ],
@@ -494,7 +261,11 @@ final class _TrainingCard extends StatelessWidget {
                 children: [
                   const Text('Training mode', style: TextStyle(fontSize: 17)),
                   const Spacer(),
-                  AppTextButtonSurface(label: '▦ More', onPressed: onTap),
+                  AppTextButtonSurface(
+                    label: 'More',
+                    leadingIcon: Icons.grid_view_outlined,
+                    onPressed: onTap,
+                  ),
                 ],
               ),
               const Spacer(),

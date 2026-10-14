@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart';
 import 'package:get/get.dart';
+import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
 
 import '../../../app/app_routes.dart';
 import '../../../app/widgets/app_glass_surfaces.dart';
@@ -64,6 +65,7 @@ final class _DeviceBody extends StatelessWidget {
       final devices = controller.devices.toList(growable: false);
       final failure = controller.failure.value;
       final isLoading = controller.isLoading.value;
+      final pending = controller.pendingDiscovery?.value;
       if (isLoading && devices.isEmpty) {
         return const _DeviceLoadingState();
       }
@@ -74,7 +76,12 @@ final class _DeviceBody extends StatelessWidget {
         );
       }
       if (devices.isEmpty) {
-        return const _EmptyDeviceState();
+        return _EmptyDeviceState(
+          pending: pending,
+          onConfirm: () => unawaited(controller.confirmDiscovery()),
+          onDismiss: () => unawaited(controller.dismissDiscovery()),
+          onAdd: () => unawaited(controller.startDiscovery()),
+        );
       }
       return RefreshIndicator(
         color: AppColors.secondary,
@@ -88,6 +95,9 @@ final class _DeviceBody extends StatelessWidget {
           bottomInset: bottomInset,
           onProfile: () => unawaited(Get.toNamed(AppRoutes.profile)),
           onRetry: () => unawaited(controller.reload()),
+          pending: pending,
+          onConfirmDiscovery: () => unawaited(controller.confirmDiscovery()),
+          onDismissDiscovery: () => unawaited(controller.dismissDiscovery()),
         ),
       );
     });
@@ -104,6 +114,9 @@ final class _DeviceContent extends StatelessWidget {
     required this.bottomInset,
     required this.onProfile,
     required this.onRetry,
+    this.pending,
+    required this.onConfirmDiscovery,
+    required this.onDismissDiscovery,
   });
 
   final List<Device> devices;
@@ -113,6 +126,9 @@ final class _DeviceContent extends StatelessWidget {
   final double bottomInset;
   final VoidCallback onProfile;
   final VoidCallback onRetry;
+  final BleDiscoveredDevice? pending;
+  final VoidCallback onConfirmDiscovery;
+  final VoidCallback onDismissDiscovery;
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +149,14 @@ final class _DeviceContent extends StatelessWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(24, topInset + 34, 24, bottomInset),
           children: [
+            if (pending != null) ...[
+              _NearbyDeviceCard(
+                device: pending!,
+                onConfirm: onConfirmDiscovery,
+                onDismiss: onDismissDiscovery,
+              ),
+              const SizedBox(height: 18),
+            ],
             _DeviceHeader(onProfile: onProfile),
             const SizedBox(height: 28),
             for (var index = 0; index < devices.length; index++) ...[
@@ -738,7 +762,17 @@ final class _DeviceLoadingState extends StatelessWidget {
 
 /// 设备列表为空时展示的引导状态。
 final class _EmptyDeviceState extends StatelessWidget {
-  const _EmptyDeviceState();
+  const _EmptyDeviceState({
+    required this.pending,
+    required this.onConfirm,
+    required this.onDismiss,
+    required this.onAdd,
+  });
+
+  final BleDiscoveredDevice? pending;
+  final VoidCallback onConfirm;
+  final VoidCallback onDismiss;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -748,6 +782,14 @@ final class _EmptyDeviceState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            if (pending != null) ...[
+              _NearbyDeviceCard(
+                device: pending!,
+                onConfirm: onConfirm,
+                onDismiss: onDismiss,
+              ),
+              const SizedBox(height: 24),
+            ],
             const Icon(
               Icons.bluetooth_disabled_outlined,
               size: 64,
@@ -765,11 +807,65 @@ final class _EmptyDeviceState extends StatelessWidget {
             AppLiquidGlassButton(
               label: 'Add device',
               icon: Icons.add,
-              onPressed: () {},
+              onPressed: onAdd,
               variant: AppLiquidGlassButtonVariant.highlighted,
               height: 48,
               iconSize: 18,
               textStyle: AppTypography.confirmButton,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _NearbyDeviceCard extends StatelessWidget {
+  const _NearbyDeviceCard({
+    required this.device,
+    required this.onConfirm,
+    required this.onDismiss,
+  });
+
+  final BleDiscoveredDevice device;
+  final VoidCallback onConfirm;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppGlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Nearby device', style: AppTypography.subtitle),
+            const SizedBox(height: 4),
+            Text(device.name.isEmpty ? device.remoteId : device.name),
+            const SizedBox(height: 4),
+            Text(
+              'Signal ${device.rssi} dBm',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _CompactGlassButton(
+                    label: 'Connect',
+                    onPressed: onConfirm,
+                    width: 100,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _CompactGlassButton(
+                    label: 'Dismiss',
+                    onPressed: onDismiss,
+                    width: 100,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

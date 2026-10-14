@@ -27,7 +27,8 @@ enum SessionState {
 /// 它不能被当作凭证存在的证明，否则会出现「凭证已删但仍显示已登录」的分叉。
 final class SessionController extends GetxController {
   /// 创建会话控制器，并绑定可选的凭证存储用于回读与失效监听。
-  SessionController({this._sessionStore});
+  SessionController({SessionCredentialStore? sessionStore})
+    : _sessionStore = sessionStore;
 
   /// 可选的凭证存储；为空时退化为纯内存状态，供不访问安全的测试使用。
   final SessionCredentialStore? _sessionStore;

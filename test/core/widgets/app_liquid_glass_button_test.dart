@@ -247,4 +247,44 @@ void main() {
       },
     );
   }
+
+  testWidgets('auto-fits content width and clamps to maxWidth', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: Column(
+            children: [
+              AppLiquidGlassButton(
+                label: 'Short',
+                leadingIcon: Icons.star,
+                onPressed: () {},
+                maxWidth: 200,
+                height: 32,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                textStyle: const TextStyle(fontSize: 12),
+              ),
+              AppLiquidGlassButton(
+                label: 'A very long label that exceeds the specified maximum width limit',
+                leadingIcon: Icons.star,
+                onPressed: () {},
+                maxWidth: 200,
+                height: 32,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                textStyle: const TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final buttons = find.byType(AppLiquidGlassButton);
+    final shortWidth = tester.getSize(buttons.first).width;
+    final longWidth = tester.getSize(buttons.last).width;
+
+    expect(shortWidth, lessThan(200));
+    expect(longWidth, equals(200));
+  });
 }

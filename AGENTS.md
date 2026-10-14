@@ -92,3 +92,10 @@ lib/
 - 禁止为减少重复代码创建万能 `utils` 或跨业务域抽象。
 - 禁止将后台配置复制成客户端硬编码常量。
 - 禁止未经 ADR 记录引入新的状态管理、路由或网络架构。
+
+## Shared BLE SDK
+
+BLE transport、扫描、自动发现、GATT 通道绑定、协议 profile 和运行态解析由相邻的
+`cyberskin-device-sdk` Flutter 包维护。Cyberskin 的 `features/device/data` 只负责后端 profile
+映射、用户绑定、已知物理设备持久化和 SDK 事件适配；`features/control/data` 只负责语义命令
+Repository。UI、Controller 和 App API DTO 不得直接依赖 FlutterBluePlus 或拼接 BLE 帧。

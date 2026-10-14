@@ -20,6 +20,16 @@ Resolution: 存在无限背景的 Widget 测试应使用固定次数的 `tester.
 
 Important: 这是无限动画的预期测试语义，不是页面卡死或组件未完成加载。
 
+## 启动配置缓存不能清除已恢复会话
+
+Symptom: 登录后重新打开 App，首个 `/app/v1/config` 请求没有 `Authorization` / `clientid`，服务端返回 `loggedIn:false`。
+
+Cause: 启动流程先恢复 Keychain 凭证，再把匿名期间缓存的 `loggedIn:false` 配置当作当前服务端结果同步；缺少请求期会话快照时会触发会话清理。
+
+Resolution: 缓存配置同步必须传入恢复后的 `SessionState` 快照；只有发起请求时已认证且远端响应为 `loggedIn:false` 才能清除会话。回归测试位于 `test/features/init/presentation/init_controller_test.dart`。
+
+Important: API 日志会脱敏鉴权值；修复后应看到 `Authorization` 和 `clientid` 字段显示为 `<redacted>`，而不是缺少字段。
+
 ## Widget 测试截图的异步 raster 任务
 
 Symptom: 在 Widget 测试的假时间域内等待 `RenderRepaintBoundary.toImage()` / `Image.toByteData()` 时，截图任务可能挂起。

@@ -76,6 +76,7 @@ final class DeviceBleConfiguration {
   /// 创建 BLE 配置，并保留未知扩展字段。
   DeviceBleConfiguration({
     this.type,
+    this.profileKey,
     this.readService,
     this.readCharacteristic,
     this.writeService,
@@ -88,6 +89,9 @@ final class DeviceBleConfiguration {
 
   /// 开放的 BLE 类型标识。
   final String? type;
+
+  /// 由后端选择共享 SDK 协议 Adapter 的稳定 key。
+  final String? profileKey;
 
   /// 读取服务 UUID。
   final String? readService;
@@ -190,6 +194,7 @@ final class DeviceManualItem {
     this.id,
     this.tab,
     this.contentUrl,
+    this.contentHtml,
     Map<String, dynamic> additionalProperties = const <String, dynamic>{},
   }) : additionalProperties = Map<String, dynamic>.unmodifiable(
          additionalProperties,
@@ -203,6 +208,9 @@ final class DeviceManualItem {
 
   /// 说明书 HTML 内容的远端地址。
   final String? contentUrl;
+
+  /// 服务端回填的 HTML 内容；存在时用于离线首屏或兼容旧接口。
+  final String? contentHtml;
 
   /// 未被静态 OpenAPI 细化的条目字段。
   final Map<String, dynamic> additionalProperties;
