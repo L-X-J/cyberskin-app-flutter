@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../domain/connected_device_state.dart';
 import '../domain/repositories/device_catalog_repository.dart';
 import '../domain/repositories/user_device_repository.dart';
 import 'ble_known_device_store.dart';
@@ -41,6 +42,12 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
       <String, BleRuntimeStatus>{}.obs;
   final RxMap<String, BleConnectionState> connectionStates =
       <String, BleConnectionState>{}.obs;
+
+  /// 当前连接设备的完整运行时视图；连接后由 [DeviceHomeController] 赋值，断开时清为 null。
+  ///
+  /// Obx 组件可直接订阅此字段或其内部各遥测字段，实现点位级刷新。
+  final Rxn<ConnectedDeviceState> connectedDevice =
+      Rxn<ConnectedDeviceState>();
   StreamSubscription<BleEvent>? _events;
   Map<int, BleDeviceProfile> _profilesByModel = <int, BleDeviceProfile>{};
   bool _profilesConfigured = false;
@@ -325,6 +332,29 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   BleDeviceProfile? profileForModel(int modelId) => _profilesByModel[modelId];
 
+  /// 由 [DeviceHomeController] 在加载到匹配设备后调用，建立连接设备视图。
+  ///
+  /// 若已存在相同 [remoteId] 的视图，则仅更新 [device] 元数据并重新应用当前运行态，
+  /// 避免替换视图对象导致所有下游 Obx 重建。
+  void setConnectedDevice(ConnectedDeviceState state) {
+    final existing = connectedDevice.value;
+    if (existing != null && existing.remoteId == state.remoteId) {
+      // remoteId 不变时仅刷新运行态快照；device 元数据不可变，不需要更新。
+      final current = runtime[state.remoteId];
+      if (current != null) existing.applyStatus(current);
+      return;
+    }
+    // 新设备或 remoteId 变化：替换视图对象并立即应用当前已知运行态。
+    final current = runtime[state.remoteId];
+    if (current != null) state.applyStatus(current);
+    connectedDevice.value = state;
+  }
+
+  /// 由 [DeviceHomeController] 在设备断开后调用，清除连接设备视图。
+  void clearConnectedDevice() {
+    connectedDevice.value = null;
+  }
+
   BleDeviceProfile _toProfile(DeviceModelDetail detail) {
     final ble = detail.ble;
     final summary = detail.summary;
@@ -381,6 +411,11 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
         }
       case BleRuntimeChanged(:final remoteId, :final status):
         runtime[remoteId] = status;
+        // 将遥测快照逐字段推入连接设备视图；仅在 remoteId 匹配时更新，避免多设备串扰。
+        final connected = connectedDevice.value;
+        if (connected != null && connected.remoteId == remoteId) {
+          connected.applyStatus(status);
+        }
       case BleFailure(:final code, :final message):
         failureCode.value = code;
         failureMessage.value = message;

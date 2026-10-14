@@ -1,13 +1,12 @@
 // 设备主页状态与数据加载编排。
 import 'dart:async';
 
+import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
 import 'package:get/get.dart';
 
 import '../../../core/error/app_failure.dart';
-
-import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
-
 import '../data/cyberskin_ble_runtime_coordinator.dart';
+import '../domain/connected_device_state.dart';
 import '../domain/device.dart';
 import '../domain/device_repository.dart';
 
@@ -54,10 +53,40 @@ final class DeviceHomeController extends GetxController {
     final loadedDevices = result.valueOrNull;
     if (loadedDevices != null) {
       devices.assignAll(loadedDevices);
+      _syncConnectedDevice(loadedDevices);
     } else {
       failure.value = result.failureOrNull;
     }
     isLoading.value = false;
+  }
+
+  /// 将已加载设备列表同步到协调器的连接设备视图。
+  ///
+  /// 连接成功时取列表首项构造 [ConnectedDeviceState]，断开时清除视图。
+  /// remoteId 从协调器的 connectionStates 中找第一个 connected 条目获取。
+  void _syncConnectedDevice(List<Device> loadedDevices) {
+    final coordinator = _bleCoordinator;
+    if (coordinator == null) return;
+    if (loadedDevices.isEmpty || !coordinator.hasConnectedDevice) {
+      coordinator.clearConnectedDevice();
+      return;
+    }
+    // 找到当前已连接设备的 BLE remoteId。
+    String? connectedRemoteId;
+    for (final entry in coordinator.connectionStates.entries) {
+      if (entry.value == BleConnectionState.connected) {
+        connectedRemoteId = entry.key;
+        break;
+      }
+    }
+    if (connectedRemoteId == null) {
+      coordinator.clearConnectedDevice();
+      return;
+    }
+    final device = loadedDevices.first;
+    coordinator.setConnectedDevice(
+      ConnectedDeviceState(device: device, remoteId: connectedRemoteId),
+    );
   }
 
   /// 响应用户刷新操作重新加载设备数据。

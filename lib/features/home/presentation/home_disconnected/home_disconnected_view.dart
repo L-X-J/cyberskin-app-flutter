@@ -39,6 +39,7 @@ final class HomeDisconnectedView extends StatelessWidget {
     required this.onProfile,
     this.onReload,
     this.topHeaderPadding,
+    this.exitAnimation,
   });
 
   /// 主页冻结可渲染数据（含设备型号列表与推荐内容）。
@@ -96,6 +97,10 @@ final class HomeDisconnectedView extends StatelessWidget {
   /// 自身不再渲染 HomeHeader。为 null 时作为独立视图渲染自有标题区。
   final double? topHeaderPadding;
 
+  /// 连接成功后驱动本视图退场的动画；0→1 过程中扫描卡淡出，型号卡片分别向左右飞出。
+  /// 为 null 时所有退场动画层均不挂载。
+  final Animation<double>? exitAnimation;
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = AppScaffold.contentBottomPaddingOf(
@@ -115,6 +120,7 @@ final class HomeDisconnectedView extends StatelessWidget {
             onConfirm: onConfirmDiscovery,
             onDismiss: onDismissDiscovery,
             onLogin: onLogin,
+            exitAnimation: exitAnimation,
           ),
           if (bindFailureMessage != null) ...[
             const SizedBox(height: 10),
@@ -124,6 +130,7 @@ final class HomeDisconnectedView extends StatelessWidget {
           _DeviceModelGrid(
             models: dashboard.deviceModels,
             onTap: onDeviceModelDetails,
+            exitAnimation: exitAnimation,
           ),
           if (dashboard.deviceModels.isEmpty) ...[
             const SizedBox(height: 10),
@@ -177,6 +184,7 @@ final class _ScanCard extends StatelessWidget {
     required this.onConfirm,
     required this.onDismiss,
     required this.onLogin,
+    this.exitAnimation,
   });
 
   /// 卡片当前的文案、图标与可操作状态。
@@ -200,6 +208,9 @@ final class _ScanCard extends StatelessWidget {
   /// 未登录状态下点击登录动作回调。
   final VoidCallback onLogin;
 
+  /// 连接成功时驱动本卡淡出的动画（0→1 对应不透明→透明）。
+  final Animation<double>? exitAnimation;
+
   @override
   Widget build(BuildContext context) {
     final showPending = pending != null;
@@ -208,7 +219,7 @@ final class _ScanCard extends StatelessWidget {
         state.phase == HomeBleCardPhase.unavailable;
     final showLoginOnly = state.phase == HomeBleCardPhase.loginRequired;
 
-    return LiquidGlassLayer(
+    final Widget card = LiquidGlassLayer(
       useBackdropGroup: true,
       fake: true,
       child: AppLayeredGradientCard.scan(
@@ -294,6 +305,12 @@ final class _ScanCard extends StatelessWidget {
         ),
       ),
     );
+    if (exitAnimation == null) return card;
+    return FadeTransition(
+      // exitAnimation 0→1：不透明→透明，所以用 ReverseAnimation 驱动 opacity。
+      opacity: ReverseAnimation(exitAnimation!),
+      child: card,
+    );
   }
 
   /// 根据 phase 返回右侧状态图标。
@@ -316,13 +333,20 @@ final class _ScanCard extends StatelessWidget {
 /// 未连接型号入口网格；平铺展示支持的设备型号入口。
 final class _DeviceModelGrid extends StatelessWidget {
   /// 创建设备型号网格组件。
-  const _DeviceModelGrid({required this.models, required this.onTap});
+  const _DeviceModelGrid({
+    required this.models,
+    required this.onTap,
+    this.exitAnimation,
+  });
 
   /// 允许展示的设备型号列表。
   final List<DeviceModelSummary> models;
 
   /// 点击特定型号卡片的回调。
   final ValueChanged<DeviceModelSummary> onTap;
+
+  /// 连接成功时驱动两张卡片分别向左/右飞出的动画（0→1）。
+  final Animation<double>? exitAnimation;
 
   @override
   Widget build(BuildContext context) {
@@ -342,15 +366,44 @@ final class _DeviceModelGrid extends StatelessWidget {
             ),
           ]
         : models.take(2).map(_ModelPreview.fromModel).toList(growable: false);
+
+    // exitAnimation 非空时用 AnimatedBuilder 驱动卡片飞出——左卡向左、右卡向右。
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final fadeOut = exitAnimation != null
+        ? Tween<double>(begin: 1.0, end: 0.0).animate(exitAnimation!)
+        : null;
+
     return Row(
       children: [
         for (var i = 0; i < entries.length; i++) ...[
           if (i > 0) const SizedBox(width: 12),
           Expanded(
-            child: _ModelCard(
-              preview: entries[i],
-              onTap: () => onTap(entries[i].model),
-            ),
+            child: exitAnimation == null
+                ? _ModelCard(
+                    preview: entries[i],
+                    onTap: () => onTap(entries[i].model),
+                  )
+                : AnimatedBuilder(
+                    animation: exitAnimation!,
+                    builder: (context, child) => Transform.translate(
+                      // i==0 向左飞出，i==1 向右飞出；位移量随动画值 0→1 增大。
+                      offset: Offset(
+                        exitAnimation!.value *
+                            screenWidth *
+                            0.6 *
+                            (i == 0 ? -1 : 1),
+                        0,
+                      ),
+                      child: FadeTransition(
+                        opacity: fadeOut!,
+                        child: child,
+                      ),
+                    ),
+                    child: _ModelCard(
+                      preview: entries[i],
+                      onTap: () => onTap(entries[i].model),
+                    ),
+                  ),
           ),
         ],
       ],

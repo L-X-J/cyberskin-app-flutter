@@ -4,7 +4,6 @@ import 'dart:math' as math;
 
 import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart';
 import 'package:get/get.dart';
 
 import '../../../../app/app_routes.dart';
@@ -16,9 +15,12 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_image.dart';
 import '../../../../core/widgets/app_layered_gradient_card.dart';
 import '../../../../core/widgets/app_liquid_glass_button.dart';
+import '../../../device/data/cyberskin_ble_runtime_coordinator.dart';
+import '../../../device/domain/connected_device_state.dart';
 import '../../../device/domain/device.dart';
 import '../../../device/presentation/device_home_controller.dart';
 import '../../../device/presentation/device_manual_route_arguments.dart';
+import '../widgets/home_shared_widgets.dart';
 
 /// 设备标签页的可嵌入内容体，可在独立路由或首页 Shell 中复用。
 ///
@@ -95,7 +97,7 @@ final class DeviceBodyContent extends StatelessWidget {
   }
 }
 
-/// 已连接设备页的滚动内容，按设备列表顺序保留多个设备的可见性。
+/// 已连接设备页的滚动内容；业务上同一时刻只允许一台设备连接，始终取列表首项渲染。
 final class _DeviceContent extends StatelessWidget {
   const _DeviceContent({
     required this.devices,
@@ -127,161 +129,199 @@ final class _DeviceContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = topPaddingOverride ?? topInset + 34;
-    return LiquidGlassLayer(
-      fake: true,
-      useBackdropGroup: true,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppColors.surfaceDark,
-          gradient: RadialGradient(
-            center: Alignment(0.9, 0.24),
-            radius: 1.1,
-            colors: [Color(0xFF020202), Color(0xFF101030), Color(0xFF25163B)],
-            stops: [0, 0.55, 1],
-          ),
-        ),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(24, topPadding, 24, bottomInset),
-          children: [
-            if (pending != null) ...[
-              _NearbyDeviceCard(
-                device: pending!,
-                onConfirm: onConfirmDiscovery,
-                onDismiss: onDismissDiscovery,
-              ),
-              const SizedBox(height: 18),
-            ],
-            // 独立路由（/device）时渲染自有标题区；首页 Shell 模式下由覆层共享 Header 代替。
-            if (topPaddingOverride == null) ...[
-              _DeviceHeader(onProfile: onProfile),
-              const SizedBox(height: 28),
-            ],
-            for (var index = 0; index < devices.length; index++) ...[
-              if (index > 0) const SizedBox(height: 28),
-              _DeviceSection(device: devices[index]),
-            ],
-            if (failure != null) ...[
-              const SizedBox(height: 12),
-              AppInlineHint(
-                icon: Icons.sync_problem_outlined,
-                text: failure!,
-                onTap: onRetry,
-              ),
-            ],
-            if (isLoading) ...[
-              const SizedBox(height: 14),
-              const LinearProgressIndicator(minHeight: 2),
-            ],
+    return HomeBackground(
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(24, topPadding, 24, bottomInset),
+        children: [
+          // if (pending != null) ...[
+          //   _NearbyDeviceCard(
+          //     device: pending!,
+          //     onConfirm: onConfirmDiscovery,
+          //     onDismiss: onDismissDiscovery,
+          //   ),
+          //   const SizedBox(height: 18),
+          // ],
+          // // 独立路由（/device）时渲染自有标题区；首页 Shell 模式下由覆层共享 Header 代替。
+          // if (topPaddingOverride == null) ...[
+          //   _DeviceHeader(onProfile: onProfile),
+          //   const SizedBox(height: 28),
+          // ],
+          // 业务上同一时刻只允许一台设备连接，取列表首项渲染。
+          if (devices.isNotEmpty) _DeviceSection(device: devices.first),
+          if (failure != null) ...[
+            const SizedBox(height: 12),
+            AppInlineHint(
+              icon: Icons.sync_problem_outlined,
+              text: failure!,
+              onTap: onRetry,
+            ),
           ],
-        ),
+          if (isLoading) ...[
+            const SizedBox(height: 14),
+            const LinearProgressIndicator(minHeight: 2),
+          ],
+        ],
       ),
     );
   }
 }
 
-/// 页面标题区和用户资料入口。
-final class _DeviceHeader extends StatelessWidget {
-  const _DeviceHeader({required this.onProfile});
-
-  final VoidCallback onProfile;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('My device', style: AppTypography.pageTitle),
-              SizedBox(height: 4),
-              Text(
-                'Good evening, stay relaxed',
-                style: TextStyle(
-                  fontSize: AppTypography.size16,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        AppLiquidGlassButton(
-          label: 'Profile',
-          variant: AppLiquidGlassButtonVariant.translucent,
-          width: 50,
-          height: 50,
-          borderRadius: 25,
-          onPressed: onProfile,
-          child: AppImage.load(
-            'assets/images/home/go_user_profile.png',
-            width: 50,
-            height: 50,
-            semanticLabel: 'Profile',
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// 单个设备的首页内容，所有设备文案和颜色来自 [Device]。
-final class _DeviceSection extends StatelessWidget {
+/// 挂载时播放错帧入场动画：顶部卡旋转落入，下方卡片依次淡入。
+final class _DeviceSection extends StatefulWidget {
   const _DeviceSection({required this.device});
 
   final Device device;
 
   @override
+  State<_DeviceSection> createState() => _DeviceSectionState();
+}
+
+final class _DeviceSectionState extends State<_DeviceSection>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entrance = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+
+  // 顶部设备卡：淡入 + 绕 X 轴翻转落入（类似卡片从仰视角翻转到正面的效果）。
+  late final Animation<double> _heroFade = CurvedAnimation(
+    parent: _entrance,
+    curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
+  );
+  // 绕 X 轴翻转：从 -0.35π（约 -63°，卡片背面朝向用户）到 0（正面）。
+  late final Animation<double> _heroFlip =
+      Tween<double>(begin: -0.35 * math.pi, end: 0.0).animate(
+        CurvedAnimation(
+          parent: _entrance,
+          curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
+        ),
+      );
+
+  // 功能入口行、训练卡、广告卡依次渐入。
+  late final Animation<double> _cardsFade = CurvedAnimation(
+    parent: _entrance,
+    curve: const Interval(0.2, 0.7, curve: Curves.easeOut),
+  );
+  late final Animation<double> _trainingFade = CurvedAnimation(
+    parent: _entrance,
+    curve: const Interval(0.35, 0.8, curve: Curves.easeOut),
+  );
+  late final Animation<double> _adFade = CurvedAnimation(
+    parent: _entrance,
+    curve: const Interval(0.45, 0.9, curve: Curves.easeOut),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _entrance.forward();
+  }
+
+  @override
+  void dispose() {
+    _entrance.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final device = widget.device;
     final modelId = int.tryParse(device.model.trim());
+    // coordinator 是 GetxService，全局唯一。connectedDevice 用 Obx 订阅，
+    // 确保连接设备视图刷新（包括首次 setConnectedDevice）时 hero 卡能收到最新对象。
+    final coordinator = Get.isRegistered<CyberskinBleRuntimeCoordinator>()
+        ? Get.find<CyberskinBleRuntimeCoordinator>()
+        : null;
     return Column(
       children: [
-        _ConnectedDeviceHero(device: device, modelId: modelId),
-        const SizedBox(height: 16),
-        const Row(
-          children: [
-            Expanded(
-              child: _FeatureCard(
-                title: 'Free control\nmode',
-                colors: [Color(0xFFE4472A), Color(0xFF8E171A)],
-                preview: _FreeControlPreview(),
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _FeatureCard(
-                title: 'Customrhythm',
-                colors: [Color(0xFFBEF77A), Color(0xFF4B9C58)],
-                preview: _RhythmPreview(),
-              ),
-            ),
-          ],
+        // 顶部设备卡：绕 X 轴翻转落入（卡片从仰视角翻转到正面）+ 淡入。
+        AnimatedBuilder(
+          animation: _heroFlip,
+          builder: (context, child) {
+            return Transform(
+              alignment: Alignment.center,
+              // perspective：让远端收缩，模拟 3D 深度感。
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.0008)
+                ..rotateX(_heroFlip.value),
+              child: FadeTransition(opacity: _heroFade, child: child),
+            );
+          },
+          child: coordinator != null
+              ? Obx(
+                  () => _ConnectedDeviceHero(
+                    device: device,
+                    modelId: modelId,
+                    connectedState: coordinator.connectedDevice.value,
+                  ),
+                )
+              : _ConnectedDeviceHero(device: device, modelId: modelId),
         ),
         const SizedBox(height: 16),
-        const _TrainingPlaceholderCard(),
+        // 功能入口行：淡入。
+        FadeTransition(
+          opacity: _cardsFade,
+          child: const Row(
+            children: [
+              Expanded(
+                child: _FeatureCard(
+                  title: 'Free control\nmode',
+                  colors: [Color(0xFFE4472A), Color(0xFF8E171A)],
+                  preview: _FreeControlPreview(),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _FeatureCard(
+                  title: 'Customrhythm',
+                  colors: [Color(0xFFBEF77A), Color(0xFF4B9C58)],
+                  preview: _RhythmPreview(),
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
-        const _AdvertisementPlaceholderCard(),
+        // 训练卡：淡入。
+        FadeTransition(
+          opacity: _trainingFade,
+          child: const _TrainingPlaceholderCard(),
+        ),
+        const SizedBox(height: 16),
+        // 广告卡：淡入。
+        FadeTransition(
+          opacity: _adFade,
+          child: const _AdvertisementPlaceholderCard(),
+        ),
       ],
     );
   }
 }
 
 /// 已连接设备主卡，展示设备状态、电量、标签和说明书入口。
+///
+/// 静态元数据（名称、型号、标签）来自 [device]；电量和状态从 [connectedState]
+/// 的响应式字段读取，为 null 时退化为 [device] 的快照值。
 final class _ConnectedDeviceHero extends StatelessWidget {
-  const _ConnectedDeviceHero({required this.device, required this.modelId});
+  const _ConnectedDeviceHero({
+    required this.device,
+    required this.modelId,
+    this.connectedState,
+  });
 
   final Device device;
   final int? modelId;
 
+  /// 连接设备的实时运行时视图；为 null 时使用 [device] 的静态快照数据。
+  final ConnectedDeviceState? connectedState;
+
   @override
   Widget build(BuildContext context) {
-    final baseColor = _parseColor(device.cardColor) ?? const Color(0xFF5E185F);
     final manualEnabled = modelId != null;
-    return AppLayeredGradientCard(
+    return AppLayeredGradientCard.scan(
       height: 179,
-      baseColor: baseColor,
-      topGradientColors: const [Colors.black, Color(0xFFC95FD0)],
       child: Stack(
         children: [
           Padding(
@@ -318,11 +358,26 @@ final class _ConnectedDeviceHero extends StatelessWidget {
                 const Spacer(),
                 Row(
                   children: [
-                    _CompactGlassButton(
-                      label: '${device.batteryPercent ?? '--'}%',
-                      icon: Icons.battery_6_bar_rounded,
-                      onPressed: () {},
-                    ),
+                    // 电量标签：优先使用实时 Rx 字段，退化为 Device 快照值。
+                    if (connectedState != null)
+                      Obx(() {
+                        final level = connectedState!.batteryLevel.value;
+                        final isCharging = connectedState!.isCharging.value;
+                        final label = level >= 0
+                            ? '$level%${isCharging ? ' ⚡' : ''}'
+                            : '--';
+                        return _CompactGlassButton(
+                          label: label,
+                          icon: Icons.battery_6_bar_rounded,
+                          onPressed: () {},
+                        );
+                      })
+                    else
+                      _CompactGlassButton(
+                        label: '${device.batteryPercent ?? '--'}%',
+                        icon: Icons.battery_6_bar_rounded,
+                        onPressed: () {},
+                      ),
                     const SizedBox(width: 8),
                     _CompactGlassButton(
                       label: 'Power',
@@ -907,17 +962,6 @@ final class _DeviceErrorState extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 将后台颜色字段转换为 Flutter 颜色；非法值回退到页面默认表面。
-Color? _parseColor(String? hex) {
-  final clean = hex?.trim().replaceFirst(RegExp(r'^#'), '');
-  if (clean == null ||
-      !RegExp(r'^(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$').hasMatch(clean)) {
-    return null;
-  }
-  final value = int.tryParse(clean.length == 6 ? 'FF$clean' : clean, radix: 16);
-  return value == null ? null : Color(value);
 }
 
 /// 将后台逗号标签转换为可展示的不可变列表。

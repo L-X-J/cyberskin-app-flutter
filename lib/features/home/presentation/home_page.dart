@@ -24,18 +24,39 @@ final class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-final class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+final class _HomePageState extends State<HomePage>
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   final HomeController _controller = Get.find<HomeController>();
   final GlobalKey _headerKey = GlobalKey();
 
   // 共享 HomeHeader 覆层测量出的高度；首帧为 0，布局完成后回填真实值。
   double _headerHeight = 0;
 
+  // 连接成功时驱动 HomeDisconnectedView 退场的控制器（扫描卡淡出、型号卡飞出）。
+  late final AnimationController _disconnectedExit = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+  );
+
+  // 监听连接状态变化的 GetX Worker，dispose 时必须取消。
+  Worker? _statusWorker;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureHeader());
     WidgetsBinding.instance.addObserver(this);
+    // 监听连接状态：连接成功时前进，断开时复位，使退场动画可重复播放。
+    _statusWorker = ever(_controller.deviceStatus, (status) {
+      final isConnected =
+          status == DeviceConnectionStatus.connected ||
+          status == DeviceConnectionStatus.lowBattery;
+      if (isConnected) {
+        _disconnectedExit.forward();
+      } else {
+        _disconnectedExit.reset();
+      }
+    });
   }
 
   @override
@@ -46,6 +67,8 @@ final class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _statusWorker?.dispose();
+    _disconnectedExit.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -139,6 +162,7 @@ final class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       onProfile: _controller.openProfile,
                       onReload: _controller.reload,
                       topHeaderPadding: _headerHeight,
+                      exitAnimation: _disconnectedExit,
                     ),
             ),
             // 共享顶部 Header：切换到 Video 时从顶部折叠上滑隐藏，回到 Device 时展开下滑显示。
