@@ -39,6 +39,17 @@ final class DeviceHomeController extends GetxController {
     super.onReady();
     unawaited(load());
     unawaited(_bleCoordinator?.loadProfilesAndStart());
+    // BLE 连接可能在 load() 之后才建立；监听连接状态变化，
+    // 有设备连接时补一次同步，确保 connectedDevice 视图不因时序差而缺失。
+    final coordinator = _bleCoordinator;
+    if (coordinator != null) {
+      ever(coordinator.connectionStates, (_) {
+        // 仅在设备列表已加载且存在已连接设备时同步，避免覆盖尚未完成的首次加载。
+        if (coordinator.hasConnectedDevice && devices.isNotEmpty) {
+          _syncConnectedDevice(devices.toList(growable: false));
+        }
+      });
+    }
   }
 
   /// 加载当前设备列表；重复调用期间会忽略并发加载请求。

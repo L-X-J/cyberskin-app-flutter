@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -46,8 +47,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   /// 当前连接设备的完整运行时视图；连接后由 [DeviceHomeController] 赋值，断开时清为 null。
   ///
   /// Obx 组件可直接订阅此字段或其内部各遥测字段，实现点位级刷新。
-  final Rxn<ConnectedDeviceState> connectedDevice =
-      Rxn<ConnectedDeviceState>();
+  final Rxn<ConnectedDeviceState> connectedDevice = Rxn<ConnectedDeviceState>();
   StreamSubscription<BleEvent>? _events;
   Map<int, BleDeviceProfile> _profilesByModel = <int, BleDeviceProfile>{};
   bool _profilesConfigured = false;
