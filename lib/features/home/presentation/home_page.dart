@@ -58,6 +58,7 @@ final class HomePage extends GetView<HomeController> {
                   dashboard: controller.dashboard.value,
                   isLoading: controller.isLoading.value,
                   failureMessage: controller.failure.value?.message,
+                  bindFailureMessage: controller.bindFailureMessage.value,
                   bleCardState: bleCardState,
                   onPrimaryAction: () =>
                       unawaited(controller.handleBlePrimaryAction()),
@@ -104,6 +105,7 @@ final class _HomeBody extends StatelessWidget {
     required this.dashboard,
     required this.isLoading,
     required this.failureMessage,
+    this.bindFailureMessage,
     required this.bleCardState,
     required this.onPrimaryAction,
     required this.onStopDiscovery,
@@ -124,6 +126,7 @@ final class _HomeBody extends StatelessWidget {
   final HomeDashboard dashboard;
   final bool isLoading;
   final String? failureMessage;
+  final String? bindFailureMessage;
   final HomeBleCardState bleCardState;
   final VoidCallback onPrimaryAction;
   final VoidCallback onStopDiscovery;
@@ -157,6 +160,7 @@ final class _HomeBody extends StatelessWidget {
             dashboard: dashboard,
             isLoading: isLoading,
             failureMessage: failureMessage,
+            bindFailureMessage: bindFailureMessage,
             isAuthenticated: isAuthenticated,
             bleCardState: bleCardState,
             onPrimaryAction: onPrimaryAction,

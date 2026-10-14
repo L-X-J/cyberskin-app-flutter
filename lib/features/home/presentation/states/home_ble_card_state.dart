@@ -35,6 +35,9 @@ enum HomeBleCardPhase {
 
   /// 最近一次连接失败。
   connectionFailed,
+
+  /// 设备绑定被服务端拒绝（如型号未发布）。
+  bindFailed,
 }
 
 /// 顶部蓝牙卡片的不可变展示状态和英文文案。
@@ -67,9 +70,13 @@ final class HomeBleCardState {
       );
 
   /// 根据业务阶段生成英文展示状态。
+  ///
+  /// [errorMessage] 可选的服务端或协调器错误消息；仅 [HomeBleCardPhase.bindFailed]
+  /// 等需要展示动态原因的阶段会使用它替换默认描述文案。
   factory HomeBleCardState.fromPhase(
     HomeBleCardPhase phase, {
     required bool adapterOn,
+    String? errorMessage,
   }) {
     return switch (phase) {
       HomeBleCardPhase.checking => const HomeBleCardState.checking(),
@@ -179,6 +186,19 @@ final class HomeBleCardState {
         title: 'Could not connect',
         description: 'Move closer to your device and try again. Bluetooth is needed for a stable connection.',
         actionLabel: 'Try again',
+        actionIcon: Icons.refresh,
+        showSpinner: false,
+        showStop: false,
+        actionEnabled: true,
+      ),
+      HomeBleCardPhase.bindFailed => HomeBleCardState(
+        phase: phase,
+        adapterOn: adapterOn,
+        title: 'Device not registered',
+        description: errorMessage?.isNotEmpty == true
+            ? errorMessage!
+            : 'The device connected but could not be linked to your account. Please try again or contact support.',
+        actionLabel: 'Scan again',
         actionIcon: Icons.refresh,
         showSpinner: false,
         showStop: false,

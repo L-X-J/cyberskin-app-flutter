@@ -48,6 +48,8 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   Future<void>? _startFuture;
   Future<void>? _discoveryFuture;
   int _sessionGeneration = 0;
+  // App 主动发起断开的设备 ID 集合，用于区分设备侧断开与 App 侧断开。
+  final Set<String> _intentionalDisconnects = <String>{};
 
   /// 初始化 BLE 适配器状态，但不读取账号数据或启动设备扫描。
   ///
@@ -256,6 +258,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     _sessionGeneration++;
     await stopDiscovery();
     pendingDiscovery.value = null;
+    _intentionalDisconnects.clear();
     _profilesByModel = <int, BleDeviceProfile>{};
     _profilesConfigured = false;
     scanCompleted.value = false;
@@ -294,7 +297,12 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
       ),
     );
     if (result.isFailure) {
+      // 绑定被服务端拒绝；标记为预期断开，避免触发设备侧断开的重扫逻辑。
+      _intentionalDisconnects.add(device.remoteId);
       await manager.disconnect(device.remoteId);
+      failureCode.value = 'bind_failed';
+      failureMessage.value =
+          result.failureOrNull?.message ?? 'Device could not be registered.';
       return false;
     }
     await manager.rememberDevice(device.profile.profileKey, device.remoteId);
@@ -361,6 +369,16 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
         if (!isKnown) pendingDiscovery.value = device;
       case BleConnectionChanged(:final remoteId, :final state):
         connectionStates[remoteId] = state;
+        if (state == BleConnectionState.disconnected ||
+            state == BleConnectionState.failed) {
+          final wasIntentional = _intentionalDisconnects.remove(remoteId);
+          if (!wasIntentional) {
+            // 设备侧主动断开或连接丢失：清除待确认设备，回到可重扫状态。
+            pendingDiscovery.value = null;
+            scanCompleted.value = false;
+            unawaited(_startDiscovery());
+          }
+        }
       case BleRuntimeChanged(:final remoteId, :final status):
         runtime[remoteId] = status;
       case BleFailure(:final code, :final message):

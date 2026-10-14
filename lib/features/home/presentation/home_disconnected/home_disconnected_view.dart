@@ -24,6 +24,7 @@ final class HomeDisconnectedView extends StatelessWidget {
     required this.dashboard,
     required this.isLoading,
     this.failureMessage,
+    this.bindFailureMessage,
     required this.isAuthenticated,
     required this.bleCardState,
     required this.onPrimaryAction,
@@ -53,6 +54,9 @@ final class HomeDisconnectedView extends StatelessWidget {
 
   /// 扫描卡片展示状态与 phase。
   final HomeBleCardState bleCardState;
+
+  /// 绑定失败时的服务端错误消息；非空时在扫描卡下方展示持久横幅。
+  final String? bindFailureMessage;
 
   /// 点击扫描卡主要动作按钮回调（根据阶段处理蓝牙开/权限/扫描/登录）。
   final VoidCallback onPrimaryAction;
@@ -117,6 +121,13 @@ final class HomeDisconnectedView extends StatelessWidget {
             onDismiss: onDismissDiscovery,
             onLogin: onLogin,
           ),
+          if (bindFailureMessage != null) ...[
+            const SizedBox(height: 10),
+            AppInlineHint(
+              icon: Icons.link_off,
+              text: bindFailureMessage!,
+            ),
+          ],
           const SizedBox(height: 16),
           _DeviceModelGrid(
             models: dashboard.deviceModels,
@@ -155,6 +166,7 @@ final class HomeDisconnectedView extends StatelessWidget {
       HomeBleCardPhase.noDevice => 'No device found, tap to try again',
       HomeBleCardPhase.connecting => 'Connecting to your device...',
       HomeBleCardPhase.connectionFailed => 'Connection failed, please retry',
+      HomeBleCardPhase.bindFailed => 'Device could not be linked to your account',
       HomeBleCardPhase.checking => 'Checking Bluetooth status...',
     };
   }
@@ -325,6 +337,7 @@ final class _ScanCard extends StatelessWidget {
     HomeBleCardPhase.noDevice => Icons.bluetooth_searching,
     HomeBleCardPhase.connecting => Icons.bluetooth_connected,
     HomeBleCardPhase.connectionFailed => Icons.sync_problem_outlined,
+    HomeBleCardPhase.bindFailed => Icons.link_off,
     HomeBleCardPhase.checking => Icons.bluetooth_searching,
   };
 }

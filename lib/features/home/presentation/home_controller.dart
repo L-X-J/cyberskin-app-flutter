@@ -58,6 +58,9 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   /// 最近一次可安全展示的加载错误。
   final Rxn<AppFailure> failure = Rxn<AppFailure>();
 
+  /// 最近一次绑定失败的服务端消息；与 BLE 卡片阶段解耦，用户主动重试时才清除。
+  final Rxn<String> bindFailureMessage = Rxn<String>();
+
   /// 首页一级内容区当前标签；切换不离开当前路由。
   final Rx<AppTab> selectedTab = AppTab.home.obs;
 
@@ -207,6 +210,8 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     }
     final coordinator = _bleCoordinator;
     if (coordinator == null) return;
+    // 用户主动发起新一轮扫描，清除上一次绑定失败的持久提示。
+    bindFailureMessage.value = null;
     await coordinator.loadProfilesAndStart();
     _syncBleStatus();
   }
@@ -222,10 +227,18 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     final coordinator = _bleCoordinator;
     final device = coordinator?.pendingDiscovery.value;
     if (coordinator == null || device == null) return;
+    bindFailureMessage.value = null;
     final connected = await coordinator.confirmAndConnect(device);
     _syncBleStatus();
     if (connected) {
       await load();
+    } else {
+      // bind 失败时把服务端消息持久保存到独立字段，与协调器 failureCode 解耦，
+      // 避免后续 profile reload 或扫描重启把错误文案清掉。
+      final serverMsg = coordinator.failureMessage.value;
+      if (serverMsg != null && serverMsg.isNotEmpty) {
+        bindFailureMessage.value = serverMsg;
+      }
     }
   }
 
@@ -280,6 +293,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
       case HomeBleCardPhase.ready:
       case HomeBleCardPhase.noDevice:
       case HomeBleCardPhase.connectionFailed:
+      case HomeBleCardPhase.bindFailed:
         if (!isAuthenticated) {
           openLogin();
         } else {
@@ -391,6 +405,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     bleCardState.value = HomeBleCardState.fromPhase(
       phase,
       adapterOn: adapter == 'on',
+      errorMessage: coordinator.failureMessage.value,
     );
   }
 
@@ -419,6 +434,9 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     if (coordinator.isConnecting) return HomeBleCardPhase.connecting;
     if (pending != null) return HomeBleCardPhase.deviceFound;
     if (coordinator.isScanning.value) return HomeBleCardPhase.scanning;
+    if (failureCode == 'bind_failed') {
+      return HomeBleCardPhase.bindFailed;
+    }
     if (failureCode == 'connection_failed' ||
         failureCode == 'command_failed' ||
         failureCode == 'scan_failed' ||
