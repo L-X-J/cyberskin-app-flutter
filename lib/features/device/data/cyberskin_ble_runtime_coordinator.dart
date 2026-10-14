@@ -291,8 +291,15 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
       UserDeviceBindRequest(deviceModelId: device.profile.modelId),
     );
     if (result.isFailure) {
-      await manager.disconnect(device.remoteId);
-      return false;
+      // A business-layer rejection (e.g. "该型号已绑定") means the account
+      // already owns this device model — treat it as a successful bind and
+      // keep the BLE connection. Only disconnect when the registration state
+      // is genuinely unknown (network error, auth failure, etc.).
+      final failure = result.failureOrNull;
+      if (failure?.code != FailureCode.business) {
+        await manager.disconnect(device.remoteId);
+        return false;
+      }
     }
     await manager.rememberDevice(device.profile.profileKey, device.remoteId);
     return true;
