@@ -222,6 +222,7 @@ final class UserDeviceRemoteRepository extends BaseRemoteRepository
         AppApiOperation.bindUserDevice,
         body: <String, Object?>{
           'deviceModelId': request.deviceModelId,
+          'deviceUid': request.deviceUid,
           if (request.customName != null) 'customName': request.customName,
         },
         decode: (data) => _decodeUserDevice(ApiJson.object(data)),
