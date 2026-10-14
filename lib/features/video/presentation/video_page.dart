@@ -1,4 +1,5 @@
 // 视频标签页：提供 Official、Browser、Local 三种内容来源状态。
+import 'package:cyberskin_app/core/extensions/ui_ext.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -264,7 +265,7 @@ final class _VideoTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      margin: EdgeInsets.fromLTRB(24, 16.statusBarHeight, 24, 0),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         borderRadius: AppRadius.pill,

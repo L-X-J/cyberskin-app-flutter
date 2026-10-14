@@ -38,6 +38,7 @@ final class HomeDisconnectedView extends StatelessWidget {
     required this.onLogin,
     required this.onProfile,
     this.onReload,
+    this.topHeaderPadding,
   });
 
   /// 主页冻结可渲染数据（含设备型号列表与推荐内容）。
@@ -91,27 +92,21 @@ final class HomeDisconnectedView extends StatelessWidget {
   /// 错误重试或重新加载数据回调。
   final VoidCallback? onReload;
 
+  /// 首页 Shell 共享 HomeHeader 所占高度；传入后 ListView 顶部跳过该区域，
+  /// 自身不再渲染 HomeHeader。为 null 时作为独立视图渲染自有标题区。
+  final double? topHeaderPadding;
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = AppScaffold.contentBottomPaddingOf(
       context,
       showBottomNavigation: false,
     );
+    final topPadding = topHeaderPadding ?? Get.mediaQuery.viewPadding.top + 28;
     return HomeBackground(
       child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          24,
-          Get.mediaQuery.viewPadding.top + 28,
-          24,
-          bottomInset,
-        ),
+        padding: EdgeInsets.fromLTRB(24, topPadding, 24, bottomInset),
         children: [
-          HomeHeader(
-            title: 'Add Device',
-            subtitle: _resolveSubtitle(),
-            onProfile: isAuthenticated ? onProfile : onLogin,
-          ),
-          const SizedBox(height: 28),
           _ScanCard(
             state: bleCardState,
             pending: pendingDiscovery,
@@ -123,10 +118,7 @@ final class HomeDisconnectedView extends StatelessWidget {
           ),
           if (bindFailureMessage != null) ...[
             const SizedBox(height: 10),
-            AppInlineHint(
-              icon: Icons.link_off,
-              text: bindFailureMessage!,
-            ),
+            AppInlineHint(icon: Icons.link_off, text: bindFailureMessage!),
           ],
           const SizedBox(height: 16),
           _DeviceModelGrid(
@@ -148,27 +140,6 @@ final class HomeDisconnectedView extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// 根据 BLE 阶段与用户认证状态确定头部引导文案。
-  String _resolveSubtitle() {
-    if (!isAuthenticated) {
-      return 'Log in to discover and pair devices';
-    }
-    return switch (bleCardState.phase) {
-      HomeBleCardPhase.bluetoothOff => 'Please turn on Bluetooth',
-      HomeBleCardPhase.permissionRequired => 'Bluetooth permission required',
-      HomeBleCardPhase.unavailable => 'Bluetooth is unavailable',
-      HomeBleCardPhase.loginRequired => 'Log in to connect your device',
-      HomeBleCardPhase.ready => 'Turn on Bluetooth and keep device nearby',
-      HomeBleCardPhase.scanning => 'Searching for nearby Cyberskin devices...',
-      HomeBleCardPhase.deviceFound => 'Cyberskin device found nearby',
-      HomeBleCardPhase.noDevice => 'No device found, tap to try again',
-      HomeBleCardPhase.connecting => 'Connecting to your device...',
-      HomeBleCardPhase.connectionFailed => 'Connection failed, please retry',
-      HomeBleCardPhase.bindFailed => 'Device could not be linked to your account',
-      HomeBleCardPhase.checking => 'Checking Bluetooth status...',
-    };
   }
 
   /// 构建加载失败提示横幅。
