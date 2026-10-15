@@ -70,11 +70,7 @@ final class FreeControlPage extends GetView<FreeControlController> {
                 _buildHeader(context),
                 const SizedBox(height: 20),
 
-                // 预设切换调试栏（精确对齐你上传的 5 张设计图）
-                _buildPresetSwitcher(),
-                const SizedBox(height: 16),
-
-                // 核心：基于后端 (row, col, rows, cols) 双列网格排版系统
+                // 核心：完全通过后端下发的布局数据 (modules: row, col, variant) 动态排列组件
                 Obx(() {
                   if (controller.isLoading.value) {
                     return const Center(
@@ -158,76 +154,6 @@ final class FreeControlPage extends GetView<FreeControlController> {
           );
         }),
       ],
-    );
-  }
-
-  /// 快速切换布局样式的工具条（对应设计图中 5 种常见排列形式）
-  Widget _buildPresetSwitcher() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '双列网格排版预设 (对齐设计图):',
-            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-          ),
-          const SizedBox(height: 6),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Obx(() {
-              final active = controller.currentPreset.value;
-              return Row(
-                children: [
-                  _buildPresetButton(1, '图1: 双列大滑块', active == 1),
-                  const SizedBox(width: 8),
-                  _buildPresetButton(2, '图2: 横向条排列', active == 2),
-                  const SizedBox(width: 8),
-                  _buildPresetButton(3, '图3: 双列垂直+吮吸', active == 3),
-                  const SizedBox(width: 8),
-                  _buildPresetButton(4, '图4: 4段水平变速条', active == 4),
-                  const SizedBox(width: 8),
-                  _buildPresetButton(5, '图5: 模式大卡片', active == 5),
-                ],
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPresetButton(int index, String label, bool isSelected) {
-    return InkWell(
-      onTap: () => controller.applyMockPreset(index),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFFD13BD8).withValues(alpha: 0.45)
-              : Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFFD13BD8)
-                : Colors.white.withValues(alpha: 0.12),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
     );
   }
 }

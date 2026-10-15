@@ -78,7 +78,7 @@ final class _HomePageState extends State<HomePage>
     if (box == null || !box.hasSize) return;
     final height = box.size.height;
     if (height > 0 && height != _headerHeight) {
-      setState(() => _headerHeight = height);
+      setState(() => _headerHeight = height + 10);
     }
   }
 
@@ -179,7 +179,7 @@ final class _HomePageState extends State<HomePage>
                   curve: showHeader ? Curves.easeOutCubic : Curves.easeInCubic,
                   child: Padding(
                     key: _headerKey,
-                    padding: EdgeInsets.fromLTRB(24, topInset + 28, 24, 20),
+                    padding: EdgeInsets.fromLTRB(24, topInset, 24, 10),
                     child: HomeHeader(
                       title: headerTitle,
                       subtitle: headerSubtitle,
