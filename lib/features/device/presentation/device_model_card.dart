@@ -6,7 +6,7 @@ import '../../../core/extensions/string_extensions.dart';
 import '../../../core/theme/app_layered_gradient_style.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/widgets/app_image.dart';
-import '../../../core/widgets/app_layered_gradient_card.dart';
+import '../../../core/widgets/app_img_group_80_card.dart';
 import '../../../core/widgets/app_liquid_glass_button.dart';
 
 /// 设备型号卡片的尺寸和内容变体。
@@ -68,8 +68,8 @@ final class DeviceModelCard extends StatelessWidget {
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 220),
         opacity: compact && !selected ? 0.82 : 1,
-        child: AppLayeredGradientCard(
-          baseColor: surfaceColor,
+        child: AppImgGroup80Card(
+          backgroundColor: surfaceColor,
           height: compact ? 114 : 170,
           borderRadius: compact ? BorderRadius.circular(30) : AppRadius.card,
           child: InkWell(

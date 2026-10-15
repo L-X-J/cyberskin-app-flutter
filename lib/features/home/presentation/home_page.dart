@@ -131,6 +131,7 @@ final class _HomePageState extends State<HomePage>
                   ? _ConnectedBody(
                       key: const ValueKey('home-connected'),
                       selectedTab: selectedTab,
+                      homeController: _controller,
                       videoController: videoController,
                       topInset: topInset,
                       headerHeight: _headerHeight,
@@ -233,6 +234,7 @@ final class _ConnectedBody extends StatelessWidget {
   const _ConnectedBody({
     super.key,
     required this.selectedTab,
+    required this.homeController,
     required this.videoController,
     required this.topInset,
     required this.headerHeight,
@@ -240,6 +242,7 @@ final class _ConnectedBody extends StatelessWidget {
 
   final AppTab selectedTab;
   final VideoController videoController;
+  final HomeController homeController;
   final double topInset;
 
   // 首页共享 HomeHeader 覆层测量高度；首帧为 0，内容会暂时上移再回填。
@@ -260,6 +263,8 @@ final class _ConnectedBody extends StatelessWidget {
           topInset: topInset,
           bottomInset: bottomInset,
           topPaddingOverride: headerHeight,
+          onPowerOff: () =>
+              unawaited(homeController.confirmPowerOffAndUnbind()),
         ),
         VideoTabContent(controller: videoController),
       ],

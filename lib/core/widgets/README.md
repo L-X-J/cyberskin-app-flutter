@@ -10,6 +10,7 @@ Feature 的组件留在对应 `presentation` 目录；不得为减少少量重�
 - `app_liquid_glass_button.dart`：统一胶囊液态玻璃按钮，封装 `flutter_liquid_glass_plus` 的玻璃背景和按压形变、变体内辉光、加载/禁用状态及键盘操作。
 - `app_image.dart`：统一资源、本地文件和网络图片的加载状态、占位展示、预加载与图片预览。
 - `app_lottie_background.dart`：统一页面 Lottie 背景的铺满方式、底色、播放倍速与无限循环策略。
+- `app_img_group_80_card.dart`：使用 Canvas 绘制可配置颜色的 `img_group_80_2.svg` 背景卡片，供设备型号和模式入口复用。
 - `app_layered_gradient_card.dart`：统一双层渐变卡片的底色、内阴影、径向渐变和模糊图层顺序。
 
 `AppLottieBackground` 默认加载 `init_bg`，使用 `BoxFit.cover` 和 App 统一背景色。调用方

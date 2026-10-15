@@ -14,9 +14,11 @@ import '../../features/content/domain/repositories/content_repository.dart';
 import '../../features/control/presentation/control_session_controller.dart';
 import '../../features/control/data/ble_device_command_repository.dart';
 import '../../features/control/domain/device_command_repository.dart';
+import '../../features/device/data/cached_user_device_repository.dart';
 import '../../features/device/data/device_api_repositories.dart';
 import '../../features/device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../features/device/data/connected_device_repository.dart';
+import '../../features/device/data/user_device_cache.dart';
 import '../../features/device/domain/device_repository.dart';
 import '../../features/device/domain/repositories/device_catalog_repository.dart';
 import '../../features/device/domain/repositories/user_device_repository.dart';
@@ -85,9 +87,12 @@ final class AppBinding extends Bindings {
       permanent: true,
     );
     Get.put<UserDeviceRepository>(
-      UserDeviceRemoteRepository(
-        transport: transport,
-        sessionStore: sessionStore,
+      CachedUserDeviceRepository(
+        remote: UserDeviceRemoteRepository(
+          transport: transport,
+          sessionStore: sessionStore,
+        ),
+        cache: SharedPreferencesUserDeviceCache(),
       ),
       permanent: true,
     );

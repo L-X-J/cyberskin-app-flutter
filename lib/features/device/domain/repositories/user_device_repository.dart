@@ -68,4 +68,10 @@ abstract interface class UserDeviceRepository {
 
   /// 解绑一条用户设备记录。
   Future<Result<void>> unbind(int id);
+
+  /// 清除内存缓存；注销时由协调器调用，防止旧账号数据泄给新登录用户。
+  ///
+  /// 纯远端实现不持有缓存，此方法为 no-op；缓存装饰器覆盖此方法。
+  void invalidateCache() {}
 }
+

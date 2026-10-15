@@ -9,6 +9,7 @@ import '../../../app/app_routes.dart';
 import '../../../app/session_controller.dart';
 import '../../../app/widgets/app_scaffold.dart';
 import '../../../core/error/app_failure.dart';
+import '../../control/domain/device_command_repository.dart';
 import '../../content/domain/repositories/content_repository.dart';
 import '../../device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../device/domain/device.dart';
@@ -33,12 +34,14 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     TrainingRepository? trainingRepository,
     ContentRepository? contentRepository,
     CyberskinBleRuntimeCoordinator? bleCoordinator,
+    DeviceCommandRepository? deviceCommandRepository,
   }) : _deviceRepository = deviceRepository,
        _userDeviceRepository = userDeviceRepository,
        _deviceCatalogRepository = deviceCatalogRepository,
        _trainingRepository = trainingRepository,
        _contentRepository = contentRepository,
-       _bleCoordinator = bleCoordinator;
+       _bleCoordinator = bleCoordinator,
+       _deviceCommandRepository = deviceCommandRepository;
 
   final SessionController _session;
   final DeviceRepository? _deviceRepository;
@@ -47,6 +50,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   final TrainingRepository? _trainingRepository;
   final ContentRepository? _contentRepository;
   final CyberskinBleRuntimeCoordinator? _bleCoordinator;
+  final DeviceCommandRepository? _deviceCommandRepository;
   final List<Worker> _bleWorkers = <Worker>[];
 
   /// 聚合后的主页数据；替换快照而不是修改共享列表，避免部分更新闪烁。
@@ -68,6 +72,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   final Rx<HomeBleCardState> bleCardState = HomeBleCardState.checking().obs;
 
   bool _hadConnectedDevice = false;
+  bool _powerOffInProgress = false;
 
   /// 当前前端设备连接状态；由 BLE 事件同步到全局 SessionController。
   Rx<DeviceConnectionStatus> get deviceStatus => _session.deviceStatus;
@@ -313,6 +318,101 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
       return;
     }
     unawaited(Get.toNamed<void>(AppRoutes.profile));
+  }
+
+  /// 确认设备关机，等待设备响应后主动断开并解除当前用户绑定。
+  Future<void> confirmPowerOffAndUnbind() async {
+    if (_powerOffInProgress) return;
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('Turn off device?'),
+        content: const Text(
+          'The device will power off and disconnect from this account.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Turn off'),
+          ),
+        ],
+      ),
+      barrierDismissible: true,
+    );
+    if (confirmed != true) return;
+
+    final coordinator = _bleCoordinator;
+    final commandRepository = _deviceCommandRepository;
+    final boundDevice = dashboard.value.boundDevice;
+    final connectedState = coordinator?.connectedDevice.value;
+    final modelId = connectedState == null
+        ? boundDevice?.deviceModelId
+        : int.tryParse(connectedState.device.model.trim()) ??
+              boundDevice?.deviceModelId;
+    final bindingId = boundDevice?.id;
+    final remoteId = connectedState?.remoteId;
+    if (coordinator == null ||
+        commandRepository == null ||
+        modelId == null ||
+        bindingId == null ||
+        remoteId == null) {
+      _showPowerOffError('The connected device is not ready.');
+      return;
+    }
+
+    _powerOffInProgress = true;
+    try {
+      final commandResult = await commandRepository.send(
+        'power_off:off',
+        modelId: modelId,
+        remoteId: remoteId,
+      );
+      if (commandResult.isFailure) {
+        _showPowerOffError(
+          commandResult.failureOrNull?.message ??
+              'The device did not accept the power off command.',
+        );
+        return;
+      }
+
+      final responded = await _waitForPowerOffResponse(coordinator, remoteId);
+      if (!responded) {
+        _showPowerOffError('The device did not confirm that it is powering off.');
+        return;
+      }
+
+      await coordinator.disconnectIntentionally(remoteId);
+      await coordinator.forgetKnownDevice(modelId, remoteId);
+      final unbindResult = await _userDeviceRepository!.unbind(bindingId);
+      if (unbindResult.isFailure) {
+        _showPowerOffError(
+          unbindResult.failureOrNull?.message ??
+              'The device disconnected, but could not be unbound.',
+        );
+      }
+      await load();
+    } finally {
+      _powerOffInProgress = false;
+    }
+  }
+
+  Future<bool> _waitForPowerOffResponse(
+    CyberskinBleRuntimeCoordinator coordinator,
+    String remoteId,
+  ) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (DateTime.now().isBefore(deadline)) {
+      if (coordinator.isDeviceShuttingDown(remoteId)) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return coordinator.isDeviceShuttingDown(remoteId);
+  }
+
+  void _showPowerOffError(String message) {
+    Get.snackbar('Device action failed', message, snackPosition: SnackPosition.BOTTOM);
   }
 
   /// 监听 BLE 连接与运行态 Rx，确保主页状态和全局浮动控制条同步。

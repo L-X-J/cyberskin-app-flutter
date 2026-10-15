@@ -241,6 +241,10 @@ final class UserDeviceRemoteRepository extends BaseRemoteRepository
     pathParameters: <String, Object?>{'id': id},
   );
 
+  /// 纯远端实现不持有缓存，此方法为 no-op。
+  @override
+  void invalidateCache() {}
+
   /// 解码用户绑定记录及其关联型号摘要。
   UserDevice _decodeUserDevice(Map<String, dynamic> json) => UserDevice(
     id: ApiJson.integer(json, 'id'),

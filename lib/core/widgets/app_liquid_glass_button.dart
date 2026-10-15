@@ -40,6 +40,7 @@ final class AppLiquidGlassButton extends StatefulWidget {
     this.borderRadius,
     this.icon,
     this.leadingIcon,
+    this.leadingWidget,
     this.child,
     this.iconSize = 24,
     this.contentPadding = const EdgeInsets.symmetric(horizontal: 24),
@@ -56,7 +57,9 @@ final class AppLiquidGlassButton extends StatefulWidget {
   }) : assert(height >= 20),
        assert(iconSize > 0),
        assert(icon == null || child == null),
-       assert(leadingIcon == null || child == null);
+       assert(leadingIcon == null || child == null),
+       assert(leadingWidget == null || child == null),
+       assert(leadingIcon == null || leadingWidget == null);
 
   /// 按钮显示与无障碍名称。
   final String label;
@@ -106,6 +109,12 @@ final class AppLiquidGlassButton extends StatefulWidget {
 
   /// 文案左侧图标；与 [icon] 的纯图标模式互斥。
   final IconData? leadingIcon;
+
+  /// 文案左侧的自定义 Widget，优先级高于 [leadingIcon]，与 [icon]、[child] 互斥。
+  ///
+  /// 适用于需要自定义图标渲染（如带颜色的 SVG、动画图标）的紧凑按钮场景。
+  /// 宽度测量时按 [iconSize] 估算占位，调用方可通过 [width] 固定宽度以避免偏差。
+  final Widget? leadingWidget;
 
   /// 自定义按钮内容；用于仍需保留产品素材的液态玻璃小按钮。
   ///
@@ -164,7 +173,10 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.leadingIcon case final icon?) ...[
+            if (widget.leadingWidget case final lw?) ...[
+              lw,
+              const SizedBox(width: 6),
+            ] else if (widget.leadingIcon case final icon?) ...[
               Icon(
                 icon,
                 size: widget.iconSize,
@@ -261,6 +273,10 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
       );
 
   /// 紧凑文字按钮在 Row 等无界宽度中按内容定宽，并受最大宽度限制。
+  ///
+  /// 优先级：显式 [width] > [maxWidth]（直接使用，确保文字完整显示）> TextPainter 自适应。
+  /// TextPainter 路径仅在未指定 [width]/[maxWidth] 时启用，此时以测量值为准；
+  /// 调用方若遭遇字体加载时序差异导致的细微偏差，应改用 [width] 固定宽度。
   double _resolvedWidth(
     BuildContext context,
     BoxConstraints constraints,
@@ -274,10 +290,13 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
       textScaler: MediaQuery.textScalerOf(context),
       maxLines: 1,
     )..layout();
-    final leadingWidth = widget.leadingIcon == null ? 0 : widget.iconSize + 6;
+    final leadingWidth =
+        (widget.leadingIcon != null || widget.leadingWidget != null)
+        ? widget.iconSize + 6
+        : 0;
     final measuredWidth =
         textPainter.width.ceilToDouble() +
-        4 +
+        12 +
         leadingWidth +
         widget.contentPadding.horizontal;
     var resolved = measuredWidth;

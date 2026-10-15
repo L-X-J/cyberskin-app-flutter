@@ -33,19 +33,6 @@ enum DeviceConnectionStatus {
 
 /// 为设备连接状态提供可直接展示的界面文案。
 extension DeviceConnectionStatusLabel on DeviceConnectionStatus {
-  /// 应用界面展示的状态标签。
-  String get label => switch (this) {
-    DeviceConnectionStatus.disconnected => 'Disconnected',
-    DeviceConnectionStatus.connecting => 'Connecting',
-    DeviceConnectionStatus.connected => 'Connected',
-    DeviceConnectionStatus.notFound => 'Not found',
-    DeviceConnectionStatus.connectionFailed => 'Connection failed',
-    DeviceConnectionStatus.lowBattery => 'Low battery',
-    DeviceConnectionStatus.bluetoothOff => 'Bluetooth off',
-    DeviceConnectionStatus.bluetoothPermissionMissing => 'Permission required',
-    DeviceConnectionStatus.sessionLost => 'Connection lost',
-  };
-
   /// 产品定义的当前状态用户指引。
   String get guidance => switch (this) {
     DeviceConnectionStatus.disconnected => 'Tap to connect',

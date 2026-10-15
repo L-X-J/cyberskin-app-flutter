@@ -132,6 +132,7 @@ final class _DeviceContent extends StatelessWidget {
   final VoidCallback onConfirmDiscovery;
   final VoidCallback onDismissDiscovery;
   final VoidCallback onPowerOff;
+
   // 首页 Shell 已渲染共享 HomeHeader 时传入，跳过内部 _DeviceHeader 并调整顶部留白。
   final double? topPaddingOverride;
 
@@ -201,6 +202,7 @@ final class _DeviceSectionState extends State<_DeviceSection>
     parent: _entrance,
     curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
   );
+
   // 绕 X 轴翻转：从 -0.35π（约 -63°，卡片背面朝向用户）到 0（正面）。
   late final Animation<double> _heroFlip =
       Tween<double>(begin: -0.35 * math.pi, end: 0.0).animate(
@@ -286,14 +288,16 @@ final class _DeviceSectionState extends State<_DeviceSection>
                   title: 'Free control\nmode',
                   colors: const [Color(0xFFE4472A), Color(0xFF8E171A)],
                   onTap: () => unawaited(Get.toNamed(AppRoutes.freeControl)),
+                  preview: AppImage.load("control/img_group_15".assetsSvg),
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: _FeatureCard(
                   title: 'Customrhythm',
                   colors: [Color(0xFFBEF77A), Color(0xFF4B9C58)],
-                  preview: _RhythmPreview(),
+                  preview: AppImage.load("control/Group_5".assetsSvg),
+                  // preview: _RhythmPreview(),
                 ),
               ),
             ],
@@ -500,100 +504,48 @@ final class _FeatureCard extends StatelessWidget {
       onTap: onTap,
       child: AppImgGroup80Card(
         height: 170,
-        backgroundColor: colors.last,
+        backgroundColor: colors.first,
         accentColor: colors.first,
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 16, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 17, height: 1.15)),
-                const Spacer(),
-                if (preview != null)
-                  SizedBox(height: 66, width: double.infinity, child: preview),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 24,
-            right: 20,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.16),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-              ),
-              child: const SizedBox.square(
-                dimension: 20,
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  size: 16,
-                  color: AppColors.white80,
-                ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsetsGeometry.only(right: 30),
+                    child: Text(title, style: AppTypography.bodyMedium),
+                  ),
+                  const Spacer(),
+                  if (preview != null)
+                    SizedBox(
+                      height: 66,
+                      width: double.infinity,
+                      child: preview,
+                    ),
+                ],
               ),
             ),
-          ),
-        ],
+            Positioned(
+              right: 20,
+              top: 24,
+              child: AppLiquidGlassButton(
+                label: 'Open model',
+                icon: Icons.chevron_right,
+                onPressed: onTap,
+                variant: AppLiquidGlassButtonVariant.translucent,
+                iconSize: 16,
+                height: 20,
+                width: 20,
+                borderRadius: 10,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
-
-/// 自定义节奏入口的波形预览；只表达入口视觉，不承担真实节奏编辑状态。
-final class _RhythmPreview extends StatelessWidget {
-  const _RhythmPreview();
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _RhythmWavePainter());
-  }
-}
-
-/// 绘制与设计卡片一致的连续节奏曲线和当前位置标记。
-final class _RhythmWavePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..moveTo(0, size.height * 0.8)
-      ..cubicTo(
-        size.width * 0.15,
-        size.height * 0.22,
-        size.width * 0.28,
-        size.height * 0.2,
-        size.width * 0.43,
-        size.height * 0.55,
-      )
-      ..cubicTo(
-        size.width * 0.58,
-        size.height * 0.95,
-        size.width * 0.71,
-        size.height * 0.18,
-        size.width,
-        size.height * 0.72,
-      );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFFD5F88E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
-    final marker = Offset(size.width * 0.42, size.height * 0.54);
-    canvas.drawCircle(marker, 5, Paint()..color = const Color(0xFFBEE974));
-    canvas.drawCircle(
-      marker,
-      9,
-      Paint()
-        ..color = const Color(0xFFBEE974).withValues(alpha: 0.25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
     );
   }
-
-  @override
-  bool shouldRepaint(covariant _RhythmWavePainter oldDelegate) => false;
 }
 
 /// 没有训练 Repository 数据时保留的训练入口占位卡。

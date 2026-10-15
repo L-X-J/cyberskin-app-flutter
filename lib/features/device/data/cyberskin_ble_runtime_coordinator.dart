@@ -13,6 +13,9 @@ import '../domain/repositories/device_catalog_repository.dart';
 import '../domain/repositories/user_device_repository.dart';
 import 'ble_known_device_store.dart';
 
+// BLE 诊断日志开关：仅在 debug 模式下输出，release 构建自动关闭。
+const bool _kBleLog = kDebugMode;
+
 /// Cyberskin 的 BLE 运行时协调器。
 ///
 /// 后端 profile、SDK 连接状态和页面状态在此处汇合；页面不直接接触 FlutterBluePlus。
@@ -57,6 +60,9 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   int _sessionGeneration = 0;
   // App 主动发起断开的设备 ID 集合，用于区分设备侧断开与 App 侧断开。
   final Set<String> _intentionalDisconnects = <String>{};
+  // 当前扫描周期内已主动请求连接的设备 ID；防止对同一设备重复调用 connectDiscovered。
+  // SDK 在第一轮扫描中可能不会自动触发已知设备连接，此标志保证我们只发起一次。
+  String? _attemptedConnectionId;
 
   /// 初始化 BLE 适配器状态，但不读取账号数据或启动设备扫描。
   ///
@@ -103,35 +109,47 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     failureCode.value = null;
     failureMessage.value = null;
     scanCompleted.value = false;
+    _bleLog('loadProfilesAndStart: 开始加载设备 profile');
     await initializeBluetooth();
     final manager = this.manager;
+    final t0 = DateTime.now();
     final result = await _catalogRepository.listDeviceModels();
+    _bleLog('listDeviceModels 耗时 ${DateTime.now().difference(t0).inMilliseconds}ms');
     final summaries = result.valueOrNull;
     if (summaries == null) {
       final failure = result.failureOrNull;
+      _bleLog('listDeviceModels 失败: ${failure?.message}');
       failureCode.value = 'profile_load_failed';
       failureMessage.value =
           failure?.message ?? 'Device profiles could not be loaded.';
       _profilesConfigured = false;
       return;
     }
+    _bleLog('获取到 ${summaries.length} 个型号摘要，开始串行拉取详情');
     final profiles = <BleDeviceProfile>[];
     var detailLoadFailed = false;
     for (final summary in summaries) {
       final modelId = summary.id;
       if (modelId == null || modelId <= 0) continue;
+      final t1 = DateTime.now();
       final detail = await _catalogRepository.getDeviceModelDetail(modelId);
       final value = detail.valueOrNull;
       if (value == null) {
+        _bleLog('getDeviceModelDetail($modelId) 失败 (${DateTime.now().difference(t1).inMilliseconds}ms): ${detail.failureOrNull?.message}');
         detailLoadFailed = true;
         continue;
       }
+      _bleLog('getDeviceModelDetail($modelId) 成功 (${DateTime.now().difference(t1).inMilliseconds}ms)');
       final profile = _toProfile(value);
       profiles.add(profile);
     }
     // 注销可能在目录请求期间发生；过期结果不能重新写入用户 profile 或启动扫描。
-    if (generation != _sessionGeneration) return;
+    if (generation != _sessionGeneration) {
+      _bleLog('loadProfilesAndStart: session 已失效，丢弃结果');
+      return;
+    }
     if (detailLoadFailed && profiles.isEmpty) {
+      _bleLog('loadProfilesAndStart: 所有型号详情加载失败');
       failureCode.value = 'profile_load_failed';
       failureMessage.value = 'Device profiles could not be loaded.';
       return;
@@ -139,6 +157,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     _profilesByModel = {
       for (final profile in profiles) profile.modelId: profile,
     };
+    _bleLog('profile 加载完成，共 ${profiles.length} 个: ${profiles.map((p) => '${p.modelId}(${p.profileKey})').join(', ')}');
     manager.configureProfiles(profiles);
     _profilesConfigured = true;
     await _startDiscovery();
@@ -150,6 +169,11 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   /// 并在每次真正启动前重新检查平台状态，避免权限或开关变化后仍调用 SDK 扫描。
   Future<void> _startDiscovery() {
     if (!_profilesConfigured) return Future<void>.value();
+    // 已有活跃连接时不启动扫描；重连由设备侧断开事件触发，不需要持续扫描。
+    if (hasConnectedDevice) {
+      _bleLog('_startDiscovery: 跳过，设备已连接');
+      return Future<void>.value();
+    }
     // SDK 的 manager.isScanning 表示自动扫描请求仍保持开启，
     // 不代表当前这一轮扫描正在进行；重扫只能依据事件状态判断。
     if (isScanning.value) return Future<void>.value();
@@ -167,13 +191,23 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   Future<void> _checkAndStartDiscovery() async {
     final current = manager;
     // 蓝牙关闭时先保留 Bluetooth off 阶段，不触发可能因适配器关闭而失败的权限请求。
-    if (adapterState.value != 'on') return;
+    if (adapterState.value != 'on') {
+      _bleLog('_checkAndStartDiscovery: 跳过，适配器状态=${adapterState.value}');
+      return;
+    }
     final permissionsGranted = await current.requestBluetoothPermissions();
     // 除了依赖异步事件外同步保存结果，避免平台权限实现不广播事件时状态不一致。
     permissionGranted.value = permissionsGranted;
-    if (!permissionsGranted) return;
+    if (!permissionsGranted) {
+      _bleLog('_checkAndStartDiscovery: 跳过，权限未授予');
+      return;
+    }
     // 权限弹窗期间用户可能关闭蓝牙，启动前需要再次核对开关状态。
-    if (adapterState.value != 'on') return;
+    if (adapterState.value != 'on') {
+      _bleLog('_checkAndStartDiscovery: 跳过，权限弹窗期间蓝牙被关闭');
+      return;
+    }
+    _bleLog('_checkAndStartDiscovery: 启动自动扫描');
     await current.startAutoDiscovery();
   }
 
@@ -264,6 +298,8 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   Future<void> clearUserSession() async {
     _sessionGeneration++;
     await stopDiscovery();
+    // 内存缓存在注销时失效，防止旧账号设备列表泄给新登录用户。
+    _userDeviceRepository?.invalidateCache();
     pendingDiscovery.value = null;
     _intentionalDisconnects.clear();
     _profilesByModel = <int, BleDeviceProfile>{};
@@ -330,6 +366,24 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     command: command,
   );
 
+  /// 判断指定设备是否已经上报关机前状态。
+  bool isDeviceShuttingDown(String remoteId) =>
+      runtime[remoteId]?.isShuttingDown == true;
+
+  /// 主动断开设备并清理连接视图；该断开不会触发自动重连扫描。
+  Future<void> disconnectIntentionally(String remoteId) async {
+    _intentionalDisconnects.add(remoteId);
+    await manager.disconnect(remoteId);
+    clearConnectedDevice();
+  }
+
+  /// 清除设备记忆，防止关机解除绑定后下一轮扫描自动重连。
+  Future<void> forgetKnownDevice(int modelId, String remoteId) async {
+    final profile = _profilesByModel[modelId];
+    if (profile == null) return;
+    await manager.forgetDevice(profile.profileKey, remoteId);
+  }
+
   BleDeviceProfile? profileForModel(int modelId) => _profilesByModel[modelId];
 
   /// 由 [DeviceHomeController] 在加载到匹配设备后调用，建立连接设备视图。
@@ -377,6 +431,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   void _onEvent(BleEvent event) {
     switch (event) {
       case BleScanningChanged(:final scanning):
+        _bleLog('扫描状态变化: scanning=$scanning');
         if (scanning) {
           scanCompleted.value = false;
         } else if (isScanning.value) {
@@ -384,26 +439,56 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
         }
         isScanning.value = scanning;
       case BleAdapterChanged(:final state):
+        _bleLog('适配器状态变化: $state');
         adapterState.value = state;
         if (state == 'on') {
           failureCode.value = null;
           failureMessage.value = null;
         }
       case BlePermissionChanged(:final granted):
+        _bleLog('权限变化: granted=$granted');
         permissionGranted.value = granted;
         if (granted && failureCode.value == 'permission_denied') {
           failureCode.value = null;
           failureMessage.value = null;
         }
       case BleDeviceDiscovered(:final device, :final isKnown):
-        if (!isKnown) pendingDiscovery.value = device;
+        _bleLog(
+          '发现设备: id=${device.remoteId} '
+          'name=${device.name} '
+          'profile=${device.profile.profileKey} '
+          'isKnown=$isKnown '
+          '→ ${isKnown ? '已知设备，自动重连' : '新设备，等待用户确认'}',
+        );
+        if (!isKnown) {
+          pendingDiscovery.value = device;
+        } else if (!hasConnectedDevice &&
+            !isConnecting &&
+            _attemptedConnectionId != device.remoteId) {
+          // iOS CoreBluetooth 冷启动时，SDK 的 startAutoDiscovery 自动重连在
+          // 第一轮扫描中可能不触发，需要 App 层主动发起一次 connectDiscovered。
+          // 用 _attemptedConnectionId 去重，确保同一 remoteId 本轮只发一次连接请求。
+          _attemptedConnectionId = device.remoteId;
+          _bleLog('_onEvent: 主动发起已知设备连接 id=${device.remoteId}');
+          unawaited(manager.connectDiscovered(device));
+        }
       case BleConnectionChanged(:final remoteId, :final state):
+        _bleLog('连接状态变化: id=$remoteId state=$state');
         connectionStates[remoteId] = state;
-        if (state == BleConnectionState.disconnected ||
+        if (state == BleConnectionState.connected) {
+          // 已连接：停止扫描，避免继续消耗系统资源和电量。
+          // 断开时会重新触发扫描，不需要在这里保留扫描窗口。
+          unawaited(manager.stopAutoDiscovery());
+        } else if (state == BleConnectionState.disconnected ||
             state == BleConnectionState.failed) {
           final wasIntentional = _intentionalDisconnects.remove(remoteId);
+          _bleLog(
+            '设备断开: id=$remoteId '
+            '${wasIntentional ? '(App 主动断开，不重扫)' : '(设备侧断开，触发重扫)'}',
+          );
+          // 断开后下一轮扫描需要重新尝试连接。
+          _attemptedConnectionId = null;
           if (!wasIntentional) {
-            // 设备侧主动断开或连接丢失：清除待确认设备，回到可重扫状态。
             pendingDiscovery.value = null;
             scanCompleted.value = false;
             unawaited(_startDiscovery());
@@ -411,12 +496,12 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
         }
       case BleRuntimeChanged(:final remoteId, :final status):
         runtime[remoteId] = status;
-        // 将遥测快照逐字段推入连接设备视图；仅在 remoteId 匹配时更新，避免多设备串扰。
         final connected = connectedDevice.value;
         if (connected != null && connected.remoteId == remoteId) {
           connected.applyStatus(status);
         }
       case BleFailure(:final code, :final message):
+        _bleLog('BLE 错误: code=$code message=$message');
         failureCode.value = code;
         failureMessage.value = message;
       case BleCommandResult():
@@ -432,10 +517,20 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   }
 }
 
+void _bleLog(String message) {
+  if (_kBleLog) debugPrint('[BLE] $message');
+}
+
 final class _AppBleLogger implements BleLogger {
   @override
-  void debug(String message) {}
+  void debug(String message) {
+    if (_kBleLog) debugPrint('[BLE:SDK] $message');
+  }
 
   @override
-  void warning(String message, [Object? error]) {}
+  void warning(String message, [Object? error]) {
+    if (_kBleLog) {
+      debugPrint('[BLE:SDK⚠] $message${error != null ? ' | $error' : ''}');
+    }
+  }
 }
