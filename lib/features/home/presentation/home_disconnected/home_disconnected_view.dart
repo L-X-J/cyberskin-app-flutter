@@ -40,6 +40,7 @@ final class HomeDisconnectedView extends StatelessWidget {
     this.onReload,
     this.topHeaderPadding,
     this.exitAnimation,
+    this.scrollController,
   });
 
   /// 主页冻结可渲染数据（含设备型号列表与推荐内容）。
@@ -101,6 +102,9 @@ final class HomeDisconnectedView extends StatelessWidget {
   /// 为 null 时所有退场动画层均不挂载。
   final Animation<double>? exitAnimation;
 
+  /// 外部传入的滚动控制器，用于联动主页 Header 高斯模糊等动态效果。
+  final ScrollController? scrollController;
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = AppScaffold.contentBottomPaddingOf(
@@ -110,6 +114,8 @@ final class HomeDisconnectedView extends StatelessWidget {
     final topPadding = topHeaderPadding ?? Get.mediaQuery.viewPadding.top + 28;
     return HomeBackground(
       child: ListView(
+        controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(24, topPadding, 24, bottomInset),
         children: [
           _ScanCard(
@@ -394,10 +400,7 @@ final class _DeviceModelGrid extends StatelessWidget {
                             (i == 0 ? -1 : 1),
                         0,
                       ),
-                      child: FadeTransition(
-                        opacity: fadeOut!,
-                        child: child,
-                      ),
+                      child: FadeTransition(opacity: fadeOut!, child: child),
                     ),
                     child: _ModelCard(
                       preview: entries[i],

@@ -40,7 +40,11 @@ final class HomeConnectedView extends StatefulWidget {
     this.onFreeControl,
     this.onCustomRhythm,
     this.onTrainingMore,
+    this.scrollController,
   });
+
+  /// 外部传入的滚动控制器，用于联动主页 Header 高斯模糊等动态效果。
+  final ScrollController? scrollController;
 
   /// 当前已连接的设备实体模型。
   final Device device;
@@ -143,6 +147,7 @@ final class _HomeConnectedViewState extends State<HomeConnectedView>
 
     return HomeBackground(
       child: ListView(
+        controller: widget.scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
           24,
@@ -266,6 +271,7 @@ final class DeviceBodyContent extends StatelessWidget {
     required this.bottomInset,
     this.topPaddingOverride,
     this.onPowerOff,
+    this.scrollController,
   });
 
   /// 设备主页控制器，持有设备列表和 BLE 发现状态；为空时从 Get 容器自动解析。
@@ -282,6 +288,9 @@ final class DeviceBodyContent extends StatelessWidget {
 
   /// 请求关闭设备并解除绑定。
   final VoidCallback? onPowerOff;
+
+  /// 外部传入的滚动控制器，用于联动主页 Header 高斯模糊等动态效果。
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -331,6 +340,7 @@ final class DeviceBodyContent extends StatelessWidget {
           showHeader: topPaddingOverride == null,
           onPowerOff: onPowerOff,
           onReload: () => unawaited(activeController.reload()),
+          scrollController: scrollController,
         ),
       );
     });

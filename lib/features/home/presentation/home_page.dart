@@ -32,21 +32,31 @@ final class _HomePageState extends State<HomePage>
   // 共享 HomeHeader 覆层测量出的高度；首帧为 0，布局完成后回填真实值。
   double _headerHeight = 0;
 
+  // 列表滚动驱动的 Header 高斯模糊进度（0.0 ~ 1.0）。
+  double _headerScrollProgress = 0.0;
+
+  // 已连接与未连接视图各自专用的 ScrollController，互不干扰。
+  late final ScrollController _connectedScrollController;
+  late final ScrollController _disconnectedScrollController;
+
   // 连接成功时驱动 HomeDisconnectedView 退场的控制器（扫描卡淡出、型号卡飞出）。
   late final AnimationController _disconnectedExit = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 380),
   );
 
-  // 监听连接状态变化的 GetX Worker，dispose 时必须取消。
+  // 监听连接状态与标签页变化的 GetX Worker，dispose 时必须取消。
   Worker? _statusWorker;
+  Worker? _tabWorker;
 
   @override
   void initState() {
     super.initState();
+    _connectedScrollController = ScrollController()..addListener(_onScroll);
+    _disconnectedScrollController = ScrollController()..addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureHeader());
     WidgetsBinding.instance.addObserver(this);
-    // 监听连接状态：连接成功时前进，断开时复位，使退场动画可重复播放。
+    // 监听连接状态：连接成功时前进，断开时复位，使退场动画可重复播放；同时同步 Header 模糊进度。
     _statusWorker = ever(_controller.deviceStatus, (status) {
       final isConnected =
           status == DeviceConnectionStatus.connected ||
@@ -56,6 +66,14 @@ final class _HomePageState extends State<HomePage>
       } else {
         _disconnectedExit.reset();
       }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncScrollProgress();
+      });
+    });
+    _tabWorker = ever(_controller.selectedTab, (_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncScrollProgress();
+      });
     });
   }
 
@@ -68,9 +86,41 @@ final class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     _statusWorker?.dispose();
+    _tabWorker?.dispose();
     _disconnectedExit.dispose();
+    _connectedScrollController.removeListener(_onScroll);
+    _connectedScrollController.dispose();
+    _disconnectedScrollController.removeListener(_onScroll);
+    _disconnectedScrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onScroll() {
+    _syncScrollProgress();
+  }
+
+  void _syncScrollProgress() {
+    final status = _controller.deviceStatus.value;
+    final connected =
+        status == DeviceConnectionStatus.connected ||
+        status == DeviceConnectionStatus.lowBattery;
+    final activeController = connected
+        ? _connectedScrollController
+        : _disconnectedScrollController;
+    if (!activeController.hasClients) {
+      if (_headerScrollProgress != 0.0) {
+        setState(() => _headerScrollProgress = 0.0);
+      }
+      return;
+    }
+    final offset = activeController.offset;
+    final progress = (offset / 36.0).clamp(0.0, 1.0);
+    if ((progress - _headerScrollProgress).abs() > 0.01 ||
+        (progress == 0.0 && _headerScrollProgress != 0.0) ||
+        (progress == 1.0 && _headerScrollProgress != 1.0)) {
+      setState(() => _headerScrollProgress = progress);
+    }
   }
 
   void _measureHeader() {
@@ -120,76 +170,102 @@ final class _HomePageState extends State<HomePage>
           preferredSize: Size.zero,
           child: SizedBox.shrink(),
         ),
-        body: Stack(
-          children: [
-            // 全高内容体：已连接/未连接状态用 AnimatedSwitcher 过渡。
-            AnimatedSwitcher(
-              duration: animDuration,
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              child: connected
-                  ? _ConnectedBody(
-                      key: const ValueKey('home-connected'),
-                      selectedTab: selectedTab,
-                      homeController: _controller,
-                      videoController: videoController,
-                      topInset: topInset,
-                      headerHeight: _headerHeight,
-                    )
-                  : HomeDisconnectedView(
-                      key: const ValueKey('home-disconnected'),
-                      dashboard: _controller.dashboard.value,
-                      isLoading: _controller.isLoading.value,
-                      failureMessage: _controller.failure.value?.message,
-                      bindFailureMessage: _controller.bindFailureMessage.value,
-                      isAuthenticated: _controller.isAuthenticated,
-                      bleCardState: bleCardState,
-                      onPrimaryAction: () =>
-                          unawaited(_controller.handleBlePrimaryAction()),
-                      onStopDiscovery: () =>
-                          unawaited(_controller.stopDiscovery()),
-                      pendingDiscovery: pendingDiscovery,
-                      onConfirmDiscovery: () =>
-                          unawaited(_controller.confirmDiscovery()),
-                      onDismissDiscovery: () =>
-                          unawaited(_controller.dismissDiscovery()),
-                      isScanning: isScanning,
-                      onDeviceModelDetails: (model) => _controller
-                          .openDeviceManual(model.id, summary: model),
-                      onDeviceManual: () => _controller.openDeviceManual(
-                        _controller.dashboard.value.boundDevice?.deviceModelId,
+        body: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (_controller.selectedTab.value == AppTab.video) {
+              return false;
+            }
+            if (notification.metrics.axis == Axis.vertical) {
+              final offset = notification.metrics.pixels;
+              final progress = (offset / 36.0).clamp(0.0, 1.0);
+              if ((progress - _headerScrollProgress).abs() > 0.01 ||
+                  (progress == 0.0 && _headerScrollProgress != 0.0) ||
+                  (progress == 1.0 && _headerScrollProgress != 1.0)) {
+                setState(() => _headerScrollProgress = progress);
+              }
+            }
+            return false;
+          },
+          child: Stack(
+            children: [
+              // 全高内容体：已连接/未连接状态用 AnimatedSwitcher 过渡。
+              AnimatedSwitcher(
+                duration: animDuration,
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: connected
+                    ? _ConnectedBody(
+                        key: const ValueKey('home-connected'),
+                        selectedTab: selectedTab,
+                        homeController: _controller,
+                        videoController: videoController,
+                        topInset: topInset,
+                        headerHeight: _headerHeight,
+                        scrollController: _connectedScrollController,
+                      )
+                    : HomeDisconnectedView(
+                        key: const ValueKey('home-disconnected'),
+                        dashboard: _controller.dashboard.value,
+                        isLoading: _controller.isLoading.value,
+                        failureMessage: _controller.failure.value?.message,
+                        bindFailureMessage:
+                            _controller.bindFailureMessage.value,
+                        isAuthenticated: _controller.isAuthenticated,
+                        bleCardState: bleCardState,
+                        onPrimaryAction: () =>
+                            unawaited(_controller.handleBlePrimaryAction()),
+                        onStopDiscovery: () =>
+                            unawaited(_controller.stopDiscovery()),
+                        pendingDiscovery: pendingDiscovery,
+                        onConfirmDiscovery: () =>
+                            unawaited(_controller.confirmDiscovery()),
+                        onDismissDiscovery: () =>
+                            unawaited(_controller.dismissDiscovery()),
+                        isScanning: isScanning,
+                        onDeviceModelDetails: (model) => _controller
+                            .openDeviceManual(model.id, summary: model),
+                        onDeviceManual: () => _controller.openDeviceManual(
+                          _controller
+                              .dashboard
+                              .value
+                              .boundDevice
+                              ?.deviceModelId,
+                        ),
+                        onLogin: _controller.openLogin,
+                        onProfile: _controller.openProfile,
+                        onReload: _controller.reload,
+                        topHeaderPadding: _headerHeight,
+                        exitAnimation: _disconnectedExit,
+                        scrollController: _disconnectedScrollController,
                       ),
-                      onLogin: _controller.openLogin,
-                      onProfile: _controller.openProfile,
-                      onReload: _controller.reload,
-                      topHeaderPadding: _headerHeight,
-                      exitAnimation: _disconnectedExit,
-                    ),
-            ),
-            // 共享顶部 Header：切换到 Video 时从顶部折叠上滑隐藏，回到 Device 时展开下滑显示。
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              child: ClipRect(
-                child: AnimatedAlign(
-                  heightFactor: showHeader ? 1.0 : 0.0,
-                  alignment: Alignment.topCenter,
-                  duration: animDuration,
-                  curve: showHeader ? Curves.easeOutCubic : Curves.easeInCubic,
-                  child: Padding(
-                    key: _headerKey,
-                    padding: EdgeInsets.fromLTRB(24, topInset, 24, 10),
+              ),
+              // 共享顶部 Header：切换到 Video 时从顶部折叠上滑隐藏，回到 Device 时展开下滑显示。
+              // 滚动时带有平滑高斯模糊与暗色遮罩背景，避免滑动内容与文字发生重叠。
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: ClipRect(
+                  child: AnimatedAlign(
+                    heightFactor: showHeader ? 1.0 : 0.0,
+                    alignment: Alignment.topCenter,
+                    duration: animDuration,
+                    curve: showHeader
+                        ? Curves.easeOutCubic
+                        : Curves.easeInCubic,
                     child: HomeHeader(
+                      key: _headerKey,
                       title: headerTitle,
                       subtitle: headerSubtitle,
                       onProfile: onHeaderProfile,
+                      topInset: topInset,
+                      scrollProgress: _headerScrollProgress,
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     });
@@ -238,6 +314,7 @@ final class _ConnectedBody extends StatelessWidget {
     required this.videoController,
     required this.topInset,
     required this.headerHeight,
+    this.scrollController,
   });
 
   final AppTab selectedTab;
@@ -247,6 +324,9 @@ final class _ConnectedBody extends StatelessWidget {
 
   // 首页共享 HomeHeader 覆层测量高度；首帧为 0，内容会暂时上移再回填。
   final double headerHeight;
+
+  /// 外部传入的滚动控制器，用于联动主页 Header 高斯模糊等动态效果。
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -265,6 +345,7 @@ final class _ConnectedBody extends StatelessWidget {
           topInset: topInset,
           bottomInset: bottomInset,
           topPaddingOverride: headerHeight,
+          scrollController: scrollController,
           onPowerOff: () =>
               unawaited(homeController.confirmPowerOffAndUnbind()),
         ),

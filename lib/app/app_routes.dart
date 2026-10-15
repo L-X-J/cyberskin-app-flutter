@@ -5,9 +5,9 @@ import '../features/auth/presentation/login_binding.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/control/free_control/presentation/free_control_binding.dart';
 import '../features/control/free_control/presentation/free_control_page.dart';
+import '../features/device/presentation/device_home_page.dart';
 import '../features/device/presentation/device_manual_binding.dart';
 import '../features/device/presentation/device_manual_page.dart';
-import '../features/device/presentation/device_home_page.dart';
 import '../features/home/presentation/home_binding.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/init/presentation/init_page.dart';
@@ -54,7 +54,7 @@ abstract final class AppRoutes {
     deviceManual: FloatingControlPolicy.hidden,
     video: FloatingControlPolicy.fixed,
     profile: FloatingControlPolicy.draggable,
-    freeControl: FloatingControlPolicy.fixed,
+    freeControl: FloatingControlPolicy.hidden,
     init: FloatingControlPolicy.hidden,
     login: FloatingControlPolicy.hidden,
   };

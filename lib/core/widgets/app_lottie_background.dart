@@ -21,7 +21,7 @@ final class AppLottieBackground extends StatefulWidget {
   const AppLottieBackground({
     super.key,
     this.assetName = 'init_bg',
-    this.playbackSpeed = 1,
+    this.playbackSpeed = 1.5,
     this.backgroundColor = AppColors.scaffold,
     this.fit = BoxFit.cover,
     this.alignment = Alignment.center,

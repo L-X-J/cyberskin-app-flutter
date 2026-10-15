@@ -95,7 +95,7 @@ final class _LoginPageState extends State<LoginPage>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const AppLottieBackground(playbackSpeed: 1.5),
+          const AppLottieBackground(),
           SafeArea(
             child: Padding(
               padding: EdgeInsets.only(
