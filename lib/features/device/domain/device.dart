@@ -60,6 +60,8 @@ final class Device {
     this.batteryPercent,
     this.cardColor,
     this.tags,
+    this.iconUrl,
+    this.hardwareUid,
   }) : assert(
          batteryPercent == null ||
              (batteryPercent >= 0 && batteryPercent <= 100),
@@ -88,4 +90,10 @@ final class Device {
 
   /// 标签，多个用英文逗号拼接；未配置时为 null。
   final String? tags;
+
+  /// 设备图标地址（网络 URL 或本地资源）；未配置时为 null。
+  final String? iconUrl;
+
+  /// 硬件唯一标识；未配置时为 null。
+  final String? hardwareUid;
 }

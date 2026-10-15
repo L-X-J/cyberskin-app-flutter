@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:cyberskin_app/core/error/app_failure.dart';
 import 'package:cyberskin_app/core/result/result.dart';
 import 'package:cyberskin_app/core/theme/app_theme.dart';
+import 'package:cyberskin_app/core/widgets/app_img_group_80_card.dart';
 import 'package:cyberskin_app/core/widgets/app_layered_gradient_card.dart';
 import 'package:cyberskin_app/features/device/domain/device.dart';
 import 'package:cyberskin_app/features/device/domain/device_capability.dart';
@@ -130,7 +131,8 @@ void main() {
     expect(find.text('Customrhythm'), findsOneWidget);
     expect(find.text('Training mode'), findsOneWidget);
     expect(find.text('New product launch'), findsOneWidget);
-    expect(find.byType(AppLayeredGradientCard), findsNWidgets(5));
+    expect(find.byType(AppLayeredGradientCard), findsNWidgets(3));
+    expect(find.byType(AppImgGroup80Card), findsNWidgets(2));
     expect(find.byType(AppBar), findsNothing);
 
     final boundary = tester.renderObject<RenderRepaintBoundary>(

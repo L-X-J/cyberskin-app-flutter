@@ -8,7 +8,13 @@
 - `home_disconnected/`：未连接状态的独立 UI 视图目录。
   - `home_disconnected_view.dart`：未连接状态视图（`HomeDisconnectedView`）、扫描卡与型号入口。
 - `home_connected/`：已连接状态的独立 UI 视图目录。
-  - `home_connected_view.dart`：已连接状态视图（`HomeConnectedView`）、设备卡、训练卡与广告卡。
+  - `home_connected_view.dart`：已连接状态视图（`HomeConnectedView`）、设备页标题与控制器容器。
+  - `connected_device_hero_card.dart`：已连接设备主卡（`ConnectedDeviceHeroCard`）。
+  - `home_feature_cards.dart`：功能模式双列网格与卡片（`HomeFeatureGrid`、`HomeFeatureCard`）。
+  - `home_training_card.dart`：训练模式推荐卡（`HomeTrainingCard`）。
+  - `home_advertisement_card.dart`：运营位广告卡（`HomeAdvertisementCard`）。
+  - `home_device_states.dart`：设备列表空状态、加载中与错误重试组件。
+  - `compact_glass_button.dart`：跨卡片复用的紧凑液态玻璃按钮。
 - `widgets/`：主页共享 UI 组件目录。
   - `home_shared_widgets.dart`：主页共享背景与头部标题组件。
 - `states/`：主页 UI 状态目录。

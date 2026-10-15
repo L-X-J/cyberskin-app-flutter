@@ -259,7 +259,9 @@ final class _ConnectedBody extends StatelessWidget {
       children: [
         // 首页已通过覆层渲染共享 HomeHeader，内容体只需在覆层下方留出对应空间。
         DeviceBodyContent(
-          controller: Get.find<DeviceHomeController>(),
+          controller: Get.isRegistered<DeviceHomeController>()
+              ? Get.find<DeviceHomeController>()
+              : null,
           topInset: topInset,
           bottomInset: bottomInset,
           topPaddingOverride: headerHeight,

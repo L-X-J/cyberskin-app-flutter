@@ -62,6 +62,8 @@ final class ConnectedDeviceRepository implements DeviceRepository {
           capabilities: _capabilities(detail),
           cardColor: detail.summary.cardColor,
           tags: detail.summary.tags,
+          iconUrl: bound.iconUrl ?? detail.summary.iconUrl,
+          hardwareUid: bound.hardwareUid ?? detail.summary.hardwareUid,
         ),
       );
     }
