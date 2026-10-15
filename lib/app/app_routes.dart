@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 
 import '../features/auth/presentation/login_binding.dart';
 import '../features/auth/presentation/login_page.dart';
+import '../features/control/free_control/presentation/free_control_binding.dart';
+import '../features/control/free_control/presentation/free_control_page.dart';
 import '../features/device/presentation/device_manual_binding.dart';
 import '../features/device/presentation/device_manual_page.dart';
 import '../features/device/presentation/device_home_page.dart';
@@ -42,6 +44,9 @@ abstract final class AppRoutes {
   /// 从设备主页进入的用户资料路由。
   static const String profile = '/profile';
 
+  /// 自由控制模式路由。
+  static const String freeControl = '/control/free';
+
   /// 显式页面策略；新增二级页必须登记，登录和未声明页面默认隐藏。
   static const Map<String, FloatingControlPolicy> floatingControlPolicies = {
     home: FloatingControlPolicy.fixed,
@@ -49,6 +54,7 @@ abstract final class AppRoutes {
     deviceManual: FloatingControlPolicy.hidden,
     video: FloatingControlPolicy.fixed,
     profile: FloatingControlPolicy.draggable,
+    freeControl: FloatingControlPolicy.fixed,
     init: FloatingControlPolicy.hidden,
     login: FloatingControlPolicy.hidden,
   };
@@ -96,6 +102,12 @@ abstract final class AppRoutes {
       name: profile,
       page: () => const ProfilePage(),
       binding: ProfileBinding(),
+      middlewares: <GetMiddleware>[RouteAuthMiddleware()],
+    ),
+    GetPage<dynamic>(
+      name: freeControl,
+      page: () => const FreeControlPage(),
+      binding: FreeControlBinding(),
       middlewares: <GetMiddleware>[RouteAuthMiddleware()],
     ),
   ];

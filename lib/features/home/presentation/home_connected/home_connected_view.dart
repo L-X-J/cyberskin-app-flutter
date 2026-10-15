@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:cyberskin_app/core/extensions/string_extensions.dart';
 import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -13,6 +14,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_image.dart';
+import '../../../../core/widgets/app_img_group_80_card.dart';
 import '../../../../core/widgets/app_layered_gradient_card.dart';
 import '../../../../core/widgets/app_liquid_glass_button.dart';
 import '../../../device/data/cyberskin_ble_runtime_coordinator.dart';
@@ -36,6 +38,7 @@ final class DeviceBodyContent extends StatelessWidget {
     required this.topInset,
     required this.bottomInset,
     this.topPaddingOverride,
+    this.onPowerOff,
   });
 
   /// 设备主页控制器，持有设备列表和 BLE 发现状态。
@@ -50,6 +53,9 @@ final class DeviceBodyContent extends StatelessWidget {
   /// 覆盖默认顶部内边距（topInset + 34）；首页 Shell 通过覆层渲染共享 Header
   /// 时传入此值，使内容从 Header 正下方开始而不重复渲染标题区。
   final double? topPaddingOverride;
+
+  /// 请求关闭设备并解除绑定；独立设备页未提供时不显示业务动作。
+  final VoidCallback? onPowerOff;
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +97,7 @@ final class DeviceBodyContent extends StatelessWidget {
           pending: pending,
           onConfirmDiscovery: () => unawaited(controller.confirmDiscovery()),
           onDismissDiscovery: () => unawaited(controller.dismissDiscovery()),
+          onPowerOff: onPowerOff ?? () {},
         ),
       );
     });
@@ -110,6 +117,7 @@ final class _DeviceContent extends StatelessWidget {
     this.pending,
     required this.onConfirmDiscovery,
     required this.onDismissDiscovery,
+    required this.onPowerOff,
     this.topPaddingOverride,
   });
 
@@ -123,6 +131,7 @@ final class _DeviceContent extends StatelessWidget {
   final BleDiscoveredDevice? pending;
   final VoidCallback onConfirmDiscovery;
   final VoidCallback onDismissDiscovery;
+  final VoidCallback onPowerOff;
   // 首页 Shell 已渲染共享 HomeHeader 时传入，跳过内部 _DeviceHeader 并调整顶部留白。
   final double? topPaddingOverride;
 
@@ -148,7 +157,8 @@ final class _DeviceContent extends StatelessWidget {
           //   const SizedBox(height: 28),
           // ],
           // 业务上同一时刻只允许一台设备连接，取列表首项渲染。
-          if (devices.isNotEmpty) _DeviceSection(device: devices.first),
+          if (devices.isNotEmpty)
+            _DeviceSection(device: devices.first, onPowerOff: onPowerOff),
           if (failure != null) ...[
             const SizedBox(height: 12),
             AppInlineHint(
@@ -170,9 +180,10 @@ final class _DeviceContent extends StatelessWidget {
 /// 单个设备的首页内容，所有设备文案和颜色来自 [Device]。
 /// 挂载时播放错帧入场动画：顶部卡旋转落入，下方卡片依次淡入。
 final class _DeviceSection extends StatefulWidget {
-  const _DeviceSection({required this.device});
+  const _DeviceSection({required this.device, required this.onPowerOff});
 
   final Device device;
+  final VoidCallback onPowerOff;
 
   @override
   State<_DeviceSection> createState() => _DeviceSectionState();
@@ -255,25 +266,30 @@ final class _DeviceSectionState extends State<_DeviceSection>
                     device: device,
                     modelId: modelId,
                     connectedState: coordinator.connectedDevice.value,
+                    onPowerOff: widget.onPowerOff,
                   ),
                 )
-              : _ConnectedDeviceHero(device: device, modelId: modelId),
+              : _ConnectedDeviceHero(
+                  device: device,
+                  modelId: modelId,
+                  onPowerOff: widget.onPowerOff,
+                ),
         ),
         const SizedBox(height: 16),
         // 功能入口行：淡入。
         FadeTransition(
           opacity: _cardsFade,
-          child: const Row(
+          child: Row(
             children: [
               Expanded(
                 child: _FeatureCard(
                   title: 'Free control\nmode',
-                  colors: [Color(0xFFE4472A), Color(0xFF8E171A)],
-                  preview: _FreeControlPreview(),
+                  colors: const [Color(0xFFE4472A), Color(0xFF8E171A)],
+                  onTap: () => unawaited(Get.toNamed(AppRoutes.freeControl)),
                 ),
               ),
-              SizedBox(width: 12),
-              Expanded(
+              const SizedBox(width: 12),
+              const Expanded(
                 child: _FeatureCard(
                   title: 'Customrhythm',
                   colors: [Color(0xFFBEF77A), Color(0xFF4B9C58)],
@@ -308,11 +324,13 @@ final class _ConnectedDeviceHero extends StatelessWidget {
   const _ConnectedDeviceHero({
     required this.device,
     required this.modelId,
+    required this.onPowerOff,
     this.connectedState,
   });
 
   final Device device;
   final int? modelId;
+  final VoidCallback onPowerOff;
 
   /// 连接设备的实时运行时视图；为 null 时使用 [device] 的静态快照数据。
   final ConnectedDeviceState? connectedState;
@@ -320,133 +338,144 @@ final class _ConnectedDeviceHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final manualEnabled = modelId != null;
-    return AppLayeredGradientCard.scan(
-      height: 179,
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
+      children: [
+        Positioned(
+          top: 15,
+          left: 0,
+          right: 0,
+          child: AppLayeredGradientCard.scan(
+            height: 179,
+            child: Stack(
               children: [
-                Text(
-                  device.name,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: AppFontWeights.semibold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.bluetooth_connected,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      device.status.label,
-                      style: const TextStyle(
-                        fontSize: AppTypography.size14,
-                        color: AppColors.textSecondary,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        device.name,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: AppFontWeights.semibold,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    // 电量标签：优先使用实时 Rx 字段，退化为 Device 快照值。
-                    if (connectedState != null)
-                      Obx(() {
-                        final level = connectedState!.batteryLevel.value;
-                        final isCharging = connectedState!.isCharging.value;
-                        final label = level >= 0
-                            ? '$level%${isCharging ? ' ⚡' : ''}'
-                            : '--';
-                        return _CompactGlassButton(
-                          label: label,
-                          icon: Icons.battery_6_bar_rounded,
-                          onPressed: () {},
-                        );
-                      })
-                    else
-                      _CompactGlassButton(
-                        label: '${device.batteryPercent ?? '--'}%',
-                        icon: Icons.battery_6_bar_rounded,
-                        onPressed: () {},
-                      ),
-                    const SizedBox(width: 8),
-                    _CompactGlassButton(
-                      label: 'Power',
-                      icon: Icons.power_settings_new,
-                      onPressed: () {},
-                      width: 38,
-                      iconOnly: true,
-                    ),
-                  ],
-                ),
-                if (_parseTags(device.tags).isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    _parseTags(device.tags).join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: AppTypography.size10,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                AppLiquidGlassButton(
-                  label: manualEnabled
-                      ? 'Product manual'
-                      : 'Manual unavailable',
-                  leadingIcon: Icons.description_outlined,
-                  onPressed: manualEnabled
-                      ? () => unawaited(
-                          Get.toNamed(
-                            AppRoutes.deviceManual.replaceFirst(
-                              ':modelId',
-                              '$modelId',
-                            ),
-                            arguments: DeviceManualRouteArguments(
-                              modelId: modelId!,
+                      const SizedBox(height: 4),
+                      const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.bluetooth_connected,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            '· Connected',
+                            style: TextStyle(
+                              fontSize: AppTypography.size14,
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                        )
-                      : null,
-                  variant: AppLiquidGlassButtonVariant.translucent,
-                  width: 132,
-                  height: 28,
-                  borderRadius: 12,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                  textStyle: const TextStyle(
-                    fontSize: AppTypography.size12,
-                    color: AppColors.textPrimary,
+                        ],
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          // 电量标签
+                          Obx(() {
+                            var label = '-';
+                            if (connectedState != null) {
+                              final level = connectedState!.batteryLevel.value;
+                              final isCharging =
+                                  connectedState!.isCharging.value;
+                              label = level >= 0
+                                  ? '$level%${isCharging ? ' ⚡' : ''}'
+                                  : '--';
+                            }
+                            return _CompactGlassButton(
+                              label: label,
+                              iconWidget: AppImage.load(
+                                'home/Battery-charge'.assetsPng,
+                                width: 24,
+                              ),
+                              onPressed: () {},
+                            );
+                          }),
+                          const SizedBox(width: 8),
+                          _CompactGlassButton(
+                            label: 'Power',
+                            icon: Icons.power_settings_new,
+                            onPressed: onPowerOff,
+                            width: 38,
+                            iconOnly: true,
+                          ),
+                        ],
+                      ),
+                      if (_parseTags(device.tags).isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          _parseTags(device.tags).join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: AppTypography.size10,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      AppLiquidGlassButton(
+                        label: manualEnabled
+                            ? 'Product manual'
+                            : 'Manual unavailable',
+                        leadingIcon: Icons.description_outlined,
+                        iconSize: 12,
+                        onPressed: manualEnabled
+                            ? () => unawaited(
+                                Get.toNamed(
+                                  AppRoutes.deviceManual.replaceFirst(
+                                    ':modelId',
+                                    '$modelId',
+                                  ),
+                                  arguments: DeviceManualRouteArguments(
+                                    modelId: modelId!,
+                                  ),
+                                ),
+                              )
+                            : null,
+                        variant: AppLiquidGlassButtonVariant.translucent,
+                        width: 132,
+                        height: 24,
+                        borderRadius: 8,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: AppTypography.size12,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          Positioned(
-            right: 16,
-            top: -6,
-            width: 132,
-            height: 166,
-            child: AppImage.load(
-              'assets/images/home/device_pro_connected.png',
-              fit: BoxFit.contain,
-              semanticLabel: device.name,
-              placeholder: const _DeviceImagePlaceholder(),
-              errorWidget: const _DeviceImagePlaceholder(),
-            ),
+        ),
+        Align(
+          alignment: Alignment.topRight,
+          child: AppImage.load(
+            'assets/images/home/device_pro_connected.png',
+            fit: BoxFit.contain,
+            semanticLabel: device.name,
+            width: 182,
+            placeholder: const _DeviceImagePlaceholder(),
+            errorWidget: const _DeviceImagePlaceholder(),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 194),
+      ],
     );
   }
 }
@@ -456,19 +485,23 @@ final class _FeatureCard extends StatelessWidget {
   const _FeatureCard({
     required this.title,
     required this.colors,
-    required this.preview,
+    this.preview,
+    this.onTap,
   });
 
   final String title;
   final List<Color> colors;
-  final Widget preview;
+  final Widget? preview;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AppLayeredGradientCard(
-      height: 170,
-      baseColor: colors.last,
-      topGradientColors: [Colors.black, colors.first],
+    return GestureDetector(
+      onTap: onTap,
+      child: AppImgGroup80Card(
+        height: 170,
+        backgroundColor: colors.last,
+        accentColor: colors.first,
       child: Stack(
         children: [
           Padding(
@@ -478,7 +511,8 @@ final class _FeatureCard extends StatelessWidget {
               children: [
                 Text(title, style: const TextStyle(fontSize: 17, height: 1.15)),
                 const Spacer(),
-                SizedBox(height: 66, width: double.infinity, child: preview),
+                if (preview != null)
+                  SizedBox(height: 66, width: double.infinity, child: preview),
               ],
             ),
           ),
@@ -503,62 +537,8 @@ final class _FeatureCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// 自由控制入口的局部参数矩阵，避免以通用图标代替设计的控制语义。
-final class _FreeControlPreview extends StatelessWidget {
-  const _FreeControlPreview();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Icon(Icons.vibration_rounded, size: 12, color: AppColors.white80),
-              Icon(Icons.speed_rounded, size: 12, color: AppColors.white80),
-              Icon(
-                Icons.water_drop_outlined,
-                size: 12,
-                color: AppColors.white80,
-              ),
-              Icon(
-                Icons.thermostat_outlined,
-                size: 12,
-                color: AppColors.white80,
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: 4,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 4,
-              crossAxisSpacing: 4,
-              childAspectRatio: math.max(1, constraints.maxWidth / 30),
-              children: List<Widget>.generate(
-                12,
-                (index) => DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: index.isEven
-                        ? Colors.white.withValues(alpha: 0.26)
-                        : Colors.black.withValues(alpha: 0.18),
-                    borderRadius: AppRadius.circular(4),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    ),
+  );
 }
 
 /// 自定义节奏入口的波形预览；只表达入口视觉，不承担真实节奏编辑状态。
@@ -754,6 +734,7 @@ final class _CompactGlassButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon,
+    this.iconWidget,
     this.width,
     this.iconOnly = false,
   });
@@ -761,6 +742,11 @@ final class _CompactGlassButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
+
+  /// 替代 [icon] 的自定义图标 Widget，优先级高于 [icon]。
+  /// [iconOnly] 为 true 时作为按钮唯一内容；否则渲染在文案左侧，
+  /// 建议通过 [width] 固定宽度以避免自动测量偏窄。
+  final Widget? iconWidget;
   final double? width;
   final bool iconOnly;
 
@@ -768,6 +754,7 @@ final class _CompactGlassButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppLiquidGlassButton(
       label: label,
+      leadingWidget: iconOnly ? null : iconWidget,
       leadingIcon: iconOnly ? null : icon,
       icon: iconOnly ? icon : null,
       onPressed: onPressed,
@@ -781,6 +768,8 @@ final class _CompactGlassButton extends StatelessWidget {
         fontSize: AppTypography.size12,
         color: AppColors.textPrimary,
       ),
+      // iconOnly + iconWidget：整个按钮内容由 iconWidget 填充。
+      child: (iconOnly && iconWidget != null) ? iconWidget : null,
     );
   }
 }
