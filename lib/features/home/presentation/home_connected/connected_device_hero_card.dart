@@ -60,7 +60,7 @@ final class ConnectedDeviceHeroCard extends StatelessWidget {
     final image = (device.iconUrl != null && device.iconUrl!.isNotEmpty)
         ? device.iconUrl!
         : (_fallbackAsset(device.name) ??
-            'assets/images/home/device_pro_connected.png');
+              'assets/images/home/device_pro_connected.png');
 
     return AnimatedBuilder(
       animation: flipAnimation,
@@ -152,13 +152,16 @@ final class ConnectedDeviceHeroCard extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.topRight,
-            child: AppImage.load(
-              'assets/images/home/device_pro_connected.png',
-              fit: BoxFit.contain,
-              semanticLabel: device.name,
-              width: 182,
-              placeholder: const DeviceImagePlaceholder(),
-              errorWidget: const DeviceImagePlaceholder(),
+            child: Hero(
+              tag: heroTag,
+              child: AppImage.load(
+                image,
+                fit: BoxFit.contain,
+                semanticLabel: device.name,
+                width: 182,
+                placeholder: const DeviceImagePlaceholder(),
+                errorWidget: const DeviceImagePlaceholder(),
+              ),
             ),
           ),
           const SizedBox(height: 194),
@@ -216,7 +219,16 @@ final class ConnectedDeviceHeroCard extends StatelessWidget {
                 unawaited(
                   Get.toNamed(
                     AppRoutes.deviceManual.replaceFirst(':modelId', '$modelId'),
-                    arguments: DeviceManualRouteArguments(modelId: modelId),
+                    arguments: DeviceManualRouteArguments(
+                      modelId: modelId,
+                      summary: DeviceModelSummary(
+                        id: modelId,
+                        name: device.name,
+                        iconUrl: device.iconUrl,
+                        cardColor: device.cardColor,
+                        tags: device.tags,
+                      ),
+                    ),
                   ),
                 );
               }
@@ -262,4 +274,16 @@ List<String> _parseTags(String? raw) {
       .map((tag) => tag.trim())
       .where((tag) => tag.isNotEmpty)
       .toList(growable: false);
+}
+
+/// 根据型号或设备名称回退到内置产品图。
+String? _fallbackAsset(String? name) {
+  final value = name?.toLowerCase() ?? '';
+  if (value.contains('pro')) {
+    return 'assets/images/home/device_pro_connected.png';
+  }
+  if (value.contains('air')) {
+    return 'assets/images/home/device_air_connected.png';
+  }
+  return null;
 }
