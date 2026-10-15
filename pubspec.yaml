@@ -48,4 +48,9 @@ flutter:
     - assets/images/control/
     - assets/images/home/
     - assets/images/device/
+    - assets/images/device_modules/
+    - assets/images/device_modules/heat/
+    - assets/images/device_modules/suck/
+    - assets/images/device_modules/thrust/
+    - assets/images/device_modules/vibration/
     - assets/lotties/

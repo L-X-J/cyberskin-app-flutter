@@ -23,6 +23,9 @@ final class FreeControlController extends GetxController {
   /// 当前动态布局配置
   final Rx<FreeControlLayout?> layout = Rx<FreeControlLayout?>(null);
 
+  /// 当前选中的预设样式索引 (1-5)
+  final RxInt currentPreset = 1.obs;
+
   /// 加载中状态
   final RxBool isLoading = true.obs;
 
@@ -80,20 +83,30 @@ final class FreeControlController extends GetxController {
       }
     }
 
-    // 若无网络或后台未配置专属布局，展示标准的默认动态布局
+    // 若无网络或后台未配置专属布局，展示标准的默认动态布局 (img_free_control 样式 1)
     layout.value = FreeControlLayout.defaultPreset(deviceName: deviceName);
     isLoading.value = false;
   }
 
-  /// 切换预设布局（供开发/演示查看不同样式，如 img_free_control, img_free_control_2, 3, 4, 5）
+  /// 切换预设布局（与用户上传设计图中的 5 张图 img_free_control ... img_free_control_5 严格对齐）
   void applyMockPreset(int presetIndex) {
+    currentPreset.value = presetIndex;
     switch (presetIndex) {
       case 1:
-        // img_free_control
+        // img_free_control:
+        // row 0: Heat(1x1, col:0), Suck(1x1, col:1)
+        // row 1: Telescopic(3x1, col:0, rows:3), Vibration(3x1, col:1, rows:3)
+        // row 4: OneClickClimax(2x2, col:0, rows:2, cols:2)
         layout.value = FreeControlLayout.defaultPreset(deviceName: deviceName);
         break;
+
       case 2:
-        // img_free_control_2
+        // img_free_control_2:
+        // row 0: Telescopic 模式水平条 (1x2, cols:2)
+        // row 1: Vibration 模式水平条 (1x2, cols:2)
+        // row 2: Heat 条形 (1x2, cols:2)
+        // row 3: Telescopic 变速水平条 (1x2, cols:2)
+        // row 4: Vibration 变速水平条 (1x2, cols:2)
         layout.value = FreeControlLayout(
           deviceName: deviceName,
           columns: 2,
@@ -103,6 +116,8 @@ final class FreeControlController extends GetxController {
               variant: 'telescopic_mode_1x2',
               rows: 1,
               cols: 2,
+              row: 0,
+              col: 0,
               order: 1,
               gearMax: 6,
               gearCurrent: 4,
@@ -112,6 +127,8 @@ final class FreeControlController extends GetxController {
               variant: 'vibration_mode_1x2',
               rows: 1,
               cols: 2,
+              row: 1,
+              col: 0,
               order: 2,
               gearMax: 6,
               gearCurrent: 2,
@@ -121,6 +138,8 @@ final class FreeControlController extends GetxController {
               variant: 'heat_bar_1x2',
               rows: 1,
               cols: 2,
+              row: 2,
+              col: 0,
               order: 3,
             ),
             FreeControlComponentConfig(
@@ -128,6 +147,8 @@ final class FreeControlController extends GetxController {
               variant: 'telescopic_variable_1x2',
               rows: 1,
               cols: 2,
+              row: 3,
+              col: 0,
               order: 4,
               variableSpeedSupported: true,
             ),
@@ -136,14 +157,20 @@ final class FreeControlController extends GetxController {
               variant: 'vibration_variable_1x2',
               rows: 1,
               cols: 2,
+              row: 4,
+              col: 0,
               order: 5,
               variableSpeedSupported: true,
             ),
           ],
         );
         break;
+
       case 3:
-        // img_free_control_5 (垂直变速 + 吸附多档)
+        // img_free_control_5:
+        // row 0: Telescopic 无级变速垂直滑块 (3x1, col:0, rows:3)
+        // row 0: Vibration 无级变速垂直滑块 (3x1, col:1, rows:3)
+        // row 3: Suck 多档带模式选择 (2x2, col:0, rows:2, cols:2)
         layout.value = FreeControlLayout(
           deviceName: deviceName,
           columns: 2,
@@ -153,6 +180,8 @@ final class FreeControlController extends GetxController {
               variant: 'telescopic_variable_3x1',
               rows: 3,
               cols: 1,
+              row: 0,
+              col: 0,
               order: 1,
               variableSpeedSupported: true,
             ),
@@ -161,6 +190,8 @@ final class FreeControlController extends GetxController {
               variant: 'vibration_variable_3x1',
               rows: 3,
               cols: 1,
+              row: 0,
+              col: 1,
               order: 2,
               variableSpeedSupported: true,
             ),
@@ -169,13 +200,73 @@ final class FreeControlController extends GetxController {
               variant: 'suck_multi_2x2',
               rows: 2,
               cols: 2,
+              row: 3,
+              col: 0,
               order: 3,
             ),
           ],
         );
         break;
+
       case 4:
-        // img_free_control_4 (模式卡片)
+        // img_free_control_3:
+        // row 0: Telescopic 模式水平条 (1x2, cols:2)
+        // row 1: Vibration 模式水平条 (1x2, cols:2)
+        // row 2: Telescopic 变速水平条 (1x2, cols:2)
+        // row 3: Vibration 变速水平条 (1x2, cols:2)
+        layout.value = FreeControlLayout(
+          deviceName: deviceName,
+          columns: 2,
+          components: const [
+            FreeControlComponentConfig(
+              type: FreeControlComponentType.telescopic,
+              variant: 'telescopic_mode_1x2',
+              rows: 1,
+              cols: 2,
+              row: 0,
+              col: 0,
+              order: 1,
+              gearMax: 6,
+              gearCurrent: 4,
+            ),
+            FreeControlComponentConfig(
+              type: FreeControlComponentType.vibration,
+              variant: 'vibration_mode_1x2',
+              rows: 1,
+              cols: 2,
+              row: 1,
+              col: 0,
+              order: 2,
+              gearMax: 6,
+              gearCurrent: 3,
+            ),
+            FreeControlComponentConfig(
+              type: FreeControlComponentType.telescopic,
+              variant: 'telescopic_variable_1x2',
+              rows: 1,
+              cols: 2,
+              row: 2,
+              col: 0,
+              order: 3,
+              variableSpeedSupported: true,
+            ),
+            FreeControlComponentConfig(
+              type: FreeControlComponentType.vibration,
+              variant: 'vibration_variable_1x2',
+              rows: 1,
+              cols: 2,
+              row: 3,
+              col: 0,
+              order: 4,
+              variableSpeedSupported: true,
+            ),
+          ],
+        );
+        break;
+
+      case 5:
+        // img_free_control_4:
+        // row 0: Mode 模式选择卡片 (2x2, cols:2, rows:2)
         layout.value = FreeControlLayout(
           deviceName: deviceName,
           columns: 2,
@@ -185,11 +276,14 @@ final class FreeControlController extends GetxController {
               variant: 'mode_2x2',
               rows: 2,
               cols: 2,
+              row: 0,
+              col: 0,
               order: 1,
             ),
           ],
         );
         break;
+
       default:
         layout.value = FreeControlLayout.defaultPreset(deviceName: deviceName);
     }

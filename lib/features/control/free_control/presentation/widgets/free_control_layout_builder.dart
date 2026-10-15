@@ -1,11 +1,13 @@
-// 自由控制页面的网格排列器；支持单列占位、跨双列以及按组自动成行。
+// 自由控制页面的网格排列器；支持精准 2 列网格 (row, col) 绝对坐标与跨行/跨列排版。
+// 规则完全对齐管理后台 WebAdmin LayoutEditorNew.vue 的 2 列画布逻辑。
 
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/free_control_layout.dart';
 import 'free_control_component_placeholders.dart';
 
-/// 动态布局网格构建器：根据后端配置自动将组件按网格单元和整行进行排版
+/// 动态 2 列网格布局构建器
 final class FreeControlLayoutBuilder extends StatelessWidget {
   const FreeControlLayoutBuilder({
     super.key,
@@ -21,60 +23,50 @@ final class FreeControlLayoutBuilder extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final children = <Widget>[];
-    int index = 0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 画布总可用宽度
+        final availableWidth = constraints.maxWidth;
+        const gap = 12.0; // 与 webadmin gap: 10px 相仿，保留呼吸感
+        // 单列宽度
+        final colWidth = (availableWidth - gap) / 2;
+        // 单行基准高度：按 1x1 比例 172:105 计算
+        final unitRowHeight = colWidth * (105 / 172);
 
-    while (index < components.length) {
-      final current = components[index];
+        // 计算最大网格占用行数
+        int maxRow = 0;
+        for (final comp in components) {
+          maxRow = math.max(maxRow, comp.row + comp.rows);
+        }
 
-      // 如果是全宽组件（cols >= 2）
-      if (current.isFullWidth) {
-        children.add(FreeControlComponentPlaceholder(config: current));
-        children.add(const SizedBox(height: 14));
-        index++;
-        continue;
-      }
+        // 计算画布总高度
+        final totalHeight = maxRow * unitRowHeight + (maxRow > 0 ? (maxRow - 1) * gap : 0);
 
-      // 如果是单列组件（cols == 1），检查下一个是否也是单列组件可以并排成一行
-      if (index + 1 < components.length && !components[index + 1].isFullWidth) {
-        final next = components[index + 1];
-        children.add(
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: FreeControlComponentPlaceholder(config: current),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: FreeControlComponentPlaceholder(config: next),
-              ),
-            ],
+        return SizedBox(
+          width: availableWidth,
+          height: totalHeight,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: components.map((comp) {
+              final left = comp.col == 0 ? 0.0 : (colWidth + gap);
+              final width = comp.cols >= 2 ? availableWidth : colWidth;
+              final top = comp.row * (unitRowHeight + gap);
+              final height = comp.rows * unitRowHeight + (comp.rows - 1) * gap;
+
+              return Positioned(
+                left: left,
+                top: top,
+                width: width,
+                height: height,
+                child: FreeControlComponentPlaceholder(
+                  config: comp,
+                  height: height,
+                ),
+              );
+            }).toList(),
           ),
         );
-        children.add(const SizedBox(height: 14));
-        index += 2;
-      } else {
-        // 单个单列组件占半边或放左侧
-        children.add(
-          Row(
-            children: [
-              Expanded(
-                child: FreeControlComponentPlaceholder(config: current),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(child: SizedBox()),
-            ],
-          ),
-        );
-        children.add(const SizedBox(height: 14));
-        index++;
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
+      },
     );
   }
 }

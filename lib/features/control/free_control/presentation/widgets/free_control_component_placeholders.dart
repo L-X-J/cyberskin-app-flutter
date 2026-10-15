@@ -1,6 +1,5 @@
 // 自由控制页面各个组件的视觉占位。
-// 按照设计稿规范实现卡片容器、毛玻璃样式、渐变色彩与占位信息。
-// 满足需求：“你可以先用组件，展位，无需实现，那些组件。后续我们挨个组件去实现。”
+// 优先使用与 webadmin 完全一致的原生模块设计切图进行高保真展示，并附带优雅的占位兜底。
 
 import 'package:flutter/material.dart';
 
@@ -9,7 +8,7 @@ import '../../../../../core/theme/app_radius.dart';
 import '../../../../../core/theme/app_typography.dart';
 import '../../domain/entities/free_control_layout.dart';
 
-/// 自由控制组件占位基类/通用卡片
+/// 自由控制组件占位组件：渲染真实模块切图或高保真原生卡片
 final class FreeControlComponentPlaceholder extends StatelessWidget {
   const FreeControlComponentPlaceholder({
     super.key,
@@ -20,26 +19,88 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
   final FreeControlComponentConfig config;
   final double? height;
 
+  /// 根据 variant 获取对应的切图资源路径（与 webadmin ComponentPreview.vue 保持完全一致）
+  String? get _assetImagePath => switch (config.variant) {
+    // Heat
+    'heat_toggle_1x1' => 'assets/images/device_modules/heat/heat-a.png',
+    'heat_bar_1x2' => 'assets/images/device_modules/heat/heat-b.png',
+
+    // Suck
+    'suck_toggle_1x1' => 'assets/images/device_modules/suck/suck-a.png',
+    'suck_multi_2x2' => 'assets/images/device_modules/suck/suck-b.png',
+
+    // Telescopic (Thrust)
+    'telescopic_mode_3x1' => 'assets/images/device_modules/thrust/thrust-a.png',
+    'telescopic_mode_1x2' => 'assets/images/device_modules/thrust/thrust-b.png',
+    'telescopic_variable_3x1' => 'assets/images/device_modules/thrust/thrust-c.png',
+    'telescopic_variable_1x2' => 'assets/images/device_modules/thrust/thrust-d.png',
+
+    // Vibration
+    'vibration_mode_3x1' => 'assets/images/device_modules/vibration/vibration-a.png',
+    'vibration_mode_1x2' => 'assets/images/device_modules/vibration/vibration-b.png',
+    'vibration_variable_3x1' => 'assets/images/device_modules/vibration/vibration-c.png',
+    'vibration_variable_1x2' => 'assets/images/device_modules/vibration/vibration-d.png',
+
+    _ => null,
+  };
+
+  /// 依据 Figma 规格与 WebAdmin 的宽高比
+  /// 单行单列（1x1）：172x105 -> 172 / 105
+  /// 三行单列（3x1）：172x312 -> 172 / 312
+  /// 单行双列（1x2）：358x135 -> 358 / 135
+  /// 双行双列（2x2）：358x231 -> 358 / 231
+  double get _aspectRatio => switch (config.variant) {
+    'heat_toggle_1x1' || 'suck_toggle_1x1' => 172 / 105,
+    'heat_bar_1x2' ||
+    'telescopic_mode_1x2' ||
+    'telescopic_variable_1x2' ||
+    'vibration_mode_1x2' ||
+    'vibration_variable_1x2' => 358 / 135,
+    'telescopic_mode_3x1' ||
+    'telescopic_variable_3x1' ||
+    'vibration_mode_3x1' ||
+    'vibration_variable_3x1' => 172 / 312,
+    'suck_multi_2x2' || 'climax_2x2' || 'mode_2x2' => 358 / 231,
+    _ => config.isFullWidth ? 358 / 135 : 172 / 105,
+  };
+
   @override
   Widget build(BuildContext context) {
+    final imagePath = _assetImagePath;
+
+    if (imagePath != null) {
+      return AspectRatio(
+        aspectRatio: _aspectRatio,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Image.asset(
+            imagePath,
+            fit: BoxFit.fill,
+            errorBuilder: (_, __, ___) => _buildFallbackWidget(context),
+          ),
+        ),
+      );
+    }
+
+    return AspectRatio(
+      aspectRatio: _aspectRatio,
+      child: _buildFallbackWidget(context),
+    );
+  }
+
+  Widget _buildFallbackWidget(BuildContext context) {
     return switch (config.type) {
-      FreeControlComponentType.heat => _HeatPlaceholder(config: config),
-      FreeControlComponentType.suck => _SuckPlaceholder(config: config),
-      FreeControlComponentType.telescopic => _TelescopicPlaceholder(
-        config: config,
-      ),
-      FreeControlComponentType.vibration => _VibrationPlaceholder(
-        config: config,
-      ),
-      FreeControlComponentType.mode => _ModePlaceholder(config: config),
-      FreeControlComponentType.oneClickClimax => _OneClickClimaxPlaceholder(
-        config: config,
-      ),
+      FreeControlComponentType.heat => _HeatFallback(config: config),
+      FreeControlComponentType.suck => _SuckFallback(config: config),
+      FreeControlComponentType.telescopic => _TelescopicFallback(config: config),
+      FreeControlComponentType.vibration => _VibrationFallback(config: config),
+      FreeControlComponentType.mode => _ModeFallback(config: config),
+      FreeControlComponentType.oneClickClimax => _OneClickClimaxFallback(config: config),
     };
   }
 }
 
-/// 基础暗紫渐变容器，模拟设计稿深紫/毛玻璃质感
+/// 基础暗紫渐变容器
 Widget _buildCardBase({
   required Widget child,
   double? height,
@@ -52,8 +113,7 @@ Widget _buildCardBase({
     padding: padding,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(AppRadius.radiusXlLarge),
-      gradient:
-          gradient ??
+      gradient: gradient ??
           LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -62,9 +122,11 @@ Widget _buildCardBase({
               const Color(0xFF1E172E).withValues(alpha: 0.85),
             ],
           ),
-      border:
-          border ??
-          Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1),
+      border: border ??
+          Border.all(
+            color: Colors.white.withValues(alpha: 0.12),
+            width: 1,
+          ),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.25),
@@ -78,20 +140,18 @@ Widget _buildCardBase({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Heat 加热占位组件
+// 1. Heat 加热兜底组件
 // ─────────────────────────────────────────────────────────────────────────────
 
-final class _HeatPlaceholder extends StatelessWidget {
-  const _HeatPlaceholder({required this.config});
+final class _HeatFallback extends StatelessWidget {
+  const _HeatFallback({required this.config});
 
   final FreeControlComponentConfig config;
 
   @override
   Widget build(BuildContext context) {
-    // 判断是 1x1 开关卡还是 1x2 横向条卡
     if (config.isFullWidth) {
       return _buildCardBase(
-        height: 80,
         child: Row(
           children: [
             Column(
@@ -127,7 +187,6 @@ final class _HeatPlaceholder extends StatelessWidget {
               ],
             ),
             const Spacer(),
-            // 模拟橙色火焰按钮
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -142,19 +201,13 @@ final class _HeatPlaceholder extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // 模拟开关
-            _buildMockSwitch(
-              activeColor: Colors.deepOrange.shade400,
-              isOn: false,
-            ),
+            _buildMockSwitch(activeColor: Colors.deepOrange.shade400, isOn: false),
           ],
         ),
       );
     }
 
-    // 1x1 小方卡
     return _buildCardBase(
-      height: 90,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -177,10 +230,7 @@ final class _HeatPlaceholder extends StatelessWidget {
               ),
             ],
           ),
-          _buildMockSwitch(
-            activeColor: Colors.deepOrange.shade400,
-            isOn: false,
-          ),
+          _buildMockSwitch(activeColor: Colors.deepOrange.shade400, isOn: false),
         ],
       ),
     );
@@ -188,17 +238,16 @@ final class _HeatPlaceholder extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Suck 吸附/吮吸占位组件
+// 2. Suck 吸附/吮吸兜底组件
 // ─────────────────────────────────────────────────────────────────────────────
 
-final class _SuckPlaceholder extends StatelessWidget {
-  const _SuckPlaceholder({required this.config});
+final class _SuckFallback extends StatelessWidget {
+  const _SuckFallback({required this.config});
 
   final FreeControlComponentConfig config;
 
   @override
   Widget build(BuildContext context) {
-    // 2x2 多档或带模式列表模式
     if (config.isFullWidth && config.rows >= 2) {
       return _buildCardBase(
         child: Column(
@@ -221,14 +270,10 @@ final class _SuckPlaceholder extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                _buildMockSwitch(
-                  activeColor: const Color(0xFFD13BD8),
-                  isOn: true,
-                ),
+                _buildMockSwitch(activeColor: const Color(0xFFD13BD8), isOn: true),
               ],
             ),
             const SizedBox(height: 12),
-            // 模式选择芯片列表
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -245,9 +290,7 @@ final class _SuckPlaceholder extends StatelessWidget {
       );
     }
 
-    // 1x1 开关卡
     return _buildCardBase(
-      height: 90,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -278,11 +321,11 @@ final class _SuckPlaceholder extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Telescopic 伸缩占位组件 (垂直滑块 3x1 / 水平条 1x2)
+// 3. Telescopic 伸缩兜底组件
 // ─────────────────────────────────────────────────────────────────────────────
 
-final class _TelescopicPlaceholder extends StatelessWidget {
-  const _TelescopicPlaceholder({required this.config});
+final class _TelescopicFallback extends StatelessWidget {
+  const _TelescopicFallback({required this.config});
 
   final FreeControlComponentConfig config;
 
@@ -291,19 +334,13 @@ final class _TelescopicPlaceholder extends StatelessWidget {
     final isVertical = config.rows >= 2 || config.cols == 1;
 
     if (isVertical) {
-      // 垂直滑块卡（类似设计图中的 Telescopic 3x1）
       return _buildCardBase(
-        height: 250,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.swap_vert_rounded,
-                  size: 16,
-                  color: Colors.blueAccent,
-                ),
+                const Icon(Icons.swap_vert_rounded, size: 16, color: Colors.blueAccent),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -320,25 +357,16 @@ final class _TelescopicPlaceholder extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 2),
-            if (config.variableSpeedSupported)
-              const Text(
-                'Variable Speed\n82%',
-                style: TextStyle(
-                  fontSize: AppTypography.size10,
-                  color: AppColors.textMuted,
-                  height: 1.2,
-                ),
-              )
-            else
-              Text(
-                'Gear ${config.gearCurrent ?? 4} / ${config.gearMax ?? 6}',
-                style: const TextStyle(
-                  fontSize: AppTypography.size11,
-                  color: AppColors.textMuted,
-                ),
+            Text(
+              config.variableSpeedSupported
+                  ? 'Variable Speed\n82%'
+                  : 'Gear ${config.gearCurrent ?? 4} / ${config.gearMax ?? 6}',
+              style: const TextStyle(
+                fontSize: AppTypography.size11,
+                color: AppColors.textMuted,
               ),
+            ),
             const Spacer(),
-            // 垂直大滑条胶囊
             Center(
               child: Container(
                 width: 72,
@@ -346,14 +374,11 @@ final class _TelescopicPlaceholder extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(36),
                   color: Colors.black.withValues(alpha: 0.35),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                 ),
                 child: Stack(
                   alignment: Alignment.bottomCenter,
                   children: [
-                    // 填充高度动画或渐变条
                     Container(
                       width: 72,
                       height: 80,
@@ -362,7 +387,10 @@ final class _TelescopicPlaceholder extends StatelessWidget {
                         gradient: const LinearGradient(
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
-                          colors: [Color(0xFF2654BE), Color(0xFF558EF4)],
+                          colors: [
+                            Color(0xFF2654BE),
+                            Color(0xFF558EF4),
+                          ],
                         ),
                       ),
                     ),
@@ -370,26 +398,19 @@ final class _TelescopicPlaceholder extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
           ],
         ),
       );
     }
 
-    // 水平横向条（1x2）
     return _buildCardBase(
-      height: 90,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.swap_vert_rounded,
-                size: 16,
-                color: Colors.blueAccent,
-              ),
+              const Icon(Icons.swap_vert_rounded, size: 16, color: Colors.blueAccent),
               const SizedBox(width: 4),
               Text(
                 config.displayLabel,
@@ -399,16 +420,6 @@ final class _TelescopicPlaceholder extends StatelessWidget {
                   color: AppColors.textPrimary,
                 ),
               ),
-              if (config.variableSpeedSupported) ...[
-                const SizedBox(width: 6),
-                const Text(
-                  'Variable Speed',
-                  style: TextStyle(
-                    fontSize: AppTypography.size10,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
               const Spacer(),
               Text(
                 config.variableSpeedSupported
@@ -422,7 +433,6 @@ final class _TelescopicPlaceholder extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          // 水平胶囊进度条
           _buildHorizontalSlider(
             percent: 0.45,
             gradient: const LinearGradient(
@@ -436,11 +446,11 @@ final class _TelescopicPlaceholder extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. Vibration 震动占位组件 (垂直滑块 3x1 / 水平条 1x2)
+// 4. Vibration 震动兜底组件
 // ─────────────────────────────────────────────────────────────────────────────
 
-final class _VibrationPlaceholder extends StatelessWidget {
-  const _VibrationPlaceholder({required this.config});
+final class _VibrationFallback extends StatelessWidget {
+  const _VibrationFallback({required this.config});
 
   final FreeControlComponentConfig config;
 
@@ -449,19 +459,13 @@ final class _VibrationPlaceholder extends StatelessWidget {
     final isVertical = config.rows >= 2 || config.cols == 1;
 
     if (isVertical) {
-      // 垂直滑块卡（类似设计图中的 Vibration 3x1）
       return _buildCardBase(
-        height: 250,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.vibration_rounded,
-                  size: 16,
-                  color: Color(0xFFD13BD8),
-                ),
+                const Icon(Icons.vibration_rounded, size: 16, color: Color(0xFFD13BD8)),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -478,25 +482,16 @@ final class _VibrationPlaceholder extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 2),
-            if (config.variableSpeedSupported)
-              const Text(
-                'Variable Speed\n12%',
-                style: TextStyle(
-                  fontSize: AppTypography.size10,
-                  color: AppColors.textMuted,
-                  height: 1.2,
-                ),
-              )
-            else
-              Text(
-                'Gear ${config.gearCurrent ?? 2} / ${config.gearMax ?? 6}',
-                style: const TextStyle(
-                  fontSize: AppTypography.size11,
-                  color: AppColors.textMuted,
-                ),
+            Text(
+              config.variableSpeedSupported
+                  ? 'Variable Speed\n12%'
+                  : 'Gear ${config.gearCurrent ?? 2} / ${config.gearMax ?? 6}',
+              style: const TextStyle(
+                fontSize: AppTypography.size11,
+                color: AppColors.textMuted,
               ),
+            ),
             const Spacer(),
-            // 垂直大滑条胶囊
             Center(
               child: Container(
                 width: 72,
@@ -504,9 +499,7 @@ final class _VibrationPlaceholder extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(36),
                   color: Colors.black.withValues(alpha: 0.35),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                 ),
                 child: Stack(
                   alignment: Alignment.bottomCenter,
@@ -519,7 +512,10 @@ final class _VibrationPlaceholder extends StatelessWidget {
                         gradient: const LinearGradient(
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
-                          colors: [Color(0xFF7A1D85), Color(0xFFE447D0)],
+                          colors: [
+                            Color(0xFF7A1D85),
+                            Color(0xFFE447D0),
+                          ],
                         ),
                       ),
                     ),
@@ -527,26 +523,19 @@ final class _VibrationPlaceholder extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
           ],
         ),
       );
     }
 
-    // 水平横向条（1x2）
     return _buildCardBase(
-      height: 90,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.vibration_rounded,
-                size: 16,
-                color: Color(0xFFD13BD8),
-              ),
+              const Icon(Icons.vibration_rounded, size: 16, color: Color(0xFFD13BD8)),
               const SizedBox(width: 4),
               Text(
                 config.displayLabel,
@@ -556,16 +545,6 @@ final class _VibrationPlaceholder extends StatelessWidget {
                   color: AppColors.textPrimary,
                 ),
               ),
-              if (config.variableSpeedSupported) ...[
-                const SizedBox(width: 6),
-                const Text(
-                  'Variable Speed',
-                  style: TextStyle(
-                    fontSize: AppTypography.size10,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
               const Spacer(),
               Text(
                 config.variableSpeedSupported
@@ -592,11 +571,11 @@ final class _VibrationPlaceholder extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Mode 模式选择占位组件
+// 5. Mode 模式兜底组件
 // ─────────────────────────────────────────────────────────────────────────────
 
-final class _ModePlaceholder extends StatelessWidget {
-  const _ModePlaceholder({required this.config});
+final class _ModeFallback extends StatelessWidget {
+  const _ModeFallback({required this.config});
 
   final FreeControlComponentConfig config;
 
@@ -608,11 +587,7 @@ final class _ModePlaceholder extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.auto_awesome_rounded,
-                size: 16,
-                color: Color(0xFFD13BD8),
-              ),
+              const Icon(Icons.auto_awesome_rounded, size: 16, color: Color(0xFFD13BD8)),
               const SizedBox(width: 6),
               Text(
                 config.displayLabel,
@@ -629,9 +604,7 @@ final class _ModePlaceholder extends StatelessWidget {
             children: [
               _buildPillButton('Stop', isOutlined: true),
               const SizedBox(width: 10),
-              Expanded(
-                child: _buildPillButton('Default Mode', isOutlined: true),
-              ),
+              Expanded(child: _buildPillButton('Default Mode', isOutlined: true)),
             ],
           ),
           const SizedBox(height: 10),
@@ -661,18 +634,17 @@ final class _ModePlaceholder extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 6. OneClickClimax 一键高潮占位组件
+// 6. OneClickClimax 一键高潮兜底组件
 // ─────────────────────────────────────────────────────────────────────────────
 
-final class _OneClickClimaxPlaceholder extends StatelessWidget {
-  const _OneClickClimaxPlaceholder({required this.config});
+final class _OneClickClimaxFallback extends StatelessWidget {
+  const _OneClickClimaxFallback({required this.config});
 
   final FreeControlComponentConfig config;
 
   @override
   Widget build(BuildContext context) {
     return _buildCardBase(
-      height: 96,
       child: Row(
         children: [
           Expanded(
@@ -682,11 +654,7 @@ final class _OneClickClimaxPlaceholder extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.flash_on_rounded,
-                      size: 16,
-                      color: Color(0xFFE447D0),
-                    ),
+                    const Icon(Icons.flash_on_rounded, size: 16, color: Color(0xFFE447D0)),
                     const SizedBox(width: 4),
                     Text(
                       config.displayLabel,
@@ -699,7 +667,6 @@ final class _OneClickClimaxPlaceholder extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // 模拟波形
                 SizedBox(
                   height: 24,
                   width: 120,
@@ -708,17 +675,13 @@ final class _OneClickClimaxPlaceholder extends StatelessWidget {
               ],
             ),
           ),
-          // 电源开启圆按钮
           Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFF4A2B6D).withValues(alpha: 0.8),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1.5,
-              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFE447D0).withValues(alpha: 0.25),
@@ -740,7 +703,7 @@ final class _OneClickClimaxPlaceholder extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 辅助视觉元素函数与组件
+// 辅助视觉元素
 // ─────────────────────────────────────────────────────────────────────────────
 
 Widget _buildMockSwitch({required Color activeColor, required bool isOn}) {
@@ -751,7 +714,10 @@ Widget _buildMockSwitch({required Color activeColor, required bool isOn}) {
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(16),
       color: isOn ? activeColor : const Color(0xFF41284A),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
+      border: Border.all(
+        color: Colors.white.withValues(alpha: 0.15),
+        width: 1,
+      ),
     ),
     child: Row(
       mainAxisAlignment: isOn ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -761,11 +727,7 @@ Widget _buildMockSwitch({required Color activeColor, required bool isOn}) {
             padding: EdgeInsets.only(right: 6),
             child: Text(
               'ON',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
         Container(
@@ -781,11 +743,7 @@ Widget _buildMockSwitch({required Color activeColor, required bool isOn}) {
             padding: EdgeInsets.only(left: 6),
             child: Text(
               'OFF',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.white70,
-              ),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white70),
             ),
           ),
       ],
@@ -793,10 +751,7 @@ Widget _buildMockSwitch({required Color activeColor, required bool isOn}) {
   );
 }
 
-Widget _buildHorizontalSlider({
-  required double percent,
-  required Gradient gradient,
-}) {
+Widget _buildHorizontalSlider({required double percent, required Gradient gradient}) {
   return Container(
     height: 34,
     decoration: BoxDecoration(
@@ -832,9 +787,7 @@ Widget _buildChip(String label, {required bool isSelected}) {
           ? const Color(0xFFD13BD8).withValues(alpha: 0.4)
           : Colors.white.withValues(alpha: 0.08),
       border: Border.all(
-        color: isSelected
-            ? const Color(0xFFD13BD8)
-            : Colors.white.withValues(alpha: 0.15),
+        color: isSelected ? const Color(0xFFD13BD8) : Colors.white.withValues(alpha: 0.15),
       ),
     ),
     child: Text(
@@ -848,11 +801,7 @@ Widget _buildChip(String label, {required bool isSelected}) {
   );
 }
 
-Widget _buildPillButton(
-  String text, {
-  bool isSelected = false,
-  bool isOutlined = false,
-}) {
+Widget _buildPillButton(String text, {bool isSelected = false, bool isOutlined = false}) {
   return Container(
     height: 38,
     alignment: Alignment.center,
@@ -860,13 +809,13 @@ Widget _buildPillButton(
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(19),
       gradient: isSelected
-          ? const LinearGradient(colors: [Color(0xFFD13BD8), Color(0xFF762BB5)])
+          ? const LinearGradient(
+              colors: [Color(0xFFD13BD8), Color(0xFF762BB5)],
+            )
           : null,
       color: isSelected ? null : Colors.white.withValues(alpha: 0.08),
       border: Border.all(
-        color: isSelected
-            ? Colors.transparent
-            : Colors.white.withValues(alpha: 0.18),
+        color: isSelected ? Colors.transparent : Colors.white.withValues(alpha: 0.18),
       ),
     ),
     child: Text(

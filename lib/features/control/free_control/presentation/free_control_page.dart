@@ -1,5 +1,5 @@
 // 自由控制主页面：根据后端返回的数据动态排列组件。
-// 目前使用占位组件展示排版与布局结构。
+// 目前使用组件占位展示排版与布局结构。
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -15,7 +15,6 @@ final class FreeControlPage extends GetView<FreeControlController> {
 
   @override
   Widget build(BuildContext context) {
-    final topInset = MediaQuery.viewPaddingOf(context).top;
     final bottomInset = AppScaffold.contentBottomPaddingOf(
       context,
       showBottomNavigation: false,
@@ -26,7 +25,18 @@ final class FreeControlPage extends GetView<FreeControlController> {
       backgroundColor: const Color(0xFF090714),
       body: Stack(
         children: [
-          // 页面顶部氛围暗紫光晕（如设计图所示）
+          // 页面背景底图 (采用设计稿 app-background)
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/device_modules/app-background.png',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const DecoratedBox(
+                decoration: BoxDecoration(color: Color(0xFF090714)),
+              ),
+            ),
+          ),
+
+          // 页面顶部氛围暗紫光晕
           Positioned(
             top: -60,
             left: 0,
@@ -54,17 +64,17 @@ final class FreeControlPage extends GetView<FreeControlController> {
           SafeArea(
             bottom: false,
             child: ListView(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, bottomInset),
+              padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset),
               children: [
                 // 顶部导航返回栏与标题
                 _buildHeader(context),
-                const SizedBox(height: 24),
-
-                // 预设切换调试栏（用于快速预览设计图中的 4 种排版变体）
-                _buildPresetSwitcher(),
                 const SizedBox(height: 20),
 
-                // 核心：基于后端数据渲染的动态组件排列
+                // 预设切换调试栏（精确对齐你上传的 5 张设计图）
+                _buildPresetSwitcher(),
+                const SizedBox(height: 16),
+
+                // 核心：基于后端 (row, col, rows, cols) 双列网格排版系统
                 Obx(() {
                   if (controller.isLoading.value) {
                     return const Center(
@@ -151,12 +161,12 @@ final class FreeControlPage extends GetView<FreeControlController> {
     );
   }
 
-  /// 快速切换布局样式的工具条（对应设计图中几种常见排列形式）
+  /// 快速切换布局样式的工具条（对应设计图中 5 种常见排列形式）
   Widget _buildPresetSwitcher() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.black.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
@@ -164,46 +174,57 @@ final class FreeControlPage extends GetView<FreeControlController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Layout Preview / 布局样式切换:',
+            '双列网格排版预设 (对齐设计图):',
             style: TextStyle(fontSize: 11, color: AppColors.textMuted),
           ),
           const SizedBox(height: 6),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildPresetButton(1, '样式 1 (默认)'),
-                const SizedBox(width: 8),
-                _buildPresetButton(2, '样式 2 (水平条)'),
-                const SizedBox(width: 8),
-                _buildPresetButton(3, '样式 3 (变速/多档)'),
-                const SizedBox(width: 8),
-                _buildPresetButton(4, '样式 4 (模式卡)'),
-              ],
-            ),
+            child: Obx(() {
+              final active = controller.currentPreset.value;
+              return Row(
+                children: [
+                  _buildPresetButton(1, '图1: 双列大滑块', active == 1),
+                  const SizedBox(width: 8),
+                  _buildPresetButton(2, '图2: 横向条排列', active == 2),
+                  const SizedBox(width: 8),
+                  _buildPresetButton(3, '图3: 双列垂直+吮吸', active == 3),
+                  const SizedBox(width: 8),
+                  _buildPresetButton(4, '图4: 4段水平变速条', active == 4),
+                  const SizedBox(width: 8),
+                  _buildPresetButton(5, '图5: 模式大卡片', active == 5),
+                ],
+              );
+            }),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPresetButton(int index, String label) {
+  Widget _buildPresetButton(int index, String label, bool isSelected) {
     return InkWell(
       onTap: () => controller.applyMockPreset(index),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFFD13BD8).withValues(alpha: 0.18),
+          color: isSelected
+              ? const Color(0xFFD13BD8).withValues(alpha: 0.45)
+              : Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFD13BD8).withValues(alpha: 0.4)),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFFD13BD8)
+                : Colors.white.withValues(alpha: 0.12),
+          ),
         ),
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
       ),

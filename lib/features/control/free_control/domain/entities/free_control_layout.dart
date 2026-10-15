@@ -34,22 +34,8 @@ final class FreeControlLayout {
     final List<FreeControlComponentConfig> components = [];
 
     if (rawModules is List && rawModules.isNotEmpty) {
-      // 按 order 或 row/col 排序
-      final sortedModules = List<Map<String, dynamic>>.from(
-        rawModules.whereType<Map<String, dynamic>>(),
-      )..sort((a, b) {
-          final orderA = a['order'] as int? ?? 0;
-          final orderB = b['order'] as int? ?? 0;
-          if (orderA != orderB) return orderA.compareTo(orderB);
-          final rowA = a['row'] as int? ?? 0;
-          final rowB = b['row'] as int? ?? 0;
-          if (rowA != rowB) return rowA.compareTo(rowB);
-          final colA = a['col'] as int? ?? 0;
-          final colB = b['col'] as int? ?? 0;
-          return colA.compareTo(colB);
-        });
-
-      for (final mod in sortedModules) {
+      final validModules = rawModules.whereType<Map<String, dynamic>>();
+      for (final mod in validModules) {
         final config = FreeControlComponentConfig.fromJson(mod);
         if (config != null) {
           components.add(config);
@@ -70,7 +56,9 @@ final class FreeControlLayout {
   }
 
   /// 兜底默认预设（对应设计图 img_free_control）：
-  /// Heat(1x1), Suck(1x1), Telescopic(垂直 3x1), Vibration(垂直 3x1), OneClickClimax(2x2)
+  /// Row 0: Heat(1x1, col:0), Suck(1x1, col:1)
+  /// Row 1: Telescopic(3x1, col:0, rows:3), Vibration(3x1, col:1, rows:3)
+  /// Row 4: OneClickClimax(2x2, col:0, rows:2, cols:2)
   factory FreeControlLayout.defaultPreset({required String deviceName}) {
     return FreeControlLayout(
       deviceName: deviceName,
@@ -103,6 +91,7 @@ final class FreeControlLayout {
           col: 0,
           order: 3,
           gearMax: 6,
+          gearCurrent: 4,
         ),
         FreeControlComponentConfig(
           type: FreeControlComponentType.vibration,
@@ -113,6 +102,7 @@ final class FreeControlLayout {
           col: 1,
           order: 4,
           gearMax: 6,
+          gearCurrent: 2,
         ),
         FreeControlComponentConfig(
           type: FreeControlComponentType.oneClickClimax,
@@ -224,6 +214,21 @@ final class FreeControlComponentConfig {
 
   /// 是否跨满整行（即占 2 列）。
   bool get isFullWidth => cols >= 2;
+
+  /// 预设尺寸对应的参考高度（单位逻辑像素，基于设计稿比例）。
+  /// 单行单列（1x1）：105
+  /// 三行单列（3x1）：312
+  /// 单行双列（1x2）：135
+  /// 双行双列（2x2）：231
+  double get estimatedHeight {
+    if (variant.contains('3x1')) return 312;
+    if (variant.contains('1x2')) return 135;
+    if (variant.contains('2x2')) return 231;
+    if (variant.contains('1x1')) return 105;
+    if (rows >= 3) return 312;
+    if (rows == 2) return 231;
+    return cols >= 2 ? 135 : 105;
+  }
 
   /// 组件类型对应的默认展示标签。
   String get displayLabel => label ?? switch (type) {
