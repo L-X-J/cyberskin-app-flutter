@@ -13,13 +13,18 @@ import '../domain/repositories/device_catalog_repository.dart';
 import '../domain/repositories/user_device_repository.dart';
 import 'ble_known_device_store.dart';
 
-// BLE 诊断日志开关：仅在 debug 模式下输出，release 构建自动关闭。
+/// BLE 诊断日志开关：仅在 debug 模式下输出，release 构建自动关闭。
 const bool _kBleLog = kDebugMode;
 
 /// Cyberskin 的 BLE 运行时协调器。
 ///
 /// 后端 profile、SDK 连接状态和页面状态在此处汇合；页面不直接接触 FlutterBluePlus。
+// ignore_for_file: prefer_initializing_formals
 class CyberskinBleRuntimeCoordinator extends GetxService {
+  /// 创建 [CyberskinBleRuntimeCoordinator] 协调器实例。
+  ///
+  /// [catalogRepository] 用于获取后端设备 profile；[userDeviceRepository] 用于进行设备用户绑定；
+  /// [preferencesFuture] 用于已知设备记录的本地持久化。
   CyberskinBleRuntimeCoordinator({
     required DeviceCatalogRepository catalogRepository,
     UserDeviceRepository? userDeviceRepository,
@@ -29,21 +34,50 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
        _preferencesFuture =
            preferencesFuture ?? SharedPreferences.getInstance();
 
+  /// 设备目录数据仓储，用于获取设备型号及 GATT Profile 详情。
   final DeviceCatalogRepository _catalogRepository;
+
+  /// 用户设备绑定仓储，用于向后端绑定设备。
   final UserDeviceRepository? _userDeviceRepository;
+
+  /// [SharedPreferences] 异步句柄，供已知设备存储使用。
   final Future<SharedPreferences> _preferencesFuture;
+
+  /// 底层 BLE 设备管理器，延迟初始化。
   BleDeviceManager? _manager;
+
+  /// 获取已初始化的底层 [BleDeviceManager] 实例。
   BleDeviceManager get manager => _manager!;
+
+  /// BLE 适配器与 SDK 是否已初始化完成。
   final RxBool isInitialized = false.obs;
+
+  /// 当前是否正在进行 BLE 设备自动发现扫描。
   final RxBool isScanning = false.obs;
+
+  /// 当前系统蓝牙适配器状态（如 'on'、'off'、'unauthorized' 等）。
   final RxString adapterState = 'unknown'.obs;
+
+  /// 蓝牙权限是否已授予。
   final RxBool permissionGranted = false.obs;
+
+  /// 当前一轮 BLE 扫描是否已结束。
   final RxBool scanCompleted = false.obs;
+
+  /// 最近一次 BLE 操作或错误的失败代码。
   final Rxn<String> failureCode = Rxn<String>();
+
+  /// 最近一次 BLE 操作或错误的失败描述。
   final Rxn<String> failureMessage = Rxn<String>();
+
+  /// 自动发现中新遇到的未绑定设备，等待用户在 UI 上确认连接。
   final Rxn<BleDiscoveredDevice> pendingDiscovery = Rxn<BleDiscoveredDevice>();
+
+  /// 各设备 [remoteId] 到其实时运行态 [BleRuntimeStatus] 的映射字典。
   final RxMap<String, BleRuntimeStatus> runtime =
       <String, BleRuntimeStatus>{}.obs;
+
+  /// 各设备 [remoteId] 到其 BLE 连接状态 [BleConnectionState] 的映射字典。
   final RxMap<String, BleConnectionState> connectionStates =
       <String, BleConnectionState>{}.obs;
 
@@ -51,17 +85,33 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   ///
   /// Obx 组件可直接订阅此字段或其内部各遥测字段，实现点位级刷新。
   final Rxn<ConnectedDeviceState> connectedDevice = Rxn<ConnectedDeviceState>();
+
+  /// BLE 事件流订阅。
   StreamSubscription<BleEvent>? _events;
+
+  /// 按型号 ID ([modelId]) 缓存的设备 GATT Profile 字典。
   Map<int, BleDeviceProfile> _profilesByModel = <int, BleDeviceProfile>{};
+
+  /// 设备 Profile 是否已成功配置到 SDK [manager]。
   bool _profilesConfigured = false;
+
+  /// 共享的蓝牙初始化 Future，防止并发重复初始化。
   Future<void>? _initializeFuture;
+
+  /// 共享的 Profile 加载并启动 Future，合并并发请求。
   Future<void>? _startFuture;
+
+  /// 共享的扫描检查与启动 Future，合并并发请求。
   Future<void>? _discoveryFuture;
+
+  /// 会话代数，注销时递增使旧的异步请求结果失效。
   int _sessionGeneration = 0;
-  // App 主动发起断开的设备 ID 集合，用于区分设备侧断开与 App 侧断开。
+
+  /// App 主动发起断开的设备 ID 集合，用于区分设备侧断开与 App 侧断开。
   final Set<String> _intentionalDisconnects = <String>{};
-  // 当前扫描周期内已主动请求连接的设备 ID；防止对同一设备重复调用 connectDiscovered。
-  // SDK 在第一轮扫描中可能不会自动触发已知设备连接，此标志保证我们只发起一次。
+
+  /// 当前扫描周期内已主动请求连接的设备 ID；防止对同一设备重复调用 connectDiscovered。
+  /// SDK 在第一轮扫描中可能不会自动触发已知设备连接，此标志保证我们只发起一次。
   String? _attemptedConnectionId;
 
   /// 初始化 BLE 适配器状态，但不读取账号数据或启动设备扫描。
@@ -80,6 +130,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     });
   }
 
+  /// GetX 生命周期初始化回调。
   @override
   void onInit() {
     super.onInit();
@@ -104,6 +155,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     });
   }
 
+  /// 从服务端获取设备 Profile 列表、配置给 SDK 并启动扫描。
   Future<void> _loadProfilesAndStart() async {
     final generation = _sessionGeneration;
     failureCode.value = null;
@@ -196,6 +248,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     });
   }
 
+  /// 检查系统蓝牙开关与权限状态，满足条件后启动 SDK 自动扫描。
   Future<void> _checkAndStartDiscovery() async {
     final current = manager;
     // 蓝牙关闭时先保留 Bluetooth off 阶段，不触发可能因适配器关闭而失败的权限请求。
@@ -219,6 +272,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     await current.startAutoDiscovery();
   }
 
+  /// 创建 SDK Manager 实例、订阅事件并完成基础蓝牙状态初始化。
   Future<void> _initializeBluetooth() async {
     final preferences = await _preferencesFuture;
     _manager ??= BleDeviceManager(
@@ -233,7 +287,6 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     isInitialized.value = true;
   }
 
-  /// 停止扫描，但保留已建立的连接和 profile 缓存。
   /// 请求蓝牙权限；页面使用结果更新引导文案。
   Future<bool> requestBluetoothPermissions() async {
     final current = _manager;
@@ -335,6 +388,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     return null;
   }
 
+  /// 确认并连接新发现的设备，连接成功后向后端提交绑定，并记录到已知设备列表。
   Future<bool> confirmAndConnect(BleDiscoveredDevice device) async {
     pendingDiscovery.value = null;
     final connected = await manager.connectDiscovered(device);
@@ -360,10 +414,14 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     return true;
   }
 
+  /// 忽略当前弹出的新设备连接/绑定请求。
   Future<void> dismissDiscovery() async {
     pendingDiscovery.value = null;
   }
 
+  /// 向设备发送语义指令。
+  ///
+  /// [modelId] 用于获取 profile，[remoteId] 为目标设备 ID，[command] 为语义命令标识。
   Future<bool> sendCommand({
     required int modelId,
     required String remoteId,
@@ -392,6 +450,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     await manager.forgetDevice(profile.profileKey, remoteId);
   }
 
+  /// 根据型号 ID 获取对应的设备 BLE Profile 配置。
   BleDeviceProfile? profileForModel(int modelId) => _profilesByModel[modelId];
 
   /// 由 [DeviceHomeController] 在加载到匹配设备后调用，建立连接设备视图。
@@ -417,6 +476,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     connectedDevice.value = null;
   }
 
+  /// 将后端返回的 [DeviceModelDetail] 数据模型转换为 SDK 认识的 [BleDeviceProfile]。
   BleDeviceProfile _toProfile(DeviceModelDetail detail) {
     final ble = detail.ble;
     final summary = detail.summary;
@@ -436,6 +496,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     );
   }
 
+  /// 响应并处理 BLE SDK 广播的各种运行时事件。
   void _onEvent(BleEvent event) {
     switch (event) {
       case BleScanningChanged(:final scanning):
@@ -521,6 +582,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     }
   }
 
+  /// 释放协调器占用的资源并取消订阅。
   @override
   void onClose() {
     unawaited(_events?.cancel());
@@ -529,10 +591,12 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   }
 }
 
+/// 输出 BLE 诊断日志，仅在调试模式下打印。
 void _bleLog(String message) {
   if (_kBleLog) debugPrint('[BLE] $message');
 }
 
+/// 提供给 SDK 内部使用的日志适配器，将 SDK 内部调试信息转接至 [_bleLog]。
 final class _AppBleLogger implements BleLogger {
   @override
   void debug(String message) {
