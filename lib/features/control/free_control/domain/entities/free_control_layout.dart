@@ -168,11 +168,12 @@ final class FreeControlComponentConfig {
     this.order = 0,
     this.label,
     this.gearMax,
+    this.gearMin = 1,
     this.gearCurrent,
     this.variableSpeedSupported = false,
-    this.defaultValue = 0,
-    List<String> modes = const <String>[],
-  }) : modes = modes;
+    this.defaultValue = 1,
+    this.modes = const <String>[],
+  });
 
   /// 组件类型。
   final FreeControlComponentType type;
@@ -201,13 +202,16 @@ final class FreeControlComponentConfig {
   /// 离散档位最大值；例如 6。
   final int? gearMax;
 
+  /// 离散档位最小值；默认 1。
+  final int gearMin;
+
   /// 当前档位值；例如 4。
   final int? gearCurrent;
 
   /// 是否为连续变速。
   final bool variableSpeedSupported;
 
-  /// 默认值 0–100。
+  /// 默认值。
   final int defaultValue;
 
   /// 模式名称列表（用于 mode/multi 变体）。
@@ -231,17 +235,20 @@ final class FreeControlComponentConfig {
     return cols >= 2 ? 135 : 105;
   }
 
-  /// 组件类型对应的默认展示标签。
-  String get displayLabel =>
-      label ??
-      switch (type) {
-        FreeControlComponentType.telescopic => 'Telescopic',
-        FreeControlComponentType.vibration => 'Vibration',
-        FreeControlComponentType.suck => 'Suck',
-        FreeControlComponentType.heat => 'Heat',
-        FreeControlComponentType.mode => 'Mode',
-        FreeControlComponentType.oneClickClimax => 'One click climax',
-      };
+  /// 组件类型对应的展示标签（优先显示后台配置的 label，为空则回退本地默认名）。
+  String get displayLabel {
+    if (label != null && label!.trim().isNotEmpty) {
+      return label!.trim();
+    }
+    return switch (type) {
+      FreeControlComponentType.telescopic => 'Telescopic',
+      FreeControlComponentType.vibration => 'Vibration',
+      FreeControlComponentType.suck => 'Suck',
+      FreeControlComponentType.heat => 'Heat',
+      FreeControlComponentType.mode => 'Mode',
+      FreeControlComponentType.oneClickClimax => 'One click climax',
+    };
+  }
 
   /// 从后台 json 解析。
   static FreeControlComponentConfig? fromJson(Map<String, dynamic> json) {
@@ -254,24 +261,30 @@ final class FreeControlComponentConfig {
     final col = json['col'] as int? ?? 0;
     final order = json['order'] as int? ?? 0;
 
-    // 解析 rows 和 cols（从 variant 解析，如 "xxx_3x1" -> rows=3, cols=1）
-    var rows = 1;
-    var cols = 1;
-    final sizeMatch = RegExp(r'(\d+)x(\d+)$').firstMatch(variant);
-    if (sizeMatch != null) {
-      rows = int.tryParse(sizeMatch.group(1)!) ?? 1;
-      cols = int.tryParse(sizeMatch.group(2)!) ?? 1;
-    } else {
-      // 兼容历史 span
-      final span = json['span'] as int?;
-      if (span != null && span >= 2) {
-        cols = 2;
+    // 解析 rows 和 cols（优先使用后端显式返回的 rows/cols，其次从 variant 解析，如 "xxx_3x1" -> rows=3, cols=1）
+    var rows = json['rows'] as int? ?? 1;
+    var cols = json['cols'] as int? ?? 1;
+    if (json['rows'] == null || json['cols'] == null) {
+      final sizeMatch = RegExp(r'(\d+)x(\d+)$').firstMatch(variant);
+      if (sizeMatch != null) {
+        rows = int.tryParse(sizeMatch.group(1)!) ?? rows;
+        cols = int.tryParse(sizeMatch.group(2)!) ?? cols;
+      } else {
+        // 兼容历史 span
+        final span = json['span'] as int?;
+        if (span != null && span >= 2) {
+          cols = 2;
+        }
       }
     }
 
     final isVariable = variant.contains('variable');
     final gearMax =
         json['gearMax'] as int? ?? (variant.contains('mode') ? 6 : null);
+    final gearMin = json['gearMin'] as int? ?? 1;
+    final defaultValue =
+        json['defaultValue'] as int? ?? (gearMin > 0 ? gearMin : 1);
+    final gearCurrent = json['gearCurrent'] as int? ?? defaultValue;
 
     return FreeControlComponentConfig(
       type: type,
@@ -283,9 +296,11 @@ final class FreeControlComponentConfig {
       order: order,
       label: json['label'] as String?,
       gearMax: gearMax,
+      gearMin: gearMin,
+      gearCurrent: gearCurrent,
       variableSpeedSupported:
           isVariable || (json['variableSpeedSupported'] as bool? ?? false),
-      defaultValue: json['defaultValue'] as int? ?? 0,
+      defaultValue: defaultValue,
       modes:
           (json['modes'] as List?)?.map((e) => e.toString()).toList() ??
           const [],

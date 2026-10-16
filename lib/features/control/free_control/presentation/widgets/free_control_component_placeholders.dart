@@ -8,15 +8,24 @@ import '../../../../../core/theme/app_radius.dart';
 import '../../../../../core/theme/app_typography.dart';
 import '../../domain/entities/free_control_layout.dart';
 
+import 'telescopic_horizontal_stepped_control.dart';
+import 'telescopic_stepped_control.dart';
+import 'vibration_horizontal_stepped_control.dart';
+import 'vibration_stepped_control.dart';
+
 /// 自由控制组件占位组件：渲染真实模块切图或高保真原生卡片
 final class FreeControlComponentPlaceholder extends StatelessWidget {
+  /// 创建自由控制组件占位组件。
   const FreeControlComponentPlaceholder({
     super.key,
     required this.config,
     this.height,
   });
 
+  /// 组件配置
   final FreeControlComponentConfig config;
+
+  /// 外部约束的固定高度
   final double? height;
 
   /// 根据 variant 获取对应的切图资源路径（与 webadmin ComponentPreview.vue 保持完全一致）
@@ -30,7 +39,8 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
     'suck_multi_2x2' => 'assets/images/device_modules/suck/suck-b.png',
 
     // Telescopic (Thrust)
-    'telescopic_mode_3x1' => 'assets/images/device_modules/thrust/thrust-a.png',
+    // 'telescopic_mode_3x1' 已由 TelescopicSteppedControl 原生 Canvas 实现
+    // 'telescopic_mode_1x2' 已由 TelescopicHorizontalSteppedControl 原生 Canvas 实现
     'telescopic_mode_1x2' => 'assets/images/device_modules/thrust/thrust-b.png',
     'telescopic_variable_3x1' =>
       'assets/images/device_modules/thrust/thrust-c.png',
@@ -38,8 +48,10 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
       'assets/images/device_modules/thrust/thrust-d.png',
 
     // Vibration
+    // 'vibration_mode_3x1' 已由 VibrationSteppedControl 原生 Canvas 实现
     'vibration_mode_3x1' =>
       'assets/images/device_modules/vibration/vibration-a.png',
+    // 'vibration_mode_1x2' 已由 VibrationHorizontalSteppedControl 原生 Canvas 实现
     'vibration_mode_1x2' =>
       'assets/images/device_modules/vibration/vibration-b.png',
     'vibration_variable_3x1' =>
@@ -52,26 +64,73 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
 
   /// 依据 Figma 规格与 WebAdmin 的宽高比
   /// 单行单列（1x1）：172x105 -> 172 / 105
-  /// 三行单列（3x1）：172x312 -> 172 / 312
-  /// 单行双列（1x2）：358x135 -> 358 / 135
+  /// 三行单列（3x1 模式）：172x312 -> 172 / 312
+  /// 三行单列（3x1 变速）：172x355 -> 172 / 355
+  /// 单行双列加热（1x2）：358x105 -> 358 / 105（高度与 1x1 保持 105 dp 一致）
+  /// 单行双列伸缩/震动（1x2）：358x135 -> 358 / 135
   /// 双行双列（2x2）：358x231 -> 358 / 231
   double get _aspectRatio => switch (config.variant) {
     'heat_toggle_1x1' || 'suck_toggle_1x1' => 172 / 105,
-    'heat_bar_1x2' ||
+    'heat_bar_1x2' => 358 / 105,
     'telescopic_mode_1x2' ||
     'telescopic_variable_1x2' ||
     'vibration_mode_1x2' ||
     'vibration_variable_1x2' => 358 / 135,
-    'telescopic_mode_3x1' ||
-    'telescopic_variable_3x1' ||
-    'vibration_mode_3x1' ||
-    'vibration_variable_3x1' => 172 / 312,
+    'telescopic_mode_3x1' || 'vibration_mode_3x1' => 172 / 312,
+    'telescopic_variable_3x1' || 'vibration_variable_3x1' => 172 / 355,
     'suck_multi_2x2' || 'climax_2x2' || 'mode_2x2' => 358 / 231,
-    _ => config.isFullWidth ? 358 / 135 : 172 / 105,
+    _ =>
+      config.isFullWidth
+          ? (config.type == FreeControlComponentType.heat
+                ? 358 / 105
+                : 358 / 135)
+          : 172 / 105,
   };
 
   @override
   Widget build(BuildContext context) {
+    // 伸缩 3x1 竖向分档组件（已还原为 Canvas 原生自绘组件，对齐 thrust-a.png）
+    if (config.type == FreeControlComponentType.telescopic &&
+        (config.variant == 'telescopic_mode_3x1' ||
+            (!config.variableSpeedSupported &&
+                config.rows >= 3 &&
+                config.cols == 1))) {
+      return TelescopicSteppedControl(config: config, height: height);
+    }
+
+    // 伸缩 1x2 横向分档组件（已还原为 Canvas 原生自绘组件，对齐 thrust-b.png）
+    if (config.type == FreeControlComponentType.telescopic &&
+        (config.variant == 'telescopic_mode_1x2' ||
+            (!config.variableSpeedSupported &&
+                config.rows == 1 &&
+                config.cols >= 2))) {
+      return TelescopicHorizontalSteppedControl(
+        config: config,
+        height: height ?? 135.0,
+      );
+    }
+
+    // 震动 3x1 竖向分档组件（已还原为 Canvas 原生自绘组件，对齐 vibration-a.png）
+    if (config.type == FreeControlComponentType.vibration &&
+        (config.variant == 'vibration_mode_3x1' ||
+            (!config.variableSpeedSupported &&
+                config.rows >= 3 &&
+                config.cols == 1))) {
+      return VibrationSteppedControl(config: config, height: height);
+    }
+
+    // 震动 1x2 横向分档组件（已还原为 Canvas 原生自绘组件，对齐 vibration-b.png）
+    if (config.type == FreeControlComponentType.vibration &&
+        (config.variant == 'vibration_mode_1x2' ||
+            (!config.variableSpeedSupported &&
+                config.rows == 1 &&
+                config.cols >= 2))) {
+      return VibrationHorizontalSteppedControl(
+        config: config,
+        height: height ?? 135.0,
+      );
+    }
+
     final imagePath = _assetImagePath;
 
     if (imagePath != null) {
@@ -82,7 +141,7 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
           child: Image.asset(
             imagePath,
             fit: BoxFit.fill,
-            errorBuilder: (_, __, ___) => _buildFallbackWidget(context),
+            errorBuilder: (_, _, _) => _buildFallbackWidget(context),
           ),
         ),
       );
@@ -351,6 +410,10 @@ final class _TelescopicFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     final isVertical = config.rows >= 2 || config.cols == 1;
 
+    if (isVertical && !config.variableSpeedSupported) {
+      return TelescopicSteppedControl(config: config);
+    }
+
     if (isVertical) {
       return _buildCardBase(
         child: Column(
@@ -483,6 +546,10 @@ final class _VibrationFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     final isVertical = config.rows >= 2 || config.cols == 1;
 
+    if (isVertical && !config.variableSpeedSupported) {
+      return VibrationSteppedControl(config: config);
+    }
+
     if (isVertical) {
       return _buildCardBase(
         child: Column(
@@ -554,6 +621,10 @@ final class _VibrationFallback extends StatelessWidget {
           ],
         ),
       );
+    }
+
+    if (!config.variableSpeedSupported) {
+      return VibrationHorizontalSteppedControl(config: config);
     }
 
     return _buildCardBase(
