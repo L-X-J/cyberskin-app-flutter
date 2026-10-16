@@ -306,7 +306,12 @@ void main() {
       await feedback.uploadBytes(ticket, <int>[1], contentType: 'image/png');
       await feedback.completeUpload('feedback/object.png');
       await devices.listUserDevices();
-      await devices.bind(const UserDeviceBindRequest(deviceModelId: 2));
+      await devices.bind(
+        const UserDeviceBindRequest(
+          deviceModelId: 2,
+          deviceUid: 'contract-uid',
+        ),
+      );
       await feedback.createFeedback(FeedbackCreateRequest(content: 'Text'));
       await auth.logout();
       expect(store.value, isNull);

@@ -2,6 +2,7 @@
 // 规则完全对齐管理后台 WebAdmin LayoutEditorNew.vue 的 2 列画布逻辑。
 
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/free_control_layout.dart';
@@ -9,10 +10,7 @@ import 'free_control_component_placeholders.dart';
 
 /// 动态 2 列网格布局构建器
 final class FreeControlLayoutBuilder extends StatelessWidget {
-  const FreeControlLayoutBuilder({
-    super.key,
-    required this.layout,
-  });
+  const FreeControlLayoutBuilder({super.key, required this.layout});
 
   final FreeControlLayout layout;
 
@@ -40,7 +38,8 @@ final class FreeControlLayoutBuilder extends StatelessWidget {
         }
 
         // 计算画布总高度
-        final totalHeight = maxRow * unitRowHeight + (maxRow > 0 ? (maxRow - 1) * gap : 0);
+        final totalHeight =
+            maxRow * unitRowHeight + (maxRow > 0 ? (maxRow - 1) * gap : 0);
 
         return SizedBox(
           width: availableWidth,

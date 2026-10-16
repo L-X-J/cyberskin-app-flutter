@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
 import 'package:get/get.dart';
 
+import '../../../app/app_routes.dart';
 import '../../../core/error/app_failure.dart';
 import '../data/cyberskin_ble_runtime_coordinator.dart';
 import '../domain/connected_device_state.dart';
@@ -40,13 +41,18 @@ final class DeviceHomeController extends GetxController {
     unawaited(load());
     unawaited(_bleCoordinator?.loadProfilesAndStart());
     // BLE 连接可能在 load() 之后才建立；监听连接状态变化，
-    // 有设备连接时补一次同步，确保 connectedDevice 视图不因时序差而缺失。
+    // 有设备连接时补一次同步，确保 connectedDevice 视图不因时序差而缺失；
+    // 设备断开时清理连接视图，若当前在二级设备页面则自动返回主页未连接状态。
     final coordinator = _bleCoordinator;
     if (coordinator != null) {
       ever(coordinator.connectionStates, (_) {
-        // 仅在设备列表已加载且存在已连接设备时同步，避免覆盖尚未完成的首次加载。
         if (coordinator.hasConnectedDevice && devices.isNotEmpty) {
           _syncConnectedDevice(devices.toList(growable: false));
+        } else if (!coordinator.hasConnectedDevice) {
+          coordinator.clearConnectedDevice();
+          if (AppRoutes.requiresConnectedDevice(Get.currentRoute)) {
+            AppRoutes.returnToHome();
+          }
         }
       });
     }

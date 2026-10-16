@@ -59,6 +59,28 @@ abstract final class AppRoutes {
     login: FloatingControlPolicy.hidden,
   };
 
+  /// 依赖设备已连接的二级路由集合；当设备断开连接时，若当前处于这些页面，会自动退回到主页未连接状态。
+  static const Set<String> requiresConnectedDeviceRoutes = {
+    freeControl,
+    device,
+  };
+
+  /// 检查指定路由名称是否强依赖设备连接。
+  static bool requiresConnectedDevice(String? routeName) {
+    if (routeName == null) return false;
+    if (routeName.startsWith('/control/')) return true;
+    return requiresConnectedDeviceRoutes.contains(routeName);
+  }
+
+  /// 安全返回主页。如果主页在路由栈中，pop 回退到主页；否则重置到主页。
+  static void returnToHome() {
+    if (Get.currentRoute == home) return;
+    Get.until((route) => route.settings.name == home);
+    if (Get.currentRoute != home) {
+      Get.offAllNamed(home);
+    }
+  }
+
   /// 所有顶层路由及其局部依赖绑定。
   static final List<GetPage<dynamic>> pages = <GetPage<dynamic>>[
     GetPage<dynamic>(

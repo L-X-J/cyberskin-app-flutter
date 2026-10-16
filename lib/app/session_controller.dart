@@ -5,7 +5,10 @@ import 'package:get/get.dart';
 
 import '../core/storage/session_credential_store.dart';
 import '../features/content/domain/entities/app_content.dart';
+import '../features/control/domain/device_session.dart';
+import '../features/control/presentation/control_session_controller.dart';
 import '../features/device/domain/device.dart';
+import 'app_routes.dart';
 
 /// 应用启动阶段的会话状态。
 enum SessionState {
@@ -112,9 +115,24 @@ final class SessionController extends GetxController {
     markAnonymous();
   }
 
-  /// 更新设备连接占位状态，供未来 BLE Adapter 接入时替换。
+  /// 更新设备连接状态，并在设备断开时自动让依赖设备的二级页面返回主页未连接状态。
   void setDeviceConnectionStatus(DeviceConnectionStatus status) {
     deviceStatus.value = status;
+    final isDisconnected =
+        status == DeviceConnectionStatus.disconnected ||
+        status == DeviceConnectionStatus.sessionLost;
+    if (isDisconnected) {
+      _handleDeviceDisconnected();
+    }
+  }
+
+  void _handleDeviceDisconnected() {
+    if (Get.isRegistered<ControlSessionController>()) {
+      Get.find<ControlSessionController>().updateState(DeviceSessionState.idle);
+    }
+    if (AppRoutes.requiresConnectedDevice(Get.currentRoute)) {
+      AppRoutes.returnToHome();
+    }
   }
 
   /// 处理服务端返回未登录的配置。

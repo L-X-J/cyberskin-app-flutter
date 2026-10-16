@@ -189,7 +189,12 @@ void main() {
 
       _requireSuccess(await devices.listUserDevices());
       final binding = _requireSuccess(
-        await devices.bind(UserDeviceBindRequest(deviceModelId: modelId)),
+        await devices.bind(
+          UserDeviceBindRequest(
+            deviceModelId: modelId,
+            deviceUid: '00:11:22:33:44:55',
+          ),
+        ),
       );
       bindingId = binding.id;
       expect(bindingId, isNotNull);

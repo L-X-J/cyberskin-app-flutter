@@ -2,6 +2,7 @@
 
 import 'package:get/get.dart';
 
+import '../../../../app/app_routes.dart';
 import '../../../device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../../device/domain/connected_device_state.dart';
 import '../../../device/domain/repositories/device_catalog_repository.dart';
@@ -20,6 +21,9 @@ final class FreeControlController extends GetxController {
   final CyberskinBleRuntimeCoordinator bleCoordinator;
   final ControlSessionController sessionController;
 
+  Worker? _deviceWorker;
+  Worker? _connectionWorker;
+
   /// 当前动态布局配置
   final Rx<FreeControlLayout?> layout = Rx<FreeControlLayout?>(null);
 
@@ -33,7 +37,8 @@ final class FreeControlController extends GetxController {
   final Rx<String?> errorMessage = Rx<String?>(null);
 
   /// 当前连接的设备状态（如果有）
-  ConnectedDeviceState? get connectedDevice => bleCoordinator.connectedDevice.value;
+  ConnectedDeviceState? get connectedDevice =>
+      bleCoordinator.connectedDevice.value;
 
   /// 设备名称
   String get deviceName {
@@ -59,6 +64,35 @@ final class FreeControlController extends GetxController {
     loadLayout();
     // 按照 PRD 6.3 交互规则："进入页面即按当前模块值自动运行，底部 pill 显示 Running"
     sessionController.updateState(DeviceSessionState.running);
+    _bindDeviceConnectionWorker();
+  }
+
+  void _bindDeviceConnectionWorker() {
+    _deviceWorker = ever(bleCoordinator.connectedDevice, (connected) {
+      if (connected == null) {
+        _handleDeviceDisconnected();
+      }
+    });
+    _connectionWorker = ever(bleCoordinator.connectionStates, (_) {
+      if (!bleCoordinator.hasConnectedDevice) {
+        _handleDeviceDisconnected();
+      }
+    });
+  }
+
+  void _handleDeviceDisconnected() {
+    sessionController.updateState(DeviceSessionState.idle);
+    if (AppRoutes.requiresConnectedDevice(Get.currentRoute)) {
+      AppRoutes.returnToHome();
+    }
+  }
+
+  @override
+  void onClose() {
+    _deviceWorker?.dispose();
+    _connectionWorker?.dispose();
+    sessionController.updateState(DeviceSessionState.idle);
+    super.onClose();
   }
 
   /// 加载后端配置的自由控制积木式布局
@@ -67,10 +101,14 @@ final class FreeControlController extends GetxController {
     errorMessage.value = null;
 
     final connected = connectedDevice;
-    final modelId = connected != null ? int.tryParse(connected.device.model.trim()) : null;
+    final modelId = connected != null
+        ? int.tryParse(connected.device.model.trim())
+        : null;
 
     if (modelId != null) {
-      final detailResult = await catalogRepository.getDeviceModelDetail(modelId);
+      final detailResult = await catalogRepository.getDeviceModelDetail(
+        modelId,
+      );
       final detail = detailResult.valueOrNull;
 
       if (detail != null && detail.layout != null) {

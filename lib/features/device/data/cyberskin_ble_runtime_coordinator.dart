@@ -114,7 +114,9 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     final manager = this.manager;
     final t0 = DateTime.now();
     final result = await _catalogRepository.listDeviceModels();
-    _bleLog('listDeviceModels 耗时 ${DateTime.now().difference(t0).inMilliseconds}ms');
+    _bleLog(
+      'listDeviceModels 耗时 ${DateTime.now().difference(t0).inMilliseconds}ms',
+    );
     final summaries = result.valueOrNull;
     if (summaries == null) {
       final failure = result.failureOrNull;
@@ -135,11 +137,15 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
       final detail = await _catalogRepository.getDeviceModelDetail(modelId);
       final value = detail.valueOrNull;
       if (value == null) {
-        _bleLog('getDeviceModelDetail($modelId) 失败 (${DateTime.now().difference(t1).inMilliseconds}ms): ${detail.failureOrNull?.message}');
+        _bleLog(
+          'getDeviceModelDetail($modelId) 失败 (${DateTime.now().difference(t1).inMilliseconds}ms): ${detail.failureOrNull?.message}',
+        );
         detailLoadFailed = true;
         continue;
       }
-      _bleLog('getDeviceModelDetail($modelId) 成功 (${DateTime.now().difference(t1).inMilliseconds}ms)');
+      _bleLog(
+        'getDeviceModelDetail($modelId) 成功 (${DateTime.now().difference(t1).inMilliseconds}ms)',
+      );
       final profile = _toProfile(value);
       profiles.add(profile);
     }
@@ -157,7 +163,9 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     _profilesByModel = {
       for (final profile in profiles) profile.modelId: profile,
     };
-    _bleLog('profile 加载完成，共 ${profiles.length} 个: ${profiles.map((p) => '${p.modelId}(${p.profileKey})').join(', ')}');
+    _bleLog(
+      'profile 加载完成，共 ${profiles.length} 个: ${profiles.map((p) => '${p.modelId}(${p.profileKey})').join(', ')}',
+    );
     manager.configureProfiles(profiles);
     _profilesConfigured = true;
     await _startDiscovery();
@@ -481,6 +489,10 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
           unawaited(manager.stopAutoDiscovery());
         } else if (state == BleConnectionState.disconnected ||
             state == BleConnectionState.failed) {
+          if (connectedDevice.value?.remoteId == remoteId) {
+            clearConnectedDevice();
+          }
+          runtime.remove(remoteId);
           final wasIntentional = _intentionalDisconnects.remove(remoteId);
           _bleLog(
             '设备断开: id=$remoteId '

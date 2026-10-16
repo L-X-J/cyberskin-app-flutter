@@ -248,9 +248,7 @@ void main() {
     );
   }
 
-  testWidgets('auto-fits content width and clamps to maxWidth', (
-    tester,
-  ) async {
+  testWidgets('auto-fits content width and clamps to maxWidth', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Center(

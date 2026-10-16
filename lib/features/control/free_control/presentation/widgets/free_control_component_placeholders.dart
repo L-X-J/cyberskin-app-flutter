@@ -32,14 +32,20 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
     // Telescopic (Thrust)
     'telescopic_mode_3x1' => 'assets/images/device_modules/thrust/thrust-a.png',
     'telescopic_mode_1x2' => 'assets/images/device_modules/thrust/thrust-b.png',
-    'telescopic_variable_3x1' => 'assets/images/device_modules/thrust/thrust-c.png',
-    'telescopic_variable_1x2' => 'assets/images/device_modules/thrust/thrust-d.png',
+    'telescopic_variable_3x1' =>
+      'assets/images/device_modules/thrust/thrust-c.png',
+    'telescopic_variable_1x2' =>
+      'assets/images/device_modules/thrust/thrust-d.png',
 
     // Vibration
-    'vibration_mode_3x1' => 'assets/images/device_modules/vibration/vibration-a.png',
-    'vibration_mode_1x2' => 'assets/images/device_modules/vibration/vibration-b.png',
-    'vibration_variable_3x1' => 'assets/images/device_modules/vibration/vibration-c.png',
-    'vibration_variable_1x2' => 'assets/images/device_modules/vibration/vibration-d.png',
+    'vibration_mode_3x1' =>
+      'assets/images/device_modules/vibration/vibration-a.png',
+    'vibration_mode_1x2' =>
+      'assets/images/device_modules/vibration/vibration-b.png',
+    'vibration_variable_3x1' =>
+      'assets/images/device_modules/vibration/vibration-c.png',
+    'vibration_variable_1x2' =>
+      'assets/images/device_modules/vibration/vibration-d.png',
 
     _ => null,
   };
@@ -92,10 +98,14 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
     return switch (config.type) {
       FreeControlComponentType.heat => _HeatFallback(config: config),
       FreeControlComponentType.suck => _SuckFallback(config: config),
-      FreeControlComponentType.telescopic => _TelescopicFallback(config: config),
+      FreeControlComponentType.telescopic => _TelescopicFallback(
+        config: config,
+      ),
       FreeControlComponentType.vibration => _VibrationFallback(config: config),
       FreeControlComponentType.mode => _ModeFallback(config: config),
-      FreeControlComponentType.oneClickClimax => _OneClickClimaxFallback(config: config),
+      FreeControlComponentType.oneClickClimax => _OneClickClimaxFallback(
+        config: config,
+      ),
     };
   }
 }
@@ -113,7 +123,8 @@ Widget _buildCardBase({
     padding: padding,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(AppRadius.radiusXlLarge),
-      gradient: gradient ??
+      gradient:
+          gradient ??
           LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -122,11 +133,9 @@ Widget _buildCardBase({
               const Color(0xFF1E172E).withValues(alpha: 0.85),
             ],
           ),
-      border: border ??
-          Border.all(
-            color: Colors.white.withValues(alpha: 0.12),
-            width: 1,
-          ),
+      border:
+          border ??
+          Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.25),
@@ -201,7 +210,10 @@ final class _HeatFallback extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            _buildMockSwitch(activeColor: Colors.deepOrange.shade400, isOn: false),
+            _buildMockSwitch(
+              activeColor: Colors.deepOrange.shade400,
+              isOn: false,
+            ),
           ],
         ),
       );
@@ -230,7 +242,10 @@ final class _HeatFallback extends StatelessWidget {
               ),
             ],
           ),
-          _buildMockSwitch(activeColor: Colors.deepOrange.shade400, isOn: false),
+          _buildMockSwitch(
+            activeColor: Colors.deepOrange.shade400,
+            isOn: false,
+          ),
         ],
       ),
     );
@@ -270,7 +285,10 @@ final class _SuckFallback extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                _buildMockSwitch(activeColor: const Color(0xFFD13BD8), isOn: true),
+                _buildMockSwitch(
+                  activeColor: const Color(0xFFD13BD8),
+                  isOn: true,
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -340,7 +358,11 @@ final class _TelescopicFallback extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.swap_vert_rounded, size: 16, color: Colors.blueAccent),
+                const Icon(
+                  Icons.swap_vert_rounded,
+                  size: 16,
+                  color: Colors.blueAccent,
+                ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -374,7 +396,9 @@ final class _TelescopicFallback extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(36),
                   color: Colors.black.withValues(alpha: 0.35),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Stack(
                   alignment: Alignment.bottomCenter,
@@ -387,10 +411,7 @@ final class _TelescopicFallback extends StatelessWidget {
                         gradient: const LinearGradient(
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
-                          colors: [
-                            Color(0xFF2654BE),
-                            Color(0xFF558EF4),
-                          ],
+                          colors: [Color(0xFF2654BE), Color(0xFF558EF4)],
                         ),
                       ),
                     ),
@@ -410,7 +431,11 @@ final class _TelescopicFallback extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.swap_vert_rounded, size: 16, color: Colors.blueAccent),
+              const Icon(
+                Icons.swap_vert_rounded,
+                size: 16,
+                color: Colors.blueAccent,
+              ),
               const SizedBox(width: 4),
               Text(
                 config.displayLabel,
@@ -465,7 +490,11 @@ final class _VibrationFallback extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.vibration_rounded, size: 16, color: Color(0xFFD13BD8)),
+                const Icon(
+                  Icons.vibration_rounded,
+                  size: 16,
+                  color: Color(0xFFD13BD8),
+                ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -499,7 +528,9 @@ final class _VibrationFallback extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(36),
                   color: Colors.black.withValues(alpha: 0.35),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Stack(
                   alignment: Alignment.bottomCenter,
@@ -512,10 +543,7 @@ final class _VibrationFallback extends StatelessWidget {
                         gradient: const LinearGradient(
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
-                          colors: [
-                            Color(0xFF7A1D85),
-                            Color(0xFFE447D0),
-                          ],
+                          colors: [Color(0xFF7A1D85), Color(0xFFE447D0)],
                         ),
                       ),
                     ),
@@ -535,7 +563,11 @@ final class _VibrationFallback extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.vibration_rounded, size: 16, color: Color(0xFFD13BD8)),
+              const Icon(
+                Icons.vibration_rounded,
+                size: 16,
+                color: Color(0xFFD13BD8),
+              ),
               const SizedBox(width: 4),
               Text(
                 config.displayLabel,
@@ -587,7 +619,11 @@ final class _ModeFallback extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome_rounded, size: 16, color: Color(0xFFD13BD8)),
+              const Icon(
+                Icons.auto_awesome_rounded,
+                size: 16,
+                color: Color(0xFFD13BD8),
+              ),
               const SizedBox(width: 6),
               Text(
                 config.displayLabel,
@@ -604,7 +640,9 @@ final class _ModeFallback extends StatelessWidget {
             children: [
               _buildPillButton('Stop', isOutlined: true),
               const SizedBox(width: 10),
-              Expanded(child: _buildPillButton('Default Mode', isOutlined: true)),
+              Expanded(
+                child: _buildPillButton('Default Mode', isOutlined: true),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -654,7 +692,11 @@ final class _OneClickClimaxFallback extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.flash_on_rounded, size: 16, color: Color(0xFFE447D0)),
+                    const Icon(
+                      Icons.flash_on_rounded,
+                      size: 16,
+                      color: Color(0xFFE447D0),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       config.displayLabel,
@@ -681,7 +723,10 @@ final class _OneClickClimaxFallback extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFF4A2B6D).withValues(alpha: 0.8),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFE447D0).withValues(alpha: 0.25),
@@ -714,10 +759,7 @@ Widget _buildMockSwitch({required Color activeColor, required bool isOn}) {
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(16),
       color: isOn ? activeColor : const Color(0xFF41284A),
-      border: Border.all(
-        color: Colors.white.withValues(alpha: 0.15),
-        width: 1,
-      ),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
     ),
     child: Row(
       mainAxisAlignment: isOn ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -727,7 +769,11 @@ Widget _buildMockSwitch({required Color activeColor, required bool isOn}) {
             padding: EdgeInsets.only(right: 6),
             child: Text(
               'ON',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
         Container(
@@ -743,7 +789,11 @@ Widget _buildMockSwitch({required Color activeColor, required bool isOn}) {
             padding: EdgeInsets.only(left: 6),
             child: Text(
               'OFF',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white70),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white70,
+              ),
             ),
           ),
       ],
@@ -751,7 +801,10 @@ Widget _buildMockSwitch({required Color activeColor, required bool isOn}) {
   );
 }
 
-Widget _buildHorizontalSlider({required double percent, required Gradient gradient}) {
+Widget _buildHorizontalSlider({
+  required double percent,
+  required Gradient gradient,
+}) {
   return Container(
     height: 34,
     decoration: BoxDecoration(
@@ -787,7 +840,9 @@ Widget _buildChip(String label, {required bool isSelected}) {
           ? const Color(0xFFD13BD8).withValues(alpha: 0.4)
           : Colors.white.withValues(alpha: 0.08),
       border: Border.all(
-        color: isSelected ? const Color(0xFFD13BD8) : Colors.white.withValues(alpha: 0.15),
+        color: isSelected
+            ? const Color(0xFFD13BD8)
+            : Colors.white.withValues(alpha: 0.15),
       ),
     ),
     child: Text(
@@ -801,7 +856,11 @@ Widget _buildChip(String label, {required bool isSelected}) {
   );
 }
 
-Widget _buildPillButton(String text, {bool isSelected = false, bool isOutlined = false}) {
+Widget _buildPillButton(
+  String text, {
+  bool isSelected = false,
+  bool isOutlined = false,
+}) {
   return Container(
     height: 38,
     alignment: Alignment.center,
@@ -809,13 +868,13 @@ Widget _buildPillButton(String text, {bool isSelected = false, bool isOutlined =
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(19),
       gradient: isSelected
-          ? const LinearGradient(
-              colors: [Color(0xFFD13BD8), Color(0xFF762BB5)],
-            )
+          ? const LinearGradient(colors: [Color(0xFFD13BD8), Color(0xFF762BB5)])
           : null,
       color: isSelected ? null : Colors.white.withValues(alpha: 0.08),
       border: Border.all(
-        color: isSelected ? Colors.transparent : Colors.white.withValues(alpha: 0.18),
+        color: isSelected
+            ? Colors.transparent
+            : Colors.white.withValues(alpha: 0.18),
       ),
     ),
     child: Text(

@@ -74,4 +74,3 @@ abstract interface class UserDeviceRepository {
   /// 纯远端实现不持有缓存，此方法为 no-op；缓存装饰器覆盖此方法。
   void invalidateCache() {}
 }
-

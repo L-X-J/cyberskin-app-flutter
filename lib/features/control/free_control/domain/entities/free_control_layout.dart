@@ -147,8 +147,9 @@ enum FreeControlComponentType {
       'suck' => FreeControlComponentType.suck,
       'heat' => FreeControlComponentType.heat,
       'mode' => FreeControlComponentType.mode,
-      'oneclickclimax' || 'one_click_climax' || 'climax' =>
-        FreeControlComponentType.oneClickClimax,
+      'oneclickclimax' ||
+      'one_click_climax' ||
+      'climax' => FreeControlComponentType.oneClickClimax,
       _ => null,
     };
   }
@@ -231,14 +232,16 @@ final class FreeControlComponentConfig {
   }
 
   /// 组件类型对应的默认展示标签。
-  String get displayLabel => label ?? switch (type) {
-    FreeControlComponentType.telescopic => 'Telescopic',
-    FreeControlComponentType.vibration => 'Vibration',
-    FreeControlComponentType.suck => 'Suck',
-    FreeControlComponentType.heat => 'Heat',
-    FreeControlComponentType.mode => 'Mode',
-    FreeControlComponentType.oneClickClimax => 'One click climax',
-  };
+  String get displayLabel =>
+      label ??
+      switch (type) {
+        FreeControlComponentType.telescopic => 'Telescopic',
+        FreeControlComponentType.vibration => 'Vibration',
+        FreeControlComponentType.suck => 'Suck',
+        FreeControlComponentType.heat => 'Heat',
+        FreeControlComponentType.mode => 'Mode',
+        FreeControlComponentType.oneClickClimax => 'One click climax',
+      };
 
   /// 从后台 json 解析。
   static FreeControlComponentConfig? fromJson(Map<String, dynamic> json) {
@@ -267,7 +270,8 @@ final class FreeControlComponentConfig {
     }
 
     final isVariable = variant.contains('variable');
-    final gearMax = json['gearMax'] as int? ?? (variant.contains('mode') ? 6 : null);
+    final gearMax =
+        json['gearMax'] as int? ?? (variant.contains('mode') ? 6 : null);
 
     return FreeControlComponentConfig(
       type: type,
@@ -279,9 +283,12 @@ final class FreeControlComponentConfig {
       order: order,
       label: json['label'] as String?,
       gearMax: gearMax,
-      variableSpeedSupported: isVariable || (json['variableSpeedSupported'] as bool? ?? false),
+      variableSpeedSupported:
+          isVariable || (json['variableSpeedSupported'] as bool? ?? false),
       defaultValue: json['defaultValue'] as int? ?? 0,
-      modes: (json['modes'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      modes:
+          (json['modes'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
     );
   }
 }

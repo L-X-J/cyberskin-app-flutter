@@ -45,4 +45,16 @@ void main() {
 
     expect(manualPage.page(), isA<DeviceManualPage>());
   });
+
+  test('identifies routes requiring connected device', () {
+    expect(AppRoutes.requiresConnectedDevice(AppRoutes.freeControl), isTrue);
+    expect(AppRoutes.requiresConnectedDevice(AppRoutes.device), isTrue);
+    expect(AppRoutes.requiresConnectedDevice('/control/custom_rhythm'), isTrue);
+
+    expect(AppRoutes.requiresConnectedDevice(AppRoutes.home), isFalse);
+    expect(AppRoutes.requiresConnectedDevice(AppRoutes.profile), isFalse);
+    expect(AppRoutes.requiresConnectedDevice(AppRoutes.video), isFalse);
+    expect(AppRoutes.requiresConnectedDevice(AppRoutes.login), isFalse);
+    expect(AppRoutes.requiresConnectedDevice(null), isFalse);
+  });
 }

@@ -47,7 +47,10 @@ final class SharedPreferencesUserDeviceCache implements UserDeviceCache {
   @override
   Future<void> write(List<UserDevice> devices) async {
     final preferences = await _preferencesLoader();
-    await preferences.setString(_key, jsonEncode(devices.map(_encode).toList()));
+    await preferences.setString(
+      _key,
+      jsonEncode(devices.map(_encode).toList()),
+    );
   }
 
   @override
