@@ -1,6 +1,7 @@
 // 视频页路由级依赖装配。
 import 'package:get/get.dart';
 
+import '../domain/repositories/local_video_repository.dart';
 import '../domain/repositories/video_repository.dart';
 import 'video_controller.dart';
 
@@ -12,7 +13,12 @@ final class VideoBinding extends Bindings {
   @override
   void dependencies() {
     if (!Get.isRegistered<VideoController>()) {
-      Get.put<VideoController>(VideoController(Get.find<VideoRepository>()));
+      Get.put<VideoController>(
+        VideoController(
+          Get.find<VideoRepository>(),
+          localRepository: Get.find<LocalVideoRepository>(),
+        ),
+      );
     }
   }
 }

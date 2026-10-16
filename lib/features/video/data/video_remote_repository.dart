@@ -39,15 +39,36 @@ final class VideoRemoteRepository extends BaseRemoteRepository
           : ApiJson.objectList(rows, field: 'rows')
                 .map(
                   (item) => OfficialVideo(
-                    id: ApiJson.integer(item, 'id'),
-                    titleEn: ApiJson.string(item, 'titleEn'),
-                    coverUrl: ApiJson.string(item, 'coverUrl'),
-                    videoUrl: ApiJson.string(item, 'videoUrl'),
-                    durationSeconds: ApiJson.integer(item, 'durationSec'),
+                    id: _positive(item, 'id'),
+                    titleEn: ApiJson.requiredString(item, 'titleEn'),
+                    coverUrl: _httpUrl(item, 'coverUrl'),
+                    videoUrl: _httpUrl(item, 'videoUrl'),
+                    durationSeconds: _positive(item, 'durationSec'),
                     sort: ApiJson.integer(item, 'sort'),
+                    videoWidth: _positive(item, 'videoWidth'),
+                    videoHeight: _positive(item, 'videoHeight'),
+                    videoCoverWidth: _positive(item, 'videoCoverWidth'),
+                    videoCoverHeight: _positive(item, 'videoCoverHeight'),
                   ),
                 )
                 .toList(growable: false),
     );
+  }
+
+  /// 上架内容必须带正数尺寸，避免用猜测比例掩盖服务端契约缺失。
+  int _positive(Map<String, dynamic> json, String key) {
+    final value = ApiJson.requiredInteger(json, key);
+    if (value <= 0) throw FormatException('$key must be positive.');
+    return value;
+  }
+
+  /// 播放元数据必须一次提供可用网络地址，不以占位资源掩盖错误数据。
+  String _httpUrl(Map<String, dynamic> json, String key) {
+    final value = ApiJson.requiredString(json, key);
+    final uri = Uri.tryParse(value);
+    if (uri == null || !['http', 'https'].contains(uri.scheme) || uri.host.isEmpty || uri.userInfo.isNotEmpty) {
+      throw FormatException('$key must be an HTTP(S) URL.');
+    }
+    return value;
   }
 }

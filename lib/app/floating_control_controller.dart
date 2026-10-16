@@ -30,6 +30,9 @@ final class FloatingControlController extends GetxController {
   /// 拖动期间关闭定位动画，避免手指与控件位置产生滞后。
   final RxBool isDragging = false.obs;
 
+  /// 媒体全屏临时覆盖路由策略，退出后继续使用观察者维护的原策略。
+  final RxBool mediaFullscreen = false.obs;
+
   final Map<Route<dynamic>, Rect> _pageBounds = {};
   Route<dynamic>? _activeRoute;
   Size _controlSize = const Size(126, 68);

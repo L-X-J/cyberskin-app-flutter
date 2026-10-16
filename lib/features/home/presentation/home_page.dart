@@ -8,6 +8,7 @@ import '../../../app/widgets/app_scaffold.dart';
 import '../../device/domain/device.dart';
 import '../../device/presentation/device_home_controller.dart';
 import '../../video/domain/repositories/video_repository.dart';
+import '../../video/domain/repositories/local_video_repository.dart';
 import '../../video/presentation/video_controller.dart';
 import '../../video/presentation/video_page.dart';
 import 'home_connected/home_connected_view.dart';
@@ -164,7 +165,7 @@ final class _HomePageState extends State<HomePage>
 
       return AppScaffold(
         currentTab: selectedTab,
-        showBottomNavigation: connected,
+        showBottomNavigation: connected && !videoController.isFullscreen.value,
         onTabSelected: _controller.selectTab,
         appBar: const PreferredSize(
           preferredSize: Size.zero,
@@ -279,7 +280,14 @@ final class _HomePageState extends State<HomePage>
     final repository = Get.isRegistered<VideoRepository>()
         ? Get.find<VideoRepository>()
         : null;
-    return Get.put<VideoController>(VideoController(repository));
+    return Get.put<VideoController>(
+      VideoController(
+        repository,
+        localRepository: Get.isRegistered<LocalVideoRepository>()
+            ? Get.find<LocalVideoRepository>()
+            : null,
+      ),
+    );
   }
 }
 
@@ -349,7 +357,10 @@ final class _ConnectedBody extends StatelessWidget {
           onPowerOff: () =>
               unawaited(homeController.confirmPowerOffAndUnbind()),
         ),
-        VideoTabContent(controller: videoController),
+        VideoTabContent(
+          controller: videoController,
+          active: selectedTab == AppTab.video,
+        ),
       ],
     );
   }

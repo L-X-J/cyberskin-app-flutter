@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="176"
+    height="185">
+    <defs>
+        <filter id="filter_0" color-interpolation-filters="sRGB" x="0" y="0" width="176"
+            height="185" filterUnits="userSpaceOnUse">
+            <feGaussianBlur stdDeviation="7.05" result="blur" />
+        </filter>
+    </defs>
+    <g filter="url(#filter_0)">
+        <defs>
+            <radialGradient id="gradient_0"
+                gradientTransform="matrix(-4.84607e-13 310 -292 1.8982e-14 73 -4.74551e-15)"
+                gradientUnits="userSpaceOnUse" r="0.5" cx="0" cy="0">
+                <stop offset="0" stop-color="#000" />
+                <stop offset="1" stop-color="#D94126" />
+            </radialGradient>
+        </defs>
+        <rect fill="url(#gradient_0)" transform="matrix(1 0 0 1 15 15)" width="146" height="155"
+            rx="36" ry="36" />
+    </g>
+</svg>

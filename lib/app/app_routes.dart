@@ -15,6 +15,7 @@ import '../features/profile/presentation/profile_binding.dart';
 import '../features/profile/presentation/profile_page.dart';
 import '../features/video/presentation/video_binding.dart';
 import '../features/video/presentation/video_page.dart';
+import '../features/video/presentation/video_browser_page.dart';
 import 'bindings/device_binding.dart';
 import 'bindings/init_binding.dart';
 import 'floating_control_controller.dart';
@@ -41,6 +42,9 @@ abstract final class AppRoutes {
   /// 视频主页路由。
   static const String video = '/video';
 
+  /// Browser 来源打开的 App 内网页容器。
+  static const String videoBrowser = '/video/browser';
+
   /// 从设备主页进入的用户资料路由。
   static const String profile = '/profile';
 
@@ -53,6 +57,7 @@ abstract final class AppRoutes {
     device: FloatingControlPolicy.fixed,
     deviceManual: FloatingControlPolicy.hidden,
     video: FloatingControlPolicy.fixed,
+    videoBrowser: FloatingControlPolicy.draggable,
     profile: FloatingControlPolicy.draggable,
     freeControl: FloatingControlPolicy.hidden,
     init: FloatingControlPolicy.hidden,
@@ -120,6 +125,7 @@ abstract final class AppRoutes {
       page: () => const VideoPage(),
       binding: VideoBinding(),
     ),
+    GetPage<dynamic>(name: videoBrowser, page: () => const VideoBrowserPage()),
     GetPage<dynamic>(
       name: profile,
       page: () => const ProfilePage(),

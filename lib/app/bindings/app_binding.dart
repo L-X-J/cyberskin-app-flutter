@@ -34,6 +34,8 @@ import '../../features/version/data/version_remote_repository.dart';
 import '../../features/version/domain/repositories/version_repository.dart';
 import '../../features/video/data/video_remote_repository.dart';
 import '../../features/video/domain/repositories/video_repository.dart';
+import '../../features/video/domain/repositories/local_video_repository.dart';
+import '../../features/video/data/local_video_repository_impl.dart';
 import '../floating_control_controller.dart';
 import '../session_controller.dart';
 
@@ -123,6 +125,7 @@ final class AppBinding extends Bindings {
       ),
       permanent: true,
     );
+    Get.put<LocalVideoRepository>(LocalVideoRepositoryImpl(), permanent: true);
     Get.put<VideoRepository>(
       VideoRemoteRepository(transport: transport, sessionStore: sessionStore),
       permanent: true,

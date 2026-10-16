@@ -10,6 +10,7 @@ import '../../device/domain/repositories/user_device_repository.dart';
 import '../../device/presentation/device_home_controller.dart';
 import '../../training/domain/repositories/training_repository.dart';
 import '../../video/domain/repositories/video_repository.dart';
+import '../../video/domain/repositories/local_video_repository.dart';
 import '../../video/presentation/video_controller.dart';
 import 'home_controller.dart';
 
@@ -24,7 +25,14 @@ final class HomeBinding extends Bindings {
     // 若用 isRegistered 守卫跳过创建，旧路由清理时会把这些控制器一并删掉，
     // 新路由就找不到它们了。因此必须强制重建，确保实例归属于当前路由。
     Get.delete<VideoController>(force: true);
-    Get.put<VideoController>(VideoController(Get.find<VideoRepository>()));
+    Get.put<VideoController>(
+      VideoController(
+        Get.find<VideoRepository>(),
+        localRepository: Get.isRegistered<LocalVideoRepository>()
+            ? Get.find<LocalVideoRepository>()
+            : null,
+      ),
+    );
 
     Get.delete<DeviceHomeController>(force: true);
     Get.put<DeviceHomeController>(
