@@ -56,11 +56,20 @@ final class ConnectedDeviceHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tags = _parseTags(device.tags);
     final modelId = int.tryParse(device.model.trim());
-    final heroTag = 'device-model-${modelId ?? 'unknown'}';
+    final heroTag = modelId != null ? 'device-model-$modelId' : null;
     final image = (device.iconUrl != null && device.iconUrl!.isNotEmpty)
         ? device.iconUrl!
         : (_fallbackAsset(device.name) ??
               'assets/images/home/device_pro_connected.png');
+
+    final imageWidget = AppImage.load(
+      image,
+      fit: BoxFit.contain,
+      semanticLabel: device.name,
+      width: 182,
+      placeholder: const DeviceImagePlaceholder(),
+      errorWidget: const DeviceImagePlaceholder(),
+    );
 
     return AnimatedBuilder(
       animation: flipAnimation,
@@ -152,17 +161,9 @@ final class ConnectedDeviceHeroCard extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.topRight,
-            child: Hero(
-              tag: heroTag,
-              child: AppImage.load(
-                image,
-                fit: BoxFit.contain,
-                semanticLabel: device.name,
-                width: 182,
-                placeholder: const DeviceImagePlaceholder(),
-                errorWidget: const DeviceImagePlaceholder(),
-              ),
-            ),
+            child: heroTag != null
+                ? Hero(tag: heroTag, child: imageWidget)
+                : imageWidget,
           ),
           const SizedBox(height: 194),
         ],

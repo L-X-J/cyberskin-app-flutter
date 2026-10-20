@@ -7,11 +7,18 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_radius.dart';
 import '../../../../../core/theme/app_typography.dart';
 import '../../domain/entities/free_control_layout.dart';
-
+import 'heat_bar_control.dart';
+import 'heat_toggle_control.dart';
+import 'suck_multi_control.dart';
+import 'suck_toggle_control.dart';
 import 'telescopic_horizontal_stepped_control.dart';
+import 'telescopic_horizontal_variable_control.dart';
 import 'telescopic_stepped_control.dart';
+import 'telescopic_variable_control.dart';
 import 'vibration_horizontal_stepped_control.dart';
+import 'vibration_horizontal_variable_control.dart';
 import 'vibration_stepped_control.dart';
+import 'vibration_variable_control.dart';
 
 /// 自由控制组件占位组件：渲染真实模块切图或高保真原生卡片
 final class FreeControlComponentPlaceholder extends StatelessWidget {
@@ -54,8 +61,10 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
     // 'vibration_mode_1x2' 已由 VibrationHorizontalSteppedControl 原生 Canvas 实现
     'vibration_mode_1x2' =>
       'assets/images/device_modules/vibration/vibration-b.png',
+    // 'vibration_variable_3x1' 已由 VibrationVariableControl 原生 Canvas 实现
     'vibration_variable_3x1' =>
       'assets/images/device_modules/vibration/vibration-c.png',
+    // 'vibration_variable_1x2' 已由 VibrationHorizontalVariableControl 原生 Canvas 实现
     'vibration_variable_1x2' =>
       'assets/images/device_modules/vibration/vibration-d.png',
 
@@ -89,6 +98,57 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 加热 1x1 开关组件（已还原为原生可交互组件，对齐 heat-a.png）
+    if (config.type == FreeControlComponentType.heat &&
+        (config.variant == 'heat_toggle_1x1' ||
+            (!config.isFullWidth && config.rows == 1))) {
+      return HeatToggleControl(config: config, height: height);
+    }
+
+    // 加热 1x2 横向开关组件（已还原为原生可交互组件，对齐 heat-b.png）
+    if (config.type == FreeControlComponentType.heat &&
+        (config.variant == 'heat_bar_1x2' || config.isFullWidth)) {
+      return HeatBarControl(config: config, height: height ?? 105.0);
+    }
+
+    // 吸附/吮吸 1x1 开关组件（已还原为原生可交互组件，对齐 suck-a.png）
+    if (config.type == FreeControlComponentType.suck &&
+        (config.variant == 'suck_toggle_1x1' ||
+            (!config.isFullWidth && config.rows == 1))) {
+      return SuckToggleControl(config: config, height: height);
+    }
+
+    // 吸附/吮吸 2x2 多模式组件（已还原为原生 Canvas 与动画组件，对齐 suck-b.png）
+    if (config.type == FreeControlComponentType.suck &&
+        (config.variant == 'suck_multi_2x2' ||
+            (config.isFullWidth && config.rows >= 2))) {
+      return SuckMultiControl(
+        config: config,
+        height: height ?? SuckMultiControl.estimatedHeight(config),
+      );
+    }
+
+    // 伸缩 1x2 横向无级变速组件（已还原为 Canvas 原生自绘组件，对齐 thrust-d.png）
+    if (config.type == FreeControlComponentType.telescopic &&
+        (config.variant == 'telescopic_variable_1x2' ||
+            (config.variableSpeedSupported &&
+                config.rows == 1 &&
+                config.cols >= 2))) {
+      return TelescopicHorizontalVariableControl(
+        config: config,
+        height: height ?? 135.0,
+      );
+    }
+
+    // 伸缩 3x1 竖向无级变速组件（已还原为 Canvas 原生自绘组件，对齐 thrust-c.png）
+    if (config.type == FreeControlComponentType.telescopic &&
+        (config.variant == 'telescopic_variable_3x1' ||
+            (config.variableSpeedSupported &&
+                config.rows >= 3 &&
+                config.cols == 1))) {
+      return TelescopicVariableControl(config: config, height: height);
+    }
+
     // 伸缩 3x1 竖向分档组件（已还原为 Canvas 原生自绘组件，对齐 thrust-a.png）
     if (config.type == FreeControlComponentType.telescopic &&
         (config.variant == 'telescopic_mode_3x1' ||
@@ -119,6 +179,15 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
       return VibrationSteppedControl(config: config, height: height);
     }
 
+    // 震动 3x1 竖向无级变速组件（已还原为 Canvas 原生自绘组件，对齐 vibration-c.png）
+    if (config.type == FreeControlComponentType.vibration &&
+        (config.variant == 'vibration_variable_3x1' ||
+            (config.variableSpeedSupported &&
+                config.rows >= 3 &&
+                config.cols == 1))) {
+      return VibrationVariableControl(config: config, height: height);
+    }
+
     // 震动 1x2 横向分档组件（已还原为 Canvas 原生自绘组件，对齐 vibration-b.png）
     if (config.type == FreeControlComponentType.vibration &&
         (config.variant == 'vibration_mode_1x2' ||
@@ -126,6 +195,18 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
                 config.rows == 1 &&
                 config.cols >= 2))) {
       return VibrationHorizontalSteppedControl(
+        config: config,
+        height: height ?? 135.0,
+      );
+    }
+
+    // 震动 1x2 横向无级变速组件（已还原为 Canvas 原生自绘组件，对齐 vibration-d.png）
+    if (config.type == FreeControlComponentType.vibration &&
+        (config.variant == 'vibration_variable_1x2' ||
+            (config.variableSpeedSupported &&
+                config.rows == 1 &&
+                config.cols >= 2))) {
+      return VibrationHorizontalVariableControl(
         config: config,
         height: height ?? 135.0,
       );
@@ -551,125 +632,14 @@ final class _VibrationFallback extends StatelessWidget {
     }
 
     if (isVertical) {
-      return _buildCardBase(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.vibration_rounded,
-                  size: 16,
-                  color: Color(0xFFD13BD8),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    config.displayLabel,
-                    style: const TextStyle(
-                      fontSize: AppTypography.size14,
-                      fontWeight: AppFontWeights.medium,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              config.variableSpeedSupported
-                  ? 'Variable Speed\n12%'
-                  : 'Gear ${config.gearCurrent ?? 2} / ${config.gearMax ?? 6}',
-              style: const TextStyle(
-                fontSize: AppTypography.size11,
-                color: AppColors.textMuted,
-              ),
-            ),
-            const Spacer(),
-            Center(
-              child: Container(
-                width: 72,
-                height: 140,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(36),
-                  color: Colors.black.withValues(alpha: 0.35),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: Stack(
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(36),
-                        gradient: const LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [Color(0xFF7A1D85), Color(0xFFE447D0)],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+      return VibrationVariableControl(config: config);
     }
 
-    if (!config.variableSpeedSupported) {
-      return VibrationHorizontalSteppedControl(config: config);
+    if (config.variableSpeedSupported) {
+      return VibrationHorizontalVariableControl(config: config);
     }
 
-    return _buildCardBase(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.vibration_rounded,
-                size: 16,
-                color: Color(0xFFD13BD8),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                config.displayLabel,
-                style: const TextStyle(
-                  fontSize: AppTypography.size14,
-                  fontWeight: AppFontWeights.medium,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                config.variableSpeedSupported
-                    ? 'Gear 62%'
-                    : 'Gear ${config.gearCurrent ?? 2} / ${config.gearMax ?? 6}',
-                style: const TextStyle(
-                  fontSize: AppTypography.size12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildHorizontalSlider(
-            percent: 0.62,
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE47B33), Color(0xFF9E43DA)],
-            ),
-          ),
-        ],
-      ),
-    );
+    return VibrationHorizontalSteppedControl(config: config);
   }
 }
 

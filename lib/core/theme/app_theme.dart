@@ -107,4 +107,13 @@ abstract final class AppTheme {
       ),
     );
   }
+
+  /// 自由控制小组件的背景色
+  static const Color freeControlBackground = Color(0x660D0D0D);
+
+  /// 自由控制小组件的 BoxDecoration
+  static const BoxDecoration freeControlBoxDecoration = BoxDecoration(
+    color: freeControlBackground,
+    borderRadius: AppRadius.card,
+  );
 }

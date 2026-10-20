@@ -379,34 +379,48 @@ final class _DeviceModelGrid extends StatelessWidget {
         ? Tween<double>(begin: 1.0, end: 0.0).animate(exitAnimation!)
         : null;
 
+    final usedHeroTags = <String>{};
+
     return Row(
       children: [
         for (var i = 0; i < entries.length; i++) ...[
           if (i > 0) const SizedBox(width: 12),
-          Expanded(
-            child: exitAnimation == null
-                ? _ModelCard(
-                    preview: entries[i],
-                    onTap: () => onTap(entries[i].model),
-                  )
-                : AnimatedBuilder(
-                    animation: exitAnimation!,
-                    builder: (context, child) => Transform.translate(
-                      // i==0 向左飞出，i==1 向右飞出；位移量随动画值 0→1 增大。
-                      offset: Offset(
-                        exitAnimation!.value *
-                            screenWidth *
-                            0.6 *
-                            (i == 0 ? -1 : 1),
-                        0,
+          Builder(
+            builder: (context) {
+              final isExiting =
+                  exitAnimation != null && exitAnimation!.value > 0;
+              final rawTag =
+                  'device-model-${entries[i].model.id ?? entries[i].title}';
+              final heroTag =
+                  (!isExiting && usedHeroTags.add(rawTag)) ? rawTag : null;
+
+              final cardWidget = _ModelCard(
+                preview: entries[i],
+                heroTag: heroTag,
+                onTap: () => onTap(entries[i].model),
+              );
+
+              return Expanded(
+                child: exitAnimation == null
+                    ? cardWidget
+                    : AnimatedBuilder(
+                        animation: exitAnimation!,
+                        builder: (context, child) => Transform.translate(
+                          // i==0 向左飞出，i==1 向右飞出；位移量随动画值 0→1 增大。
+                          offset: Offset(
+                            exitAnimation!.value *
+                                screenWidth *
+                                0.6 *
+                                (i == 0 ? -1 : 1),
+                            0,
+                          ),
+                          child:
+                              FadeTransition(opacity: fadeOut!, child: child),
+                        ),
+                        child: cardWidget,
                       ),
-                      child: FadeTransition(opacity: fadeOut!, child: child),
-                    ),
-                    child: _ModelCard(
-                      preview: entries[i],
-                      onTap: () => onTap(entries[i].model),
-                    ),
-                  ),
+              );
+            },
           ),
         ],
       ],
@@ -470,7 +484,11 @@ final class _ModelPreview {
 /// 型号入口展示卡片。
 final class _ModelCard extends StatelessWidget {
   /// 创建型号入口卡片组件。
-  const _ModelCard({required this.preview, required this.onTap});
+  const _ModelCard({
+    required this.preview,
+    required this.onTap,
+    this.heroTag,
+  });
 
   /// 卡片渲染用的预览模型数据。
   final _ModelPreview preview;
@@ -478,13 +496,16 @@ final class _ModelCard extends StatelessWidget {
   /// 点击卡片时的回调。
   final VoidCallback onTap;
 
+  /// 共享 Hero 标识（为空或重复时不触发 Hero 动画）。
+  final String? heroTag;
+
   @override
   Widget build(BuildContext context) => DeviceModelCard(
     title: preview.title,
     image: preview.image,
     baseColor: preview.surfaceColor,
     tags: preview.tags,
-    heroTag: 'device-model-${preview.model.id ?? preview.title}',
+    heroTag: heroTag,
     onTap: onTap,
     variant: DeviceModelCardVariant.home,
   );

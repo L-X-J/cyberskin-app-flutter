@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../core/theme/app_colors.dart';
-import '../../../../../core/theme/app_radius.dart';
+import '../../../../../core/theme/app_theme.dart';
 import '../../domain/entities/free_control_layout.dart';
 
 /// 分档胶囊组件视觉主题配置
@@ -421,24 +421,7 @@ class _SteppedCapsuleControlState extends State<SteppedCapsuleControl>
       padding: isHorizontal
           ? const EdgeInsets.fromLTRB(14, 12, 15, 14)
           : const EdgeInsets.fromLTRB(16, 18, 16, 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(
-          isHorizontal ? AppRadius.radiusXxl : AppRadius.radiusXlLarge,
-        ),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: theme.cardGradientColors,
-        ),
-        border: Border.all(color: theme.cardBorderColor, width: 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.32),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+      decoration: AppTheme.freeControlBoxDecoration,
       child: isHorizontal
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

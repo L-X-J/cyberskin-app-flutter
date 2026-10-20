@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/free_control_layout.dart';
 import 'free_control_component_placeholders.dart';
+import 'suck_multi_control.dart';
 
 /// 动态 2 列网格布局构建器
 final class FreeControlLayoutBuilder extends StatelessWidget {
@@ -64,6 +65,19 @@ final class FreeControlLayoutBuilder extends StatelessWidget {
           }
         }
 
+        // 吮吸多模式卡片的高度随后台模式列表增长；它跨两行，但仍需
+        // 把动态高度回填到首行，确保 Stack 的总高度不会裁掉模式按钮。
+        for (final comp in components) {
+          if (comp.variant == 'suck_multi_2x2' && comp.rows >= 2) {
+            final desiredHeight = SuckMultiControl.estimatedHeight(comp);
+            final trailingRowHeight = rowHeights[comp.row + 1];
+            rowHeights[comp.row] = math.max(
+              rowHeights[comp.row],
+              desiredHeight - trailingRowHeight + gap,
+            );
+          }
+        }
+
         // 3. 计算各行顶部的累积 Y 坐标
         final rowTops = List<double>.filled(maxRow + 1, 0.0);
         for (var r = 0; r < maxRow; r++) {
@@ -94,9 +108,11 @@ final class FreeControlLayoutBuilder extends StatelessWidget {
                     // 伸缩/震动横向模式条形（对齐 358:135，严格保持 135 dp）
                     height = availableWidth * (135.0 / 358.0);
                   }
-                } else if (comp.rows == 2) {
+                } else if (comp.rows == 2 && comp.variant != 'suck_multi_2x2') {
                   // 2x2 复合控制面板（对齐 358:231，保持 231 dp）
                   height = availableWidth * (231.0 / 358.0);
+                } else if (comp.variant == 'suck_multi_2x2') {
+                  height = SuckMultiControl.estimatedHeight(comp);
                 } else {
                   height = rowTops[comp.row + comp.rows] - top - gap;
                 }

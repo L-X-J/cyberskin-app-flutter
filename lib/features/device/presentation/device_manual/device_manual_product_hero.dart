@@ -57,27 +57,27 @@ final class DeviceManualProductHero extends StatelessWidget {
     final heroTag = 'device-model-${model.id ?? 'unknown'}';
     return SizedBox(
       height: 238,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 360),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        child: Stack(
-          key: ValueKey('${model.id}:$image'),
-          alignment: Alignment.center,
-          children: [
-            const Positioned(
-              left: 54,
-              right: 54,
-              bottom: 14,
-              height: 58,
-              child: _ProductBase(),
-            ),
-            Positioned(
-              top: 19,
-              child: Hero(
-                tag: heroTag,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Positioned(
+            left: 54,
+            right: 54,
+            bottom: 14,
+            height: 58,
+            child: _ProductBase(),
+          ),
+          Positioned(
+            top: 19,
+            child: Hero(
+              tag: heroTag,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 360),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
                 child: AppImage.load(
                   image,
+                  key: ValueKey('${model.id}:$image'),
                   width: 188,
                   height: 188,
                   fit: BoxFit.contain,
@@ -86,8 +86,8 @@ final class DeviceManualProductHero extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
