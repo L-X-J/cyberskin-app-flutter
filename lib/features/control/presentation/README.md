@@ -12,4 +12,4 @@
 
 文件职责：
 
-- `control_session_controller.dart`：以独立 `Rx` 字段维护共享会话状态，并编排暂停/继续切换。
+- `control_session_controller.dart`：以独立 `Rx` 字段维护共享会话状态，监听 BLE 连接与遥测事件同步运行态，并向下发暂停/继续/启动语义指令。

@@ -11,13 +11,13 @@ import '../../features/auth/domain/auth_repository.dart';
 import '../../features/content/data/content_configuration_cache.dart';
 import '../../features/content/data/content_remote_repository.dart';
 import '../../features/content/domain/repositories/content_repository.dart';
-import '../../features/control/presentation/control_session_controller.dart';
 import '../../features/control/data/ble_device_command_repository.dart';
 import '../../features/control/domain/device_command_repository.dart';
+import '../../features/control/presentation/control_session_controller.dart';
 import '../../features/device/data/cached_user_device_repository.dart';
-import '../../features/device/data/device_api_repositories.dart';
-import '../../features/device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../features/device/data/connected_device_repository.dart';
+import '../../features/device/data/cyberskin_ble_runtime_coordinator.dart';
+import '../../features/device/data/device_api_repositories.dart';
 import '../../features/device/data/user_device_cache.dart';
 import '../../features/device/domain/device_repository.dart';
 import '../../features/device/domain/repositories/device_catalog_repository.dart';
@@ -32,10 +32,10 @@ import '../../features/training/data/training_remote_repository.dart';
 import '../../features/training/domain/repositories/training_repository.dart';
 import '../../features/version/data/version_remote_repository.dart';
 import '../../features/version/domain/repositories/version_repository.dart';
-import '../../features/video/data/video_remote_repository.dart';
-import '../../features/video/domain/repositories/video_repository.dart';
-import '../../features/video/domain/repositories/local_video_repository.dart';
 import '../../features/video/data/local_video_repository_impl.dart';
+import '../../features/video/data/video_remote_repository.dart';
+import '../../features/video/domain/repositories/local_video_repository.dart';
+import '../../features/video/domain/repositories/video_repository.dart';
 import '../floating_control_controller.dart';
 import '../session_controller.dart';
 
@@ -157,12 +157,17 @@ final class AppBinding extends Bindings {
       BleDeviceCommandRepository(Get.find<CyberskinBleRuntimeCoordinator>()),
       permanent: true,
     );
-    Get.put<ControlSessionController>(
-      ControlSessionController(),
-      permanent: true,
-    );
     Get.put<SessionController>(
       SessionController(sessionStore: sessionStore),
+      permanent: true,
+    );
+    Get.put<ControlSessionController>(
+      ControlSessionController(
+        bleCoordinator: Get.find<CyberskinBleRuntimeCoordinator>(),
+        commandRepository: Get.find<DeviceCommandRepository>(),
+        sessionController: Get.find<SessionController>(),
+        log: log,
+      ),
       permanent: true,
     );
     Get.put<FloatingControlController>(

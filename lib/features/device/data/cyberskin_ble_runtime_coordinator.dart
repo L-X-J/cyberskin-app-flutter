@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../domain/connected_device_state.dart';
+import '../domain/device.dart';
+import '../domain/device_capability.dart';
 import '../domain/repositories/device_catalog_repository.dart';
 import '../domain/repositories/user_device_repository.dart';
 import 'ble_known_device_store.dart';
@@ -89,6 +91,9 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   /// 按型号 ID ([modelId]) 缓存的设备 GATT Profile 字典。
   Map<int, BleDeviceProfile> _profilesByModel = <int, BleDeviceProfile>{};
+
+  /// 记录发现或连接时每个 remoteId 对应的型号 ID。
+  final Map<String, int> _modelIdByRemoteId = <String, int>{};
 
   /// 设备 Profile 是否已成功配置到 SDK [manager]。
   bool _profilesConfigured = false;
@@ -367,6 +372,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     _userDeviceRepository?.invalidateCache();
     pendingDiscovery.value = null;
     _intentionalDisconnects.clear();
+    _modelIdByRemoteId.clear();
     _profilesByModel = <int, BleDeviceProfile>{};
     _profilesConfigured = false;
     scanCompleted.value = false;
@@ -392,8 +398,38 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     return null;
   }
 
+  /// 返回当前已连接设备的 BLE remoteId。
+  String? get connectedRemoteId {
+    final connected = connectedDevice.value;
+    if (connected != null) return connected.remoteId;
+    for (final entry in connectionStates.entries) {
+      if (entry.value == BleConnectionState.connected) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
+  /// 返回当前已连接设备的型号 ID。
+  int? get connectedModelId {
+    final connected = connectedDevice.value;
+    if (connected != null) {
+      final id = int.tryParse(connected.device.model.trim());
+      if (id != null) return id;
+    }
+    final remote = connectedRemoteId;
+    if (remote != null && _modelIdByRemoteId.containsKey(remote)) {
+      return _modelIdByRemoteId[remote];
+    }
+    if (_profilesByModel.length == 1) {
+      return _profilesByModel.keys.first;
+    }
+    return null;
+  }
+
   /// 确认并连接新发现的设备，连接成功后向后端提交绑定，并记录到已知设备列表。
   Future<bool> confirmAndConnect(BleDiscoveredDevice device) async {
+    _modelIdByRemoteId[device.remoteId] = device.profile.modelId;
     pendingDiscovery.value = null;
     final connected = await manager.connectDiscovered(device);
     if (!connected) return false;
@@ -526,6 +562,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
           failureMessage.value = null;
         }
       case BleDeviceDiscovered(:final device, :final isKnown):
+        _modelIdByRemoteId[device.remoteId] = device.profile.modelId;
         _bleLog(
           '发现设备: id=${device.remoteId} '
           'name=${device.name} '
@@ -552,8 +589,38 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
           // 已连接：停止扫描，避免继续消耗系统资源和电量。
           // 断开时会重新触发扫描，不需要在这里保留扫描窗口。
           unawaited(manager.stopAutoDiscovery());
+          final modelId = connectedModelId ?? _modelIdByRemoteId[remoteId];
+          if (modelId != null && connectedDevice.value == null) {
+            final profile = _profilesByModel[modelId];
+            final fallbackDevice = Device(
+              id: remoteId,
+              model: '$modelId',
+              name: profile?.deviceType ?? 'Device',
+              status: DeviceConnectionStatus.connected,
+              capabilities: DeviceCapabilities(
+                channels: [
+                  ChannelCapability(
+                    channel: DeviceChannel.telescopic,
+                    defaultValue: 0,
+                    gearMax: 5,
+                    variableSpeedSupported: true,
+                  ),
+                  ChannelCapability(
+                    channel: DeviceChannel.vibration,
+                    defaultValue: 0,
+                    gearMax: 5,
+                    variableSpeedSupported: true,
+                  ),
+                ],
+              ),
+            );
+            setConnectedDevice(
+              ConnectedDeviceState(device: fallbackDevice, remoteId: remoteId),
+            );
+          }
         } else if (state == BleConnectionState.disconnected ||
             state == BleConnectionState.failed) {
+          _modelIdByRemoteId.remove(remoteId);
           if (connectedDevice.value?.remoteId == remoteId) {
             clearConnectedDevice();
           }

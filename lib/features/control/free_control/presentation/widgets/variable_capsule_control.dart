@@ -246,7 +246,7 @@ final class VariableCapsuleControl extends StatefulWidget {
   /// 数值变动回调（回传 0 ~ 100 整数百分比）
   final ValueChanged<int>? onValueChanged;
 
-  /// 外部约束的固定高度（横向默认 135.0 dp，纵向未指定时由 AspectRatio 355/172 约束）
+  /// 外部约束的固定高度（横向默认 135.0 dp，纵向未指定时由 AspectRatio 172/312 约束）
   final double? height;
 
   @override
@@ -431,8 +431,7 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
     _animController.stop();
     _levelAnimation = AlwaysStoppedAnimation(_currentPercent.toDouble());
     setState(() {});
-    if (_percentAtDragStart != null &&
-        _currentPercent != _percentAtDragStart) {
+    if (_percentAtDragStart != null && _currentPercent != _percentAtDragStart) {
       widget.onValueChanged?.call(_currentPercent);
     }
     _percentAtDragStart = null;
@@ -485,7 +484,7 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
               children: [
                 // 1. 顶部通道图标、Title 与 Subtitle
                 _buildVerticalHeader(theme),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 // 2. 下部核心操作区（左侧刻度条 + 右侧百分比与 Canvas 自绘竖向胶囊）
                 Expanded(child: _buildVerticalOperationSection(theme)),
               ],
@@ -494,7 +493,7 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
 
     if (effectiveHeight == null) {
       card = AspectRatio(
-        aspectRatio: isHorizontal ? (358.0 / 135.0) : (172.0 / 355.0),
+        aspectRatio: isHorizontal ? (358.0 / 135.0) : (172.0 / 312.0),
         child: card,
       );
     }
@@ -601,7 +600,7 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
               Text(
                 'Variable Speed',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w400,
                   color: theme.subtitleColor,
                   letterSpacing: 0.2,
@@ -656,6 +655,7 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const SizedBox(width: 4),
         // 左侧：100% 标签 + 细长白色发光条 + 0% 标签
         Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -663,7 +663,7 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
             Text(
               '100%',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: FontWeight.w700,
                 color: theme.scaleMaxColor,
               ),
@@ -693,14 +693,14 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
             Text(
               '0%',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: FontWeight.w700,
                 color: theme.scaleMinColor,
               ),
             ),
           ],
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 4),
         // 右侧：大号百分比数字（居中对齐胶囊上方）+ 竖向自绘发光胶囊
         Expanded(
           child: Column(
@@ -710,7 +710,7 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
                 child: Text(
                   '$_currentPercent%',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: theme.valuePercentColor,
                     letterSpacing: 0.2,
@@ -764,6 +764,7 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
             ],
           ),
         ),
+        const SizedBox(width: 4),
       ],
     );
   }

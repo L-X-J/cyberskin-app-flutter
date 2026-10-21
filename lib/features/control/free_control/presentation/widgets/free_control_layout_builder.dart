@@ -197,10 +197,7 @@ final class _FreeControlLayoutBuilderState
                   if (comp.rows == 1) {
                     height = unitRowHeight;
                   } else if (comp.rows == 3) {
-                    final ratio = comp.variant.contains('variable')
-                        ? (355.0 / 172.0)
-                        : (312.0 / 172.0);
-                    height = colWidth * ratio;
+                    height = colWidth * (312.0 / 172.0);
                   } else {
                     height = rowTops[comp.row + comp.rows] - top - gap;
                   }

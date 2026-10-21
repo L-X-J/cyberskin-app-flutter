@@ -219,7 +219,7 @@ final class FreeControlController extends GetxController {
     _deviceWorker?.dispose();
     _connectionWorker?.dispose();
     _pendingCommands.clear();
-    sessionController.updateState(DeviceSessionState.idle);
+    // 返回上一页不会停止设备；保留共享会话，由全局遥测订阅继续同步运行态。
     super.onClose();
   }
 

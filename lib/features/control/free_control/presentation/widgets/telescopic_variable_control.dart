@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/free_control_layout.dart';
 import 'variable_capsule_control.dart';
 
-/// 伸缩竖向无级变速控制组件卡片（对应 thrust-c.png，3x1 标准规格 172x355）。
+/// 伸缩竖向无级变速控制组件卡片（对应 thrust-c.png，3x1 标准规格 172x312）。
 final class TelescopicVariableControl extends StatelessWidget {
   /// 创建伸缩竖向无级变速卡片组件。
   const TelescopicVariableControl({

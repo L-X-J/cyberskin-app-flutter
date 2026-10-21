@@ -117,6 +117,9 @@ final class SessionController extends GetxController {
 
   /// 更新设备连接状态，并在设备断开时自动让依赖设备的二级页面返回主页未连接状态。
   void setDeviceConnectionStatus(DeviceConnectionStatus status) {
+    if (deviceStatus.value == status) {
+      return;
+    }
     deviceStatus.value = status;
     final isDisconnected =
         status == DeviceConnectionStatus.disconnected ||

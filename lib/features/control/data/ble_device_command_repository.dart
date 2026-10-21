@@ -6,6 +6,7 @@ import '../domain/device_command_repository.dart';
 
 /// Cyberskin BLE 语义指令 Repository。
 final class BleDeviceCommandRepository implements DeviceCommandRepository {
+  /// 创建 BLE 语义指令 Repository 实例。
   BleDeviceCommandRepository(this._coordinator);
 
   final CyberskinBleRuntimeCoordinator _coordinator;
@@ -16,7 +17,9 @@ final class BleDeviceCommandRepository implements DeviceCommandRepository {
     int? modelId,
     String? remoteId,
   }) async {
-    if (modelId == null || remoteId == null) {
+    final effectiveModelId = modelId ?? _coordinator.connectedModelId;
+    final effectiveRemoteId = remoteId ?? _coordinator.connectedRemoteId;
+    if (effectiveModelId == null || effectiveRemoteId == null) {
       return const Result.failure(
         AppFailure(
           code: FailureCode.invalidData,
@@ -25,8 +28,8 @@ final class BleDeviceCommandRepository implements DeviceCommandRepository {
       );
     }
     final success = await _coordinator.sendCommand(
-      modelId: modelId,
-      remoteId: remoteId,
+      modelId: effectiveModelId,
+      remoteId: effectiveRemoteId,
       command: command,
     );
     return success

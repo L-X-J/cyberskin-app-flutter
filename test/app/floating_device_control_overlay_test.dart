@@ -219,7 +219,7 @@ void main() {
   );
 
   testWidgets(
-    'disconnected and connected-idle navigate, connecting ignores clicks',
+    'disconnected navigates, connected-idle activates session without navigating, connecting ignores clicks',
     (tester) async {
       await render(tester);
       await tester.tap(find.byType(DeviceControlPill));
@@ -237,8 +237,8 @@ void main() {
       expect(find.text('Tap to start'), findsOneWidget);
       await tester.tap(find.byType(DeviceControlPill));
       await tester.pumpAndSettle();
-      expect(Get.currentRoute, AppRoutes.device);
-      expect(control.state.value, DeviceSessionState.idle);
+      expect(Get.currentRoute, AppRoutes.home);
+      expect(control.state.value, DeviceSessionState.running);
     },
   );
 

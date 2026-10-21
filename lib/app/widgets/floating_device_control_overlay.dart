@@ -136,12 +136,14 @@ final class _DeviceControlContent extends StatelessWidget {
       control.state.value,
     );
     if (state == DeviceQuickControlState.connecting) return;
-    if (state != DeviceQuickControlState.disconnected &&
-        control.state.value != DeviceSessionState.idle) {
-      control.togglePause();
-    } else if (Get.currentRoute != AppRoutes.device) {
-      // 认证由既有 Middleware 承接；不会伪造 BLE 连接或开始运行。
-      unawaited(Get.toNamed<void>(AppRoutes.device));
+    if (state == DeviceQuickControlState.disconnected) {
+      if (Get.currentRoute != AppRoutes.device) {
+        // 认证由既有 Middleware 承接；不会伪造 BLE 连接或开始运行。
+        unawaited(Get.toNamed<void>(AppRoutes.device));
+      }
+      return;
     }
+    // 已连接设备点击时向设备发送控制指令（启动/恢复或暂停），不离开当前页面。
+    unawaited(control.activateQuickControl());
   }
 }
