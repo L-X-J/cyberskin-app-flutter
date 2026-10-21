@@ -47,13 +47,14 @@ final class AppLiquidGlassButton extends StatefulWidget {
     this.textStyle = AppTypography.primaryButton,
     this.quality = LGQuality.standard,
     this.glassSettings = const LiquidGlassSettings(
-      // 轮廓由包组件绘制；小尺寸按钮需要更高厚度才会留下可见边缘。
       glassColor: Colors.transparent,
       thickness: 30,
       lightIntensity: 0.65,
       ambientStrength: 0,
       saturation: 1,
     ),
+    this.fillColorOverride,
+    this.labelColorOverride,
   }) : assert(height >= 20),
        assert(iconSize > 0),
        assert(icon == null || child == null),
@@ -70,8 +71,14 @@ final class AppLiquidGlassButton extends StatefulWidget {
   /// 已确认的表面变体，默认使用淡紫内辉光款。
   final AppLiquidGlassButtonVariant variant;
 
+  /// 覆盖变体默认填充色；为空时使用 [fillColor]。
+  final Color? fillColorOverride;
+
+  /// 覆盖文案颜色；为空时使用 [textStyle] 中的颜色。
+  final Color? labelColorOverride;
+
   /// 由变体统一选择包含不透明度的主题填充，页面不复制色值。
-  Color get fillColor => switch (variant) {
+  Color get fillColor => fillColorOverride ?? switch (variant) {
     AppLiquidGlassButtonVariant.highlighted => AppColors.liquidGlassButtonFill,
     AppLiquidGlassButtonVariant.subtle => AppColors.liquidGlassButtonSubtleFill,
     AppLiquidGlassButtonVariant.translucent =>
@@ -266,6 +273,7 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
   /// 继承主题字体，确保测量宽度与实际文字绘制一致。
   TextStyle _resolvedTextStyle(BuildContext context) =>
       widget.textStyle.copyWith(
+        color: widget.labelColorOverride ?? widget.textStyle.color,
         decoration: widget.textStyle.decoration ?? TextDecoration.none,
         fontFamily:
             widget.textStyle.fontFamily ??
