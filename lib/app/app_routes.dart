@@ -136,6 +136,8 @@ abstract final class AppRoutes {
       name: freeControl,
       page: () => const FreeControlPage(),
       binding: FreeControlBinding(),
+      customTransition: FreeControlRouteTransition(),
+      transitionDuration: const Duration(milliseconds: 560),
       middlewares: <GetMiddleware>[RouteAuthMiddleware()],
     ),
   ];

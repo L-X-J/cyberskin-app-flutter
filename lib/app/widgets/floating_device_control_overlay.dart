@@ -63,9 +63,25 @@ final class _FloatingDeviceControlOverlayState
           final globalTarget = controller.targetFor(size);
           final box =
               _stackKey.currentContext?.findRenderObject() as RenderBox?;
-          final target = box?.hasSize == true
+          final localTarget = box?.hasSize == true
               ? box!.globalToLocal(globalTarget)
               : globalTarget;
+          final viewportWidth = box?.hasSize == true
+              ? box!.size.width
+              : MediaQuery.sizeOf(context).width;
+          final isDocked =
+              policy == FloatingControlPolicy.fixed ||
+              controller.draggedPosition.value == null;
+          // 页面转场会改变内容区域的横坐标；停靠点始终以宿主右边缘为准。
+          final target = Offset(
+            isDocked
+                ? viewportWidth -
+                      MediaQuery.paddingOf(context).right -
+                      size.width -
+                      24
+                : localTarget.dx,
+            localTarget.dy,
+          );
           return AnimatedPositioned(
             key: const ValueKey('floating-device-position'),
             left: target.dx,
@@ -76,31 +92,40 @@ final class _FloatingDeviceControlOverlayState
                 ? Duration.zero
                 : const Duration(milliseconds: 250),
             curve: Curves.easeOutCubic,
-            child: GestureDetector(
-              key: _controlKey,
-              behavior: HitTestBehavior.opaque,
-              onPanStart: policy == FloatingControlPolicy.draggable
-                  ? (_) {
-                      final rendered =
-                          _controlKey.currentContext?.findRenderObject()
-                              as RenderBox?;
-                      if (rendered != null && rendered.hasSize) {
-                        controller.startDrag(
-                          rendered.localToGlobal(Offset.zero),
-                        );
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: viewportWidth - target.dx, end: 0),
+              duration: disableAnimations
+                  ? Duration.zero
+                  : const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              builder: (context, offset, child) =>
+                  Transform.translate(offset: Offset(offset, 0), child: child),
+              child: GestureDetector(
+                key: _controlKey,
+                behavior: HitTestBehavior.opaque,
+                onPanStart: policy == FloatingControlPolicy.draggable
+                    ? (_) {
+                        final rendered =
+                            _controlKey.currentContext?.findRenderObject()
+                                as RenderBox?;
+                        if (rendered != null && rendered.hasSize) {
+                          controller.startDrag(
+                            rendered.localToGlobal(Offset.zero),
+                          );
+                        }
                       }
-                    }
-                  : null,
-              onPanUpdate: policy == FloatingControlPolicy.draggable
-                  ? (details) => controller.dragBy(details.delta)
-                  : null,
-              onPanEnd: policy == FloatingControlPolicy.draggable
-                  ? (_) => controller.endDrag()
-                  : null,
-              onPanCancel: policy == FloatingControlPolicy.draggable
-                  ? controller.endDrag
-                  : null,
-              child: const _DeviceControlContent(),
+                    : null,
+                onPanUpdate: policy == FloatingControlPolicy.draggable
+                    ? (details) => controller.dragBy(details.delta)
+                    : null,
+                onPanEnd: policy == FloatingControlPolicy.draggable
+                    ? (_) => controller.endDrag()
+                    : null,
+                onPanCancel: policy == FloatingControlPolicy.draggable
+                    ? controller.endDrag
+                    : null,
+                child: const _DeviceControlContent(),
+              ),
             ),
           );
         }),

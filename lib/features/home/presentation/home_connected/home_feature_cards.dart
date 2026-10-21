@@ -1,5 +1,6 @@
 // 主页功能模式入口网格与卡片组件。
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:cyberskin_app/core/extensions/string_extensions.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_image.dart';
 import '../../../../core/widgets/app_img_group_80_card.dart';
 import '../../../../core/widgets/app_liquid_glass_button.dart';
+import '../../../control/free_control/presentation/widgets/free_control_title.dart';
 
 /// 功能入口网格；平铺展示自由控制与自定义节奏模式入口卡片。
 final class HomeFeatureGrid extends StatelessWidget {
@@ -39,6 +41,11 @@ final class HomeFeatureGrid extends StatelessWidget {
           Expanded(
             child: HomeFeatureCard(
               title: 'Free control\nmode',
+              titleChild: const FreeControlTitle(
+                compact: true,
+                style: AppTypography.bodyMedium,
+              ),
+              flipOnNavigation: true,
               colors: const [Color(0xFFE4472A), Color(0xFF8E171A)],
               onTap:
                   onFreeControl ??
@@ -62,7 +69,7 @@ final class HomeFeatureGrid extends StatelessWidget {
 }
 
 /// 功能入口卡片；提供带背景微光质感与右侧跳转按钮的原子卡片。
-final class HomeFeatureCard extends StatelessWidget {
+final class HomeFeatureCard extends StatefulWidget {
   /// 创建功能入口卡片。
   const HomeFeatureCard({
     super.key,
@@ -70,10 +77,18 @@ final class HomeFeatureCard extends StatelessWidget {
     required this.colors,
     this.preview,
     this.onTap,
+    this.titleChild,
+    this.flipOnNavigation = false,
   });
 
   /// 卡片标题。
   final String title;
+
+  /// 可选的共享元素标题；与卡片表面分离以保持 Hero 的轴对齐边界。
+  final Widget? titleChild;
+
+  /// 是否跟随下一路由的进度翻转卡片表面。
+  final bool flipOnNavigation;
 
   /// 卡片主题渐变/背景色。
   final List<Color> colors;
@@ -85,47 +100,116 @@ final class HomeFeatureCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
+  State<HomeFeatureCard> createState() => _HomeFeatureCardState();
+}
+
+final class _HomeFeatureCardState extends State<HomeFeatureCard> {
+  Animation<double>? _routeAnimation;
+  bool _flipRequested = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final animation = ModalRoute.of(context)?.secondaryAnimation;
+    if (animation == _routeAnimation) return;
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
+    _routeAnimation = animation;
+    _routeAnimation?.addStatusListener(_onRouteStatus);
+  }
+
+  void _onRouteStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && _flipRequested) {
+      setState(() => _flipRequested = false);
+    }
+  }
+
+  void _onTap() {
+    if (widget.onTap == null) return;
+    if (widget.flipOnNavigation && !MediaQuery.disableAnimationsOf(context)) {
+      setState(() => _flipRequested = true);
+    }
+    widget.onTap!();
+  }
+
+  @override
+  void dispose() {
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final surface = AppImgGroup80Card(
+      height: 170,
+      backgroundColor: widget.colors.first,
+      accentColor: widget.colors.first,
+      child: Stack(
+        children: [
+          if (widget.preview != null)
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 18,
+              height: 66,
+              child: widget.preview!,
+            ),
+          Positioned(
+            right: 20,
+            top: 24,
+            child: AppLiquidGlassButton(
+              label: 'Open model',
+              icon: Icons.chevron_right,
+              onPressed: widget.onTap == null ? null : _onTap,
+              variant: AppLiquidGlassButtonVariant.translucent,
+              iconSize: 16,
+              height: 20,
+              width: 20,
+              borderRadius: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+    final routeAnimation = _routeAnimation;
+    final animateSurface =
+        _flipRequested &&
+        !MediaQuery.disableAnimationsOf(context) &&
+        routeAnimation != null;
+
     return GestureDetector(
-      onTap: onTap,
-      child: AppImgGroup80Card(
+      onTap: widget.onTap == null ? null : _onTap,
+      child: SizedBox(
         height: 170,
-        backgroundColor: colors.first,
-        accentColor: colors.first,
         child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsetsGeometry.only(right: 30),
-                    child: Text(title, style: AppTypography.bodyMedium),
-                  ),
-                  const Spacer(),
-                  if (preview != null)
-                    SizedBox(
-                      height: 66,
-                      width: double.infinity,
-                      child: preview,
-                    ),
-                ],
-              ),
-            ),
+            if (animateSurface)
+              AnimatedBuilder(
+                animation: routeAnimation,
+                child: surface,
+                builder: (context, child) {
+                  final t = const Interval(
+                    0,
+                    0.65,
+                    curve: Curves.easeInOutCubic,
+                  ).transform(routeAnimation.value);
+                  return Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.0015)
+                      ..rotateY(-math.pi / 2 * t),
+                    child: Opacity(opacity: 1 - t, child: child),
+                  );
+                },
+              )
+            else
+              surface,
             Positioned(
-              right: 20,
+              left: 20,
+              right: 50,
               top: 24,
-              child: AppLiquidGlassButton(
-                label: 'Open model',
-                icon: Icons.chevron_right,
-                onPressed: onTap,
-                variant: AppLiquidGlassButtonVariant.translucent,
-                iconSize: 16,
-                height: 20,
-                width: 20,
-                borderRadius: 10,
-              ),
+              child:
+                  widget.titleChild ??
+                  Text(widget.title, style: AppTypography.bodyMedium),
             ),
           ],
         ),

@@ -13,6 +13,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_lottie_background.dart';
 import 'free_control_controller.dart';
 import 'widgets/free_control_layout_builder.dart';
+import 'widgets/free_control_title.dart';
 
 /// 自由控制主页面
 ///
@@ -259,10 +260,7 @@ final class _FreeControlPageState extends State<FreeControlPage> {
                 ),
                 child: Align(
                   alignment: Alignment(titleAlignmentX, 0.0),
-                  child: Text(
-                    'Free control mode',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: FreeControlTitle(
                     style: TextStyle(
                       fontSize: titleFontSize,
                       fontWeight: AppFontWeights.demibold,

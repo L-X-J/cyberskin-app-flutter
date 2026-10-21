@@ -8,7 +8,7 @@
 - `floating_control_controller.dart`：应用级悬浮控件的路由策略、几何边界和会话内拖动位置。
 - `/home` 是匿名可浏览主页；`/device` 与 `/profile` 通过统一认证 Middleware 保护，`/login` 是认证入口。
 - `app_route_logger.dart`：将命名路由变化适配到统一日志边界，不持久化路由参数。
-- `init_route_transition.dart`：初始化页离场和设备页进入的路由动画实现。
+- `init_route_transition.dart`：初始化页离场、设备页进入和自由控制页共享标题衔接的路由动画实现。
 - `cyberskin_app.dart`：根组件与全局主题、路由、初始绑定的组装入口。
 
 全局设备快捷控件只挂载一次：路由观察者选择固定、可拖动或隐藏策略，页面壳报告可用内容区域，控制器约束位置，悬浮宿主读取设备会话状态并转发操作。首页重置拖动位置；未登记页面及模态路由默认隐藏。

@@ -11,7 +11,8 @@
 - `heat_bar_control.dart`：加热 1x2 横向液态玻璃开关组件（对应 `heat-b.png`），提供能力提示、开关状态与回调。
 - `suck_toggle_control.dart`：吸附/吮吸 1x1 液态玻璃开关组件（对应 `suck-a.png`），使用 Group 28.svg 的 Canvas 重绘按钮并提供开关回调。
 - `suck_multi_control.dart`：吸附/吮吸 2x2 多模式组件（对应 `suck-b.png`），使用 Canvas 重绘开关和波纹 logo，开启后按后台模式配置流式展示模式按钮。
-- `free_control_layout_builder.dart`：动态 2 列网格布局构建器，基于 `(row, col)` 与跨行/跨列规则对齐后台 WebAdmin 画布编排。
+- `free_control_title.dart`：首页入口与自由控制页共享的 Hero 标题；插值两行到单行的词组位置与文字样式，减少动态效果时直接展示。
+- `free_control_layout_builder.dart`：动态 2 列网格布局构建器，基于 `(row, col)` 与跨行/跨列规则对齐后台 WebAdmin 画布编排；单列从所属侧滑入，双列淡入并上移，按视觉行错开且只播放一次。
 - `free_control_component_placeholders.dart`：自由控制模块分发器，根据 variant 选择真实控件或切图兜底。已注册 `FreeControlController` 时，每个通道模块用独立 `Obx` 订阅自身遥测（加热/吮吸状态、马达功率）作为控件初始值，并把用户操作回调交给控制器下发；未注册时（预览、独立 Widget 测试）只做静态展示。
 
 ## 设备状态同步约定

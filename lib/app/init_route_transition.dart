@@ -90,3 +90,24 @@ final class DeviceManualRouteTransition extends CustomTransition {
     );
   }
 }
+
+/// 自由控制转场：先露出首页卡片翻转，再淡入页面，让共享标题持续可见。
+final class FreeControlRouteTransition extends CustomTransition {
+  @override
+  Widget buildTransition(
+    BuildContext context,
+    Curve? curve,
+    Alignment? alignment,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+    return FadeTransition(
+      opacity: animation.drive(
+        CurveTween(curve: const Interval(0.12, 1, curve: Curves.easeOutCubic)),
+      ),
+      child: child,
+    );
+  }
+}

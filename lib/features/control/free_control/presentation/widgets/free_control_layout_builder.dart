@@ -22,8 +22,10 @@ const _variableHeight2x2 = {
 /// 使用 StatefulWidget 追踪可折叠卡片（[_variableHeight2x2]）的开关状态，
 /// 以便在卡片折叠/展开时正确收缩或扩展画布总高度。
 final class FreeControlLayoutBuilder extends StatefulWidget {
+  /// 创建按后台网格配置排列并播放首次入场动画的布局器。
   const FreeControlLayoutBuilder({super.key, required this.layout});
 
+  /// 当前设备的模块位置与跨列配置。
   final FreeControlLayout layout;
 
   @override
@@ -32,7 +34,38 @@ final class FreeControlLayoutBuilder extends StatefulWidget {
 }
 
 final class _FreeControlLayoutBuilderState
-    extends State<FreeControlLayoutBuilder> {
+    extends State<FreeControlLayoutBuilder>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entranceController;
+  bool _entranceStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 760),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _entranceController.value = 1;
+      _entranceStarted = true;
+    } else if (!_entranceStarted) {
+      _entranceStarted = true;
+      _entranceController.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    super.dispose();
+  }
+
   // variant → on/off 状态；仅追踪可折叠变体。
   final Map<String, bool> _cardOnState = {};
 
@@ -56,6 +89,9 @@ final class _FreeControlLayoutBuilderState
     final components = widget.layout.components;
     if (components.isEmpty) return const SizedBox.shrink();
 
+    // 用视觉行顺序错开入场；稀疏 row 和后台列表顺序不影响总时长。
+    final rows = components.map((comp) => comp.row).toSet().toList()..sort();
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
@@ -77,9 +113,9 @@ final class _FreeControlLayoutBuilderState
             if (comp.cols >= 2) {
               naturalHeight =
                   (comp.type == FreeControlComponentType.heat ||
-                          comp.variant == 'heat_bar_1x2')
-                      ? unitRowHeight
-                      : availableWidth * (135.0 / 358.0);
+                      comp.variant == 'heat_bar_1x2')
+                  ? unitRowHeight
+                  : availableWidth * (135.0 / 358.0);
             } else {
               naturalHeight = unitRowHeight;
             }
@@ -138,7 +174,10 @@ final class _FreeControlLayoutBuilderState
                 final trailingRowHeight = rowHeights[trailingRow];
                 rowHeights[comp.row] = math.max(
                   rowHeights[comp.row],
-                  (desiredHeight - trailingRowHeight + gap).clamp(0, double.infinity),
+                  (desiredHeight - trailingRowHeight + gap).clamp(
+                    0,
+                    double.infinity,
+                  ),
                 );
               }
             }
@@ -172,9 +211,9 @@ final class _FreeControlLayoutBuilderState
                   if (comp.rows == 1) {
                     height =
                         (comp.type == FreeControlComponentType.heat ||
-                                comp.variant == 'heat_bar_1x2')
-                            ? unitRowHeight
-                            : availableWidth * (135.0 / 358.0);
+                            comp.variant == 'heat_bar_1x2')
+                        ? unitRowHeight
+                        : availableWidth * (135.0 / 358.0);
                   } else if (comp.variant == 'suck_multi_2x2') {
                     height = SuckMultiControl.estimatedHeight(
                       comp,
@@ -204,16 +243,22 @@ final class _FreeControlLayoutBuilderState
                 }
 
                 return Positioned(
+                  key: ValueKey(_cardKey(comp)),
                   left: left,
                   top: top,
                   width: width,
                   height: height,
-                  child: FreeControlComponentPlaceholder(
-                    config: comp,
-                    height: height,
-                    onToggle: _variableHeight2x2.contains(comp.variant)
-                        ? (isOn) => _onCardToggle(comp, isOn)
-                        : null,
+                  child: _animateEntrance(
+                    comp: comp,
+                    rowIndex: rows.indexOf(comp.row),
+                    width: width,
+                    child: FreeControlComponentPlaceholder(
+                      config: comp,
+                      height: height,
+                      onToggle: _variableHeight2x2.contains(comp.variant)
+                          ? (isOn) => _onCardToggle(comp, isOn)
+                          : null,
+                    ),
                   ),
                 );
               }).toList(),
@@ -222,5 +267,30 @@ final class _FreeControlLayoutBuilderState
         );
       },
     );
+  }
+
+  /// 动画只改变绘制位置与透明度，不修改网格几何或触发控制回调。
+  Widget _animateEntrance({
+    required FreeControlComponentConfig comp,
+    required int rowIndex,
+    required double width,
+    required Widget child,
+  }) {
+    final start = 0.12 + math.min(rowIndex, 4) * 0.055;
+    final progress = _entranceController.drive(
+      CurveTween(
+        curve: Interval(start, start + 0.65, curve: Curves.easeOutCubic),
+      ),
+    );
+    final begin = comp.isFullWidth
+        ? const Offset(0, 0.22)
+        : Offset((comp.col == 0 ? -1 : 1) * (width + 16) / width, 0);
+    final slide = SlideTransition(
+      position: Tween<Offset>(begin: begin, end: Offset.zero).animate(progress),
+      child: child,
+    );
+    return comp.isFullWidth
+        ? FadeTransition(opacity: progress, child: slide)
+        : slide;
   }
 }
