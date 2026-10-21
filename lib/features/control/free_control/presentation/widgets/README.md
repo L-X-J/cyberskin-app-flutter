@@ -12,7 +12,13 @@
 - `suck_toggle_control.dart`：吸附/吮吸 1x1 液态玻璃开关组件（对应 `suck-a.png`），使用 Group 28.svg 的 Canvas 重绘按钮并提供开关回调。
 - `suck_multi_control.dart`：吸附/吮吸 2x2 多模式组件（对应 `suck-b.png`），使用 Canvas 重绘开关和波纹 logo，开启后按后台模式配置流式展示模式按钮。
 - `free_control_layout_builder.dart`：动态 2 列网格布局构建器，基于 `(row, col)` 与跨行/跨列规则对齐后台 WebAdmin 画布编排。
-- `free_control_component_placeholders.dart`：自由控制模块展示与降级兜底容器，负责根据组件 variant 映射对应的真实模块或占位展示。
+- `free_control_component_placeholders.dart`：自由控制模块分发器，根据 variant 选择真实控件或切图兜底。已注册 `FreeControlController` 时，每个通道模块用独立 `Obx` 订阅自身遥测（加热/吮吸状态、马达功率）作为控件初始值，并把用户操作回调交给控制器下发；未注册时（预览、独立 Widget 测试）只做静态展示。
+
+## 设备状态同步约定
+
+- 开关类控件在 `didUpdateWidget` 中仅当外部值真正变化时同步，避免覆盖用户刚点击、设备尚未回报的状态。
+- 分档/无级胶囊在用户拖拽期间忽略外部更新，设备约 1Hz 的上报不会打断手势。
+- 控件只回调用户意图（档位、百分比、开关、模式名），不拼接指令；指令映射归 `domain/free_control_command_mapper.dart`。
 - `stepped_capsule_control.dart`：通用分档胶囊自绘组件（Stepped Capsule Control），封装基于 Canvas 的流体底色线性渐变、反向路径高斯模糊深层漫反射光晕（30%~35% 空间深度）、手势拖拽跨档即时填充与轻触震动反馈机制。
 - `telescopic_stepped_control.dart`：伸缩通道分档控制组件（深度还原 `thrust-a.png` 竖向 3x1 规范），基于 `SteppedCapsuleControl` 应用电光蓝流体渐变与对应双向箭头图标。
 - `telescopic_horizontal_stepped_control.dart`：伸缩横向分档控制组件（深度还原 `thrust-b.png` 横向 1x2 规范），基于 `SteppedCapsuleControl(orientation: Axis.horizontal)` 应用电光紫罗兰流体渐变、右侧动态 `Gear X / Y` 档位文本与水平手势选档机制。

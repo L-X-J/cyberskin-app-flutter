@@ -37,6 +37,15 @@ final class HeatToggleControl extends StatefulWidget {
 final class _HeatToggleControlState extends State<HeatToggleControl> {
   late bool _isOn = widget.initialValue;
 
+  @override
+  void didUpdateWidget(covariant HeatToggleControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 仅在外部状态（设备上报）真正变化时同步，避免覆盖用户刚点击、设备尚未回报的状态。
+    if (widget.initialValue != oldWidget.initialValue) {
+      setState(() => _isOn = widget.initialValue);
+    }
+  }
+
   void _toggle() {
     final next = !_isOn;
     setState(() => _isOn = next);

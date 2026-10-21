@@ -1,7 +1,6 @@
 // 自由控制分档胶囊通用控件（Stepped Capsule Control）；
 // 基于 Canvas 自绘深度还原设备控制卡片视觉规范，支持伸缩（电光蓝）与震动（电光洋红）等通道主题、
 // 动态档位数解析、触控选档/手势拖拽、深层漫反射柔光雾与平滑物理缓动动画。
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -230,8 +229,15 @@ class _SteppedCapsuleControlState extends State<SteppedCapsuleControl>
   /// 当前选中的档位（_gearMin ~ _gearMax）
   late int _currentGear;
 
+  /// 当前档位（供回归测试断言控件内部状态是否被父级重建重置）。
+  @visibleForTesting
+  int get currentGear => _currentGear;
+
   /// 是否正在手势滑动拖拽中
   bool _isDragging = false;
+
+  /// 拖动开始时的档位快照；手指抬起时与最终值比对，不同才发送一次回调。
+  int? _gearAtDragStart;
 
   /// 液位平滑过渡动画控制器（用于点击触发的平滑过渡）
   late AnimationController _animController;
@@ -250,7 +256,7 @@ class _SteppedCapsuleControlState extends State<SteppedCapsuleControl>
     super.initState();
     // 初始档位：优先使用 gearCurrent，其次 defaultValue（服务端配置），兜底默认 3 档
     final initialGear = widget.config.gearCurrent ?? widget.config.defaultValue;
-    _currentGear = initialGear.clamp(_gearMin, _gearMax);
+    _currentGear = initialGear.clamp(0, _gearMax);
 
     _animController = AnimationController(
       vsync: this,
@@ -273,6 +279,8 @@ class _SteppedCapsuleControlState extends State<SteppedCapsuleControl>
   @override
   void didUpdateWidget(covariant SteppedCapsuleControl oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 用户拖拽中以手势为准：设备约 1Hz 上报的档位会滞后于手指，此时同步会打断拖拽。
+    if (_isDragging) return;
     if (widget.config.gearCurrent != null &&
         widget.config.gearCurrent != oldWidget.config.gearCurrent) {
       _animateToGear(widget.config.gearCurrent!, notify: false);
@@ -287,7 +295,7 @@ class _SteppedCapsuleControlState extends State<SteppedCapsuleControl>
 
   /// 点击模式：平滑动画过渡至目标档位，并在填充完成时触发震动
   void _animateToGear(int newGear, {bool notify = true}) {
-    final clamped = newGear.clamp(_gearMin, _gearMax);
+    final clamped = newGear.clamp(0, _gearMax);
     if (clamped == _currentGear && !_animController.isAnimating) {
       return;
     }
@@ -312,44 +320,48 @@ class _SteppedCapsuleControlState extends State<SteppedCapsuleControl>
     }
   }
 
-  /// 滑动开始：进入即时填充拖拽模式
+  /// 滑动开始：记录起始档位，进入即时填充拖拽模式
   void _handleDragStart(Offset localPos, double capsuleHeight) {
     _isDragging = true;
+    _gearAtDragStart = _currentGear;
     _animController.stop();
     _handleDragUpdate(localPos, capsuleHeight);
   }
 
-  /// 滑动更新：手指处于哪个格子区间，就立即填充满该区间，且仅在跨档位时震动一次
+  /// 滑动更新：手指处于哪个格子区间，就立即填充满该区间并触觉反馈，但不发送回调
   void _handleDragUpdate(Offset localPos, double capsuleHeight) {
     if (capsuleHeight <= 0) return;
     final clampedY = localPos.dy.clamp(0.0, capsuleHeight);
     final ratioFromBottom = 1.0 - (clampedY / capsuleHeight);
     final slotIndex = (ratioFromBottom * _totalSlots).ceil().clamp(
-      1,
+      0,
       _totalSlots,
     );
-    final targetGear = _gearMin + slotIndex - 1;
+    // slotIndex 0 表示空档（gear 0）；1..N 映射到 gearMin..gearMax
+    final targetGear = slotIndex == 0 ? 0 : (_gearMin + slotIndex - 1);
 
-    // 若手指仍在当前档位格子区间内，不重复触发震动与重绘
     if (targetGear == _currentGear) {
       return;
     }
 
-    // 跨入新格子：立即填充满该区间并震动一次
     setState(() {
       _currentGear = targetGear;
     });
 
     HapticFeedback.selectionClick();
-    widget.onGearChanged?.call(targetGear);
+    // 拖动中只更新显示，不发送回调；抬手时统一在 _handleDragEnd 判断是否发送。
   }
 
-  /// 滑动结束：确保档位完全锁定并对齐
+  /// 滑动结束：与拖动起始值比对，不同才发送一次回调
   void _handleDragEnd() {
     _isDragging = false;
     _animController.stop();
     _levelAnimation = AlwaysStoppedAnimation(_currentGear.toDouble());
     setState(() {});
+    if (_gearAtDragStart != null && _currentGear != _gearAtDragStart) {
+      widget.onGearChanged?.call(_currentGear);
+    }
+    _gearAtDragStart = null;
   }
 
   /// 点击胶囊区域计算目标档位并平滑过渡（竖向）
@@ -358,43 +370,43 @@ class _SteppedCapsuleControlState extends State<SteppedCapsuleControl>
     final clampedY = localPos.dy.clamp(0.0, capsuleHeight);
     final ratioFromBottom = 1.0 - (clampedY / capsuleHeight);
     final slotIndex = (ratioFromBottom * _totalSlots).ceil().clamp(
-      1,
+      0,
       _totalSlots,
     );
-    final targetGear = _gearMin + slotIndex - 1;
+    final targetGear = slotIndex == 0 ? 0 : (_gearMin + slotIndex - 1);
     _animateToGear(targetGear);
   }
 
-  /// 水平滑动开始：进入即时填充拖拽模式
+  /// 水平滑动开始：记录起始档位，进入即时填充拖拽模式
   void _handleHorizontalDragStart(Offset localPos, double capsuleWidth) {
     _isDragging = true;
+    _gearAtDragStart = _currentGear;
     _animController.stop();
     _handleHorizontalDragUpdate(localPos, capsuleWidth);
   }
 
-  /// 水平滑动更新：手指处于哪个格子区间，就立即填充满该区间，且仅在跨档位时震动一次
+  /// 水平滑动更新：手指处于哪个格子区间，就立即填充满该区间并触觉反馈，但不发送回调
   void _handleHorizontalDragUpdate(Offset localPos, double capsuleWidth) {
     if (capsuleWidth <= 0) return;
     final clampedX = localPos.dx.clamp(0.0, capsuleWidth);
     final ratioFromLeft = clampedX / capsuleWidth;
     final slotIndex = (ratioFromLeft * _totalSlots).ceil().clamp(
-      1,
+      0,
       _totalSlots,
     );
-    final targetGear = _gearMin + slotIndex - 1;
+    // slotIndex 0 表示空档（gear 0）；1..N 映射到 gearMin..gearMax
+    final targetGear = slotIndex == 0 ? 0 : (_gearMin + slotIndex - 1);
 
-    // 若手指仍在当前档位格子区间内，不重复触发震动与重绘
     if (targetGear == _currentGear) {
       return;
     }
 
-    // 跨入新格子：立即填充满该区间并震动一次
     setState(() {
       _currentGear = targetGear;
     });
 
     HapticFeedback.selectionClick();
-    widget.onGearChanged?.call(targetGear);
+    // 拖动中只更新显示，不发送回调；抬手时统一在 _handleDragEnd 判断是否发送。
   }
 
   /// 水平点击胶囊区域计算目标档位并平滑过渡
@@ -403,10 +415,10 @@ class _SteppedCapsuleControlState extends State<SteppedCapsuleControl>
     final clampedX = localPos.dx.clamp(0.0, capsuleWidth);
     final ratioFromLeft = clampedX / capsuleWidth;
     final slotIndex = (ratioFromLeft * _totalSlots).ceil().clamp(
-      1,
+      0,
       _totalSlots,
     );
-    final targetGear = _gearMin + slotIndex - 1;
+    final targetGear = slotIndex == 0 ? 0 : (_gearMin + slotIndex - 1);
     _animateToGear(targetGear);
   }
 

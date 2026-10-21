@@ -264,6 +264,9 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
   /// 是否正在手势滑动拖拽中
   bool _isDragging = false;
 
+  /// 拖动开始时的百分比快照；手指抬起时与最终值比对，不同才发送一次回调。
+  int? _percentAtDragStart;
+
   /// 液位平滑过渡动画控制器（用于点击触发的平滑过渡）
   late AnimationController _animController;
   late Animation<double> _levelAnimation;
@@ -315,6 +318,8 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
   @override
   void didUpdateWidget(covariant VariableCapsuleControl oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 用户拖拽中以手势为准：设备约 1Hz 上报的功率会滞后于手指，此时同步会打断拖拽。
+    if (_isDragging) return;
     if (widget.initialPercentage != null &&
         widget.initialPercentage != oldWidget.initialPercentage) {
       _animateToPercent(widget.initialPercentage!, notify: false);
@@ -357,9 +362,10 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
     }
   }
 
-  /// 水平滑动开始：进入即时连续填充拖拽模式
+  /// 水平滑动开始：记录起始百分比，进入即时连续填充拖拽模式
   void _handleHorizontalDragStart(Offset localPos, double capsuleWidth) {
     _isDragging = true;
+    _percentAtDragStart = _currentPercent;
     _animController.stop();
     _handleHorizontalDragUpdate(localPos, capsuleWidth);
   }
@@ -385,12 +391,13 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
       HapticFeedback.selectionClick();
     }
 
-    widget.onValueChanged?.call(targetPercent);
+    // 拖动中只更新显示，不发送回调；抬手时统一在 _handleDragEnd 判断是否发送。
   }
 
-  /// 纵向滑动开始：进入即时连续填充拖拽模式
+  /// 纵向滑动开始：记录起始百分比，进入即时连续填充拖拽模式
   void _handleVerticalDragStart(Offset localPos, double capsuleHeight) {
     _isDragging = true;
+    _percentAtDragStart = _currentPercent;
     _animController.stop();
     _handleVerticalDragUpdate(localPos, capsuleHeight);
   }
@@ -415,15 +422,20 @@ class _VariableCapsuleControlState extends State<VariableCapsuleControl>
       HapticFeedback.selectionClick();
     }
 
-    widget.onValueChanged?.call(targetPercent);
+    // 拖动中只更新显示，不发送回调；抬手时统一在 _handleDragEnd 判断是否发送。
   }
 
-  /// 滑动结束：锁定当前数值
+  /// 滑动结束：与拖动起始值比对，不同才发送一次回调
   void _handleDragEnd() {
     _isDragging = false;
     _animController.stop();
     _levelAnimation = AlwaysStoppedAnimation(_currentPercent.toDouble());
     setState(() {});
+    if (_percentAtDragStart != null &&
+        _currentPercent != _percentAtDragStart) {
+      widget.onValueChanged?.call(_currentPercent);
+    }
+    _percentAtDragStart = null;
   }
 
   /// 水平点击胶囊区域计算目标百分比并平滑过渡

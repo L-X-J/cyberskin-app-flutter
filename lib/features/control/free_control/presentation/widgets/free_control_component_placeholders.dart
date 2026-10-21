@@ -1,22 +1,28 @@
-// 自由控制页面各个组件的视觉占位。
-// 优先使用与 webadmin 完全一致的原生模块设计切图进行高保真展示，并附带优雅的占位兜底。
+// 自由控制页面各个组件的分发器：按 variant 选择真实控件，绑定设备遥测与用户操作回调，
+// 未实现的模块使用与 webadmin 一致的切图或占位兜底。
 
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_radius.dart';
 import '../../../../../core/theme/app_typography.dart';
+import '../../../../device/data/ble_runtime_status_log.dart';
 import '../../domain/entities/free_control_layout.dart';
+import '../free_control_controller.dart';
 import 'heat_bar_control.dart';
 import 'heat_toggle_control.dart';
+import 'mode_multi_control.dart';
 import 'suck_multi_control.dart';
 import 'suck_toggle_control.dart';
 import 'telescopic_horizontal_stepped_control.dart';
 import 'telescopic_horizontal_variable_control.dart';
+import 'telescopic_mode_switch_control.dart';
 import 'telescopic_stepped_control.dart';
 import 'telescopic_variable_control.dart';
 import 'vibration_horizontal_stepped_control.dart';
 import 'vibration_horizontal_variable_control.dart';
+import 'vibration_mode_switch_control.dart';
 import 'vibration_stepped_control.dart';
 import 'vibration_variable_control.dart';
 
@@ -27,6 +33,7 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
     super.key,
     required this.config,
     this.height,
+    this.onToggle,
   });
 
   /// 组件配置
@@ -34,6 +41,9 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
 
   /// 外部约束的固定高度
   final double? height;
+
+  /// 可折叠卡片开关状态变化时通知外部（用于布局高度重算）。
+  final ValueChanged<bool>? onToggle;
 
   /// 根据 variant 获取对应的切图资源路径（与 webadmin ComponentPreview.vue 保持完全一致）
   String? get _assetImagePath => switch (config.variant) {
@@ -49,6 +59,7 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
     // 'telescopic_mode_3x1' 已由 TelescopicSteppedControl 原生 Canvas 实现
     // 'telescopic_mode_1x2' 已由 TelescopicHorizontalSteppedControl 原生 Canvas 实现
     'telescopic_mode_1x2' => 'assets/images/device_modules/thrust/thrust-b.png',
+    // 'telescopic_mode_2x2' 已由 TelescopicModeSwitchControl 原生组件实现
     'telescopic_variable_3x1' =>
       'assets/images/device_modules/thrust/thrust-c.png',
     'telescopic_variable_1x2' =>
@@ -56,6 +67,7 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
 
     // Vibration
     // 'vibration_mode_3x1' 已由 VibrationSteppedControl 原生 Canvas 实现
+    // 'vibration_mode_2x2' 已由 VibrationModeSwitchControl 原生组件实现
     'vibration_mode_3x1' =>
       'assets/images/device_modules/vibration/vibration-a.png',
     // 'vibration_mode_1x2' 已由 VibrationHorizontalSteppedControl 原生 Canvas 实现
@@ -87,7 +99,11 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
     'vibration_variable_1x2' => 358 / 135,
     'telescopic_mode_3x1' || 'vibration_mode_3x1' => 172 / 312,
     'telescopic_variable_3x1' || 'vibration_variable_3x1' => 172 / 355,
-    'suck_multi_2x2' || 'climax_2x2' || 'mode_2x2' => 358 / 231,
+    'suck_multi_2x2' ||
+    'climax_2x2' ||
+    'mode_2x2' ||
+    'telescopic_mode_2x2' ||
+    'vibration_mode_2x2' => 358 / 231,
     _ =>
       config.isFullWidth
           ? (config.type == FreeControlComponentType.heat
@@ -96,40 +112,132 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
           : 172 / 105,
   };
 
+  /// 模块是否对应单一硬件通道（需要订阅遥测并下发指令）。
+  bool get _isChannelModule => switch (config.type) {
+    FreeControlComponentType.telescopic ||
+    FreeControlComponentType.vibration ||
+    FreeControlComponentType.suck ||
+    FreeControlComponentType.heat => true,
+    FreeControlComponentType.mode ||
+    FreeControlComponentType.oneClickClimax => false,
+  };
+
   @override
   Widget build(BuildContext context) {
+    // 未注册控制器时（组件预览、独立 Widget 测试）只做静态展示，不订阅遥测也不下发指令。
+    final controller = Get.isRegistered<FreeControlController>()
+        ? Get.find<FreeControlController>()
+        : null;
+    if (controller == null || !_isChannelModule) {
+      return _buildModule(context, null);
+    }
+    // 每个模块独立 Obx，只订阅自身通道的遥测字段，避免单通道上报重建整个网格。
+    return Obx(() => _buildModule(context, controller));
+  }
+
+  /// 设备上报的吮吸原始状态 → 波纹动画状态；待机与未知都不播放。
+  static SuckMotionState _suckMotionOf(int suckState) => switch (suckState) {
+    2 => SuckMotionState.inhaling,
+    3 => SuckMotionState.exhaling,
+    _ => SuckMotionState.idle,
+  };
+
+  /// 按 variant 分发真实控件；[c] 为空时不绑定设备状态与回调。
+  Widget _buildModule(BuildContext context, FreeControlController? c) {
+    final type = config.type;
+    // 分档/变速控件读取设备上报值。该读取对所有通道模块都会执行，也保证 Obx 至少订阅
+    // connectedDevice，即使 variant 落入下方切图兜底分支也不会触发 GetX 的无订阅错误。
+    //
+    // 注意：上报值为 null 时回落到后台配置（gearCurrent / 默认百分比），
+    // 设备停止（功率 0）或尚未上报时都会走这条回落路径。
+    final reportedPercent = c?.reportedPercent(type);
+    final reportedGear = c == null ? null : c.reportedGear(config);
+    final steppedConfig = c == null
+        ? config
+        : config.withGearCurrent(reportedGear ?? config.gearCurrent);
+    // 只读诊断：打印本次重建解析出的上报值与最终交给控件显示的值（不是发给 BLE 的指令），
+    // 用于定位”控件显示回落到初始值”时到底是上报缺失还是控件内部状态被重置。
+    if (c != null && kBleDiagnosticLog) {
+      debugPrint(
+        '[BLE:UI] ${config.type.name}/${config.variant} '
+        '上报强度=${reportedPercent ?? '无'} 上报档位=${reportedGear ?? '无'} '
+        '→ 显示档位=${steppedConfig.gearCurrent ?? '无'} '
+        '显示百分比=${reportedPercent ?? '回退'}',
+      );
+    }
+    final onToggle = c == null
+        ? null
+        : (bool on) => c.onToggleChanged(type, on);
+    // 可折叠卡片的开关回调：先通知布局重算，再下发 BLE 指令。
+    ValueChanged<bool>? _wrapToggle(ValueChanged<bool>? bleToggle) {
+      if (this.onToggle == null && bleToggle == null) return null;
+      return (bool on) {
+        this.onToggle?.call(on);
+        bleToggle?.call(on);
+      };
+    }
+    final onGear = c == null
+        ? null
+        : (int gear) => c.onGearSelected(config, gear);
+    final onIntensity = c == null
+        ? null
+        : (int percent) => c.onIntensityChanged(type, percent);
+
     // 加热 1x1 开关组件（已还原为原生可交互组件，对齐 heat-a.png）
-    if (config.type == FreeControlComponentType.heat &&
+    if (type == FreeControlComponentType.heat &&
         (config.variant == 'heat_toggle_1x1' ||
             (!config.isFullWidth && config.rows == 1))) {
-      return HeatToggleControl(config: config, height: height);
+      return HeatToggleControl(
+        config: config,
+        height: height,
+        initialValue: c?.heatOn ?? false,
+        onChanged: onToggle,
+      );
     }
 
     // 加热 1x2 横向开关组件（已还原为原生可交互组件，对齐 heat-b.png）
-    if (config.type == FreeControlComponentType.heat &&
+    if (type == FreeControlComponentType.heat &&
         (config.variant == 'heat_bar_1x2' || config.isFullWidth)) {
-      return HeatBarControl(config: config, height: height ?? 105.0);
+      return HeatBarControl(
+        config: config,
+        height: height ?? 105.0,
+        initialValue: c?.heatOn ?? false,
+        onChanged: onToggle,
+      );
     }
 
     // 吸附/吮吸 1x1 开关组件（已还原为原生可交互组件，对齐 suck-a.png）
-    if (config.type == FreeControlComponentType.suck &&
+    if (type == FreeControlComponentType.suck &&
         (config.variant == 'suck_toggle_1x1' ||
             (!config.isFullWidth && config.rows == 1))) {
-      return SuckToggleControl(config: config, height: height);
+      return SuckToggleControl(
+        config: config,
+        height: height,
+        initialValue: c?.suckOn ?? true,
+        onChanged: onToggle,
+      );
     }
 
     // 吸附/吮吸 2x2 多模式组件（已还原为原生 Canvas 与动画组件，对齐 suck-b.png）
-    if (config.type == FreeControlComponentType.suck &&
+    if (type == FreeControlComponentType.suck &&
         (config.variant == 'suck_multi_2x2' ||
             (config.isFullWidth && config.rows >= 2))) {
       return SuckMultiControl(
         config: config,
         height: height ?? SuckMultiControl.estimatedHeight(config),
+        initialValue: c?.suckOn ?? true,
+        motionState: c == null
+            ? SuckMotionState.idle
+            : _suckMotionOf(c.suckState),
+        onChanged: _wrapToggle(onToggle),
+        onModeChanged: c == null
+            ? null
+            : (mode) => c.onSuckModeSelected(config, mode),
       );
     }
 
     // 伸缩 1x2 横向无级变速组件（已还原为 Canvas 原生自绘组件，对齐 thrust-d.png）
-    if (config.type == FreeControlComponentType.telescopic &&
+    if (type == FreeControlComponentType.telescopic &&
         (config.variant == 'telescopic_variable_1x2' ||
             (config.variableSpeedSupported &&
                 config.rows == 1 &&
@@ -137,71 +245,93 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
       return TelescopicHorizontalVariableControl(
         config: config,
         height: height ?? 135.0,
+        initialPercentage: c?.reportedPercent(type),
+        onGearChanged: onIntensity,
       );
     }
 
     // 伸缩 3x1 竖向无级变速组件（已还原为 Canvas 原生自绘组件，对齐 thrust-c.png）
-    if (config.type == FreeControlComponentType.telescopic &&
+    if (type == FreeControlComponentType.telescopic &&
         (config.variant == 'telescopic_variable_3x1' ||
             (config.variableSpeedSupported &&
                 config.rows >= 3 &&
                 config.cols == 1))) {
-      return TelescopicVariableControl(config: config, height: height);
+      return TelescopicVariableControl(
+        config: config,
+        height: height,
+        initialPercentage: c?.reportedPercent(type),
+        onGearChanged: onIntensity,
+      );
     }
 
     // 伸缩 3x1 竖向分档组件（已还原为 Canvas 原生自绘组件，对齐 thrust-a.png）
-    if (config.type == FreeControlComponentType.telescopic &&
+    if (type == FreeControlComponentType.telescopic &&
         (config.variant == 'telescopic_mode_3x1' ||
             (!config.variableSpeedSupported &&
                 config.rows >= 3 &&
                 config.cols == 1))) {
-      return TelescopicSteppedControl(config: config, height: height);
+      return TelescopicSteppedControl(
+        config: steppedConfig,
+        height: height,
+        onGearChanged: onGear,
+      );
     }
 
     // 伸缩 1x2 横向分档组件（已还原为 Canvas 原生自绘组件，对齐 thrust-b.png）
-    if (config.type == FreeControlComponentType.telescopic &&
+    if (type == FreeControlComponentType.telescopic &&
         (config.variant == 'telescopic_mode_1x2' ||
             (!config.variableSpeedSupported &&
                 config.rows == 1 &&
                 config.cols >= 2))) {
       return TelescopicHorizontalSteppedControl(
-        config: config,
+        config: steppedConfig,
         height: height ?? 135.0,
+        onGearChanged: onGear,
       );
     }
 
     // 震动 3x1 竖向分档组件（已还原为 Canvas 原生自绘组件，对齐 vibration-a.png）
-    if (config.type == FreeControlComponentType.vibration &&
+    if (type == FreeControlComponentType.vibration &&
         (config.variant == 'vibration_mode_3x1' ||
             (!config.variableSpeedSupported &&
                 config.rows >= 3 &&
                 config.cols == 1))) {
-      return VibrationSteppedControl(config: config, height: height);
+      return VibrationSteppedControl(
+        config: steppedConfig,
+        height: height,
+        onGearChanged: onGear,
+      );
     }
 
     // 震动 3x1 竖向无级变速组件（已还原为 Canvas 原生自绘组件，对齐 vibration-c.png）
-    if (config.type == FreeControlComponentType.vibration &&
+    if (type == FreeControlComponentType.vibration &&
         (config.variant == 'vibration_variable_3x1' ||
             (config.variableSpeedSupported &&
                 config.rows >= 3 &&
                 config.cols == 1))) {
-      return VibrationVariableControl(config: config, height: height);
+      return VibrationVariableControl(
+        config: config,
+        height: height,
+        initialPercentage: c?.reportedPercent(type),
+        onGearChanged: onIntensity,
+      );
     }
 
     // 震动 1x2 横向分档组件（已还原为 Canvas 原生自绘组件，对齐 vibration-b.png）
-    if (config.type == FreeControlComponentType.vibration &&
+    if (type == FreeControlComponentType.vibration &&
         (config.variant == 'vibration_mode_1x2' ||
             (!config.variableSpeedSupported &&
                 config.rows == 1 &&
                 config.cols >= 2))) {
       return VibrationHorizontalSteppedControl(
-        config: config,
+        config: steppedConfig,
         height: height ?? 135.0,
+        onGearChanged: onGear,
       );
     }
 
     // 震动 1x2 横向无级变速组件（已还原为 Canvas 原生自绘组件，对齐 vibration-d.png）
-    if (config.type == FreeControlComponentType.vibration &&
+    if (type == FreeControlComponentType.vibration &&
         (config.variant == 'vibration_variable_1x2' ||
             (config.variableSpeedSupported &&
                 config.rows == 1 &&
@@ -209,6 +339,34 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
       return VibrationHorizontalVariableControl(
         config: config,
         height: height ?? 135.0,
+        initialPercentage: c?.reportedPercent(type),
+        onGearChanged: onIntensity,
+      );
+    }
+
+    // 伸缩 2x2 模式切换卡片
+    if (type == FreeControlComponentType.telescopic &&
+        config.variant == 'telescopic_mode_2x2') {
+      return TelescopicModeSwitchControl(
+        config: steppedConfig,
+        height: height,
+        initialValue: c != null,
+        initialGear: reportedGear ?? steppedConfig.gearCurrent,
+        onChanged: _wrapToggle(onToggle),
+        onGearChanged: onGear,
+      );
+    }
+
+    // 震动 2x2 模式切换卡片
+    if (type == FreeControlComponentType.vibration &&
+        config.variant == 'vibration_mode_2x2') {
+      return VibrationModeSwitchControl(
+        config: steppedConfig,
+        height: height,
+        initialValue: c != null,
+        initialGear: reportedGear ?? steppedConfig.gearCurrent,
+        onChanged: _wrapToggle(onToggle),
+        onGearChanged: onGear,
       );
     }
 

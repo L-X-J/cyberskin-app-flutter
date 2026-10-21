@@ -39,6 +39,15 @@ final class HeatBarControl extends StatefulWidget {
 final class _HeatBarControlState extends State<HeatBarControl> {
   late bool _isOn = widget.initialValue;
 
+  @override
+  void didUpdateWidget(covariant HeatBarControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 仅在外部状态（设备上报）真正变化时同步，避免覆盖用户刚点击、设备尚未回报的状态。
+    if (widget.initialValue != oldWidget.initialValue) {
+      setState(() => _isOn = widget.initialValue);
+    }
+  }
+
   void _toggle() {
     final next = !_isOn;
     setState(() => _isOn = next);
@@ -74,18 +83,30 @@ final class _HeatBarControlState extends State<HeatBarControl> {
           Row(
             children: [
               const SizedBox(width: 30),
-              Text(
-                'Not enabled',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white.withValues(alpha: 0.55),
+              // 状态文案与火焰图标作为一组占据开关左侧的剩余宽度：文案可收缩并省略，
+              // 避免窄屏或大字号下溢出，同时保持开关贴右。
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _isOn ? 'Heating' : 'Not enabled',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    AppImage.load(
+                      'device_modules/heat/heat'.assetsPng,
+                      width: 50,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              AppImage.load('device_modules/heat/heat'.assetsPng, width: 50),
-              const Spacer(),
               SizedBox(
                 width: 130,
                 child: _HeatSwitch(isOn: _isOn, onTap: _toggle),

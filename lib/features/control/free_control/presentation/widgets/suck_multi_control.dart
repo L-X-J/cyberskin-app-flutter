@@ -4,6 +4,7 @@
 
 import 'dart:math' as math;
 
+import 'package:cyberskin_app/core/widgets/app_liquid_glass_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart';
 
@@ -58,21 +59,29 @@ final class SuckMultiControl extends StatefulWidget {
   final double? height;
 
   /// 根据后台模式数量估算布局所需高度，供自由控制网格分配空间。
-  static double estimatedHeight(FreeControlComponentConfig config) {
-    if (config.modes.isEmpty) return 130;
+  /// 开关关闭时的折叠高度：顶部 padding + 标题行 + 间距 + 状态行 + 底部 padding。
+  static const double _collapsedHeight = 116.0;
+
+  static double estimatedHeight(
+    FreeControlComponentConfig config, {
+    double availableWidth = 358.0,
+    bool isOn = true,
+  }) {
+    // 关闭状态下不展示模式按钮，直接返回折叠高度。
+    if (!isOn || config.modes.isEmpty) return _collapsedHeight;
     var rows = 1;
     var rowWidth = 0.0;
-    const availableWidth = 326.0;
+    final innerWidth = availableWidth - 32; // 左右各 16px padding
     for (final mode in config.modes) {
-      final buttonWidth = math.max(96.0, mode.length * 10.0 + 36.0);
-      if (rowWidth > 0 && rowWidth + 10 + buttonWidth > availableWidth) {
+      final buttonWidth = math.max(96.0, mode.length * 12.0 + 36.0);
+      if (rowWidth > 0 && rowWidth + 10 + buttonWidth > innerWidth) {
         rows++;
         rowWidth = buttonWidth;
       } else {
         rowWidth += (rowWidth == 0 ? 0 : 10) + buttonWidth;
       }
     }
-    return 115 + rows * 54 + (rows - 1) * 10;
+    return 115 + rows * 60 + (rows - 1) * 8;
   }
 
   @override
@@ -133,6 +142,16 @@ final class _SuckMultiControlState extends State<SuckMultiControl>
     }
   }
 
+  /// 状态行文案：关闭时提示未启用，开启后显示设备上报的吸气/放气状态。
+  String get _statusText {
+    if (!_isOn) return 'Not enabled';
+    return switch (widget.motionState) {
+      SuckMotionState.inhaling => 'Inhaling',
+      SuckMotionState.exhaling => 'Exhaling',
+      SuckMotionState.idle => 'Enabled',
+    };
+  }
+
   void _selectMode(String mode) {
     setState(() => _selectedMode = mode);
     widget.onModeChanged?.call(mode);
@@ -141,71 +160,75 @@ final class _SuckMultiControlState extends State<SuckMultiControl>
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: widget.height,
+      // 关闭时折叠到内容高度，避免卡片内出现大片空白；
+      // 开启时使用网格分配的固定高度以确保模式按钮完整显示。
+      height: _isOn ? widget.height : null,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: AppTheme.freeControlBoxDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.album_outlined,
-                color: Color(0xFFFFA4D9),
-                size: 28,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  widget.config.displayLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 20, color: Colors.white),
+      child: LiquidGlassLayer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.album_outlined,
+                  color: Color(0xFFFFA4D9),
+                  size: 28,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Not enabled',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white.withValues(alpha: 0.82),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.config.displayLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 20, color: Colors.white),
                   ),
                 ),
-              ),
-              AnimatedBuilder(
-                animation: _waveController,
-                builder: (context, _) => CustomPaint(
-                  size: const Size(52, 52),
-                  painter: _SuckWaveLogoPainter(
-                    progress: _waveController.value,
-                    enabled: _isOn,
-                    motionState: widget.motionState,
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _statusText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white.withValues(alpha: 0.82),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              SizedBox(
-                width: 144,
-                child: _SuckMultiSwitch(
-                  isOn: _isOn,
-                  onTap: () => _setEnabled(!_isOn, notify: true),
+                AnimatedBuilder(
+                  animation: _waveController,
+                  builder: (context, _) => CustomPaint(
+                    size: const Size(52, 52),
+                    painter: _SuckWaveLogoPainter(
+                      progress: _waveController.value,
+                      enabled: _isOn,
+                      motionState: widget.motionState,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: 144,
+                  child: _SuckMultiSwitch(
+                    isOn: _isOn,
+                    onTap: () => _setEnabled(!_isOn, notify: true),
+                  ),
+                ),
+              ],
+            ),
+            if (_isOn && widget.config.modes.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _buildModeContent(),
             ],
-          ),
-          if (_isOn && widget.config.modes.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            _buildModeContent(),
-          ] else if (widget.height != null)
-            const Spacer(),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -224,7 +247,7 @@ final class _SuckMultiControlState extends State<SuckMultiControl>
       ],
     );
     if (widget.height == null) return modes;
-    return Expanded(child: SingleChildScrollView(child: modes));
+    return modes;
   }
 }
 
@@ -237,56 +260,52 @@ final class _SuckMultiSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LiquidGlassLayer(
-      child: Semantics(
-        button: true,
-        toggled: isOn,
-        label: 'Suck ${isOn ? 'on' : 'off'}',
-        child: LGButton.custom(
-          onTap: onTap,
-          width: double.infinity,
-          height: 52,
-          useOwnLayer: true,
-          settings: LiquidGlassSettings(
-            glassColor: const Color(0xFFF8F8F8).withAlpha(50),
-          ),
-          quality: LGQuality.standard,
-          shape: const LiquidRoundedRectangle(borderRadius: 90),
-          child: Stack(
-            children: [
-              AnimatedAlign(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                alignment: isOn ? Alignment.centerRight : Alignment.centerLeft,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: SizedBox(
-                    width: 69,
-                    height: 40,
-                    child: CustomPaint(painter: _SuckMultiSegmentPainter()),
-                  ),
+    return Semantics(
+      button: true,
+      toggled: isOn,
+      label: 'Suck ${isOn ? 'on' : 'off'}',
+      child: LGButton.custom(
+        onTap: onTap,
+        width: double.infinity,
+        height: 52,
+        useOwnLayer: true,
+        settings: LiquidGlassSettings(
+          glassColor: const Color(0xFFF8F8F8).withAlpha(50),
+        ),
+        quality: LGQuality.standard,
+        shape: const LiquidRoundedRectangle(borderRadius: 90),
+        child: Stack(
+          children: [
+            AnimatedAlign(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              alignment: isOn ? Alignment.centerRight : Alignment.centerLeft,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: SizedBox(
+                  width: 69,
+                  height: 40,
+                  child: CustomPaint(painter: _SuckMultiSegmentPainter()),
                 ),
               ),
-              Positioned.fill(
-                child: Align(
-                  alignment: isOn
-                      ? Alignment.centerLeft
-                      : Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: Text(
-                      isOn ? 'ON' : 'OFF',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: isOn ? Colors.white : const Color(0xFFA6A1C1),
-                      ),
+            ),
+            Positioned.fill(
+              child: Align(
+                alignment: isOn ? Alignment.centerLeft : Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Text(
+                    isOn ? 'ON' : 'OFF',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: isOn ? Colors.white : const Color(0xFFA6A1C1),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -422,36 +441,13 @@ final class _SuckModeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Semantics(
-        button: true,
-        selected: selected,
-        label: label,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 54, minWidth: 96),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            color: selected ? const Color(0x553F3478) : const Color(0x263B3758),
-            border: Border.all(
-              color: selected
-                  ? const Color(0x88E6DFFF)
-                  : const Color(0x449D9BB2),
-            ),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : const Color(0xFFF2F0F8),
-            ),
-          ),
-        ),
+    return AppLiquidGlassButton(
+      label: label,
+      onPressed: onTap,
+      height: 48,
+      variant: AppLiquidGlassButtonVariant.translucent,
+      glassSettings: LiquidGlassSettings(
+        glassColor: const Color(0xFFF8F8F8).withAlpha(50),
       ),
     );
   }

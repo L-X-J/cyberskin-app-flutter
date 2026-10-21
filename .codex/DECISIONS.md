@@ -72,3 +72,20 @@ Context: yuanqu_app and cyberskin-app-flutter use the same BLE devices, but only
 Decision: Shared transport and protocol profiles live in the adjacent `cyberskin-device-sdk` package. Apps own API/profile mapping, persistence, UI and pairing orchestration.
 
 Reason: Prevents protocol drift and keeps GetX/API concerns out of reusable BLE code.
+
+## ADR-006: Free control stepped gears send logical intensity, not mode numbers
+
+Status: Accepted
+
+Context: 分档胶囊（`*_mode_*` variant）选中第 N 档时，可发 `CM->t:N`（固件波形模式）或 `t:{0-100}`
+（逻辑强度）。PRD 把“模式”定义为固件波形预设并由能力 `modes` 配置；`*_mode_*` 模块的能力通常没有
+`modes`，WebAdmin 会把这类 `CM->` 判为非法；SDK 遥测只有马达功率、没有当前模式。
+
+Decision: 第 N 档发送 `t:` / `v:` 逻辑强度 `round(N / gearMax × 100)`，由设备适配层映射到硬件档位；
+上报功率按同一比例反算档位显示（2026-10-20 与用户确认）。
+
+Reason: 符合通用业务协议“0-100 逻辑百分比强度”语义，分档控件能显示设备真实状态，分档与无级变速共用一条通道语义。
+
+Alternatives: `CM->t:N` 模式号（与模式语义重叠，无法回显设备状态）。
+
+Reconsider when: 固件上报当前档位/模式，或后台为分档模块定义独立的档位协议。

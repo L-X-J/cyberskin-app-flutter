@@ -7,6 +7,7 @@ import 'package:cyberskin_app/features/home/presentation/home_disconnected/home_
 import 'package:cyberskin_app/features/home/presentation/states/home_ble_card_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 
 final class _FakeCatalogRepository implements DeviceCatalogRepository {
   @override
@@ -77,19 +78,30 @@ void main() {
       const duplicateId = 2100573200126414849;
       final dashboard = HomeDashboard(
         deviceModels: const [
-          DeviceModelSummary(id: duplicateId, name: 'Model A'),
-          DeviceModelSummary(id: duplicateId, name: 'Model B'),
+          DeviceModelSummary(
+            id: duplicateId,
+            name: 'Model A',
+            iconUrl: 'assets/images/home/device_air.png',
+          ),
+          DeviceModelSummary(
+            id: duplicateId,
+            name: 'Model B',
+            iconUrl: 'assets/images/home/device_pro.png',
+          ),
         ],
       );
 
       await tester.pumpWidget(
-        MaterialApp(
+        GetMaterialApp(
           home: Scaffold(
             body: HomeDisconnectedView(
               dashboard: dashboard,
               isLoading: false,
               isAuthenticated: true,
-              bleCardState: HomeBleCardState.ready(),
+              bleCardState: HomeBleCardState.fromPhase(
+                HomeBleCardPhase.ready,
+                adapterOn: true,
+              ),
               onPrimaryAction: () {},
               onStopDiscovery: () {},
               pendingDiscovery: null,
@@ -99,6 +111,7 @@ void main() {
               onDeviceModelDetails: (_) {},
               onLogin: () {},
               onProfile: () {},
+              topHeaderPadding: 50,
             ),
           ),
         ),

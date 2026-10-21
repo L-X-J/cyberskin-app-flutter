@@ -17,3 +17,10 @@ UI 不得直接拼接或发送 BLE 指令。
 
 `data/ble_device_command_repository.dart` 是语义指令进入共享 BLE SDK 的唯一入口。控制器和
 页面只能发送 `t/v/s/h` 语义命令，不得拼接十六进制帧或按型号写协议分支。
+
+## free_control 数据流
+
+`free_control/` 子域：`DeviceModelDetail.layout + supportedActions → FreeControlLayout`（领域层合并）
+→ `FreeControlController` → 各模块 Widget；用户操作经 `FreeControlCommandMapper` 生成语义指令，
+由控制器按通道 latest-wins 串行下发（拖动滑杆只发最新值，开关/模式指令独立排队）；
+`ConnectedDeviceState` 遥测回流到模块 Widget。详见 `free_control/domain/README.md`。

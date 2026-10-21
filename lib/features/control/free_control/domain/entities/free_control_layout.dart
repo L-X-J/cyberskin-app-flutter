@@ -21,11 +21,15 @@ final class FreeControlLayout {
   /// 按展示顺序排列的组件配置列表。
   final List<FreeControlComponentConfig> components;
 
-  /// 从后端 DeviceModelDetail 返回的 Map 结构以及设备名称进行解析构造。
+  /// 从后端 DeviceModelDetail 的 `layout` 与 `supportedActions` 解析构造。
+  ///
+  /// 后台布局编辑器只持久化 `type/variant/row/col/order`，档位数与模式名称归属能力配置；
+  /// 因此模块缺失这些字段时，按模块类型从 [supportedActions] 补齐 `gearMax` / `modes`。
+  /// 模块自身显式下发的字段优先于能力配置。
   factory FreeControlLayout.fromJson({
     required String deviceName,
     Map<String, dynamic>? layoutJson,
-    Map<String, dynamic>? capabilityJson,
+    List<Map<String, dynamic>> supportedActions = const [],
   }) {
     final rawColumns = layoutJson?['columns'];
     final columns = (rawColumns is int && rawColumns > 0) ? rawColumns : 2;
@@ -36,7 +40,13 @@ final class FreeControlLayout {
     if (rawModules is List && rawModules.isNotEmpty) {
       final validModules = rawModules.whereType<Map<String, dynamic>>();
       for (final mod in validModules) {
-        final config = FreeControlComponentConfig.fromJson(mod);
+        final type = FreeControlComponentType.fromString(
+          mod['type'] as String?,
+        );
+        final config = FreeControlComponentConfig.fromJson(
+          mod,
+          capability: type?.findAction(supportedActions),
+        );
         if (config != null) {
           components.add(config);
         }
@@ -153,6 +163,27 @@ enum FreeControlComponentType {
       _ => null,
     };
   }
+
+  /// 能力配置 `supportedActions[].code` 中对应本模块类型的取值；
+  /// 别名与 `ConnectedDeviceRepository` 的能力解析保持一致。
+  Set<String> get _actionCodes => switch (this) {
+    FreeControlComponentType.telescopic => const {'thrust', 'telescopic'},
+    FreeControlComponentType.vibration => const {'vibration', 'vibrate'},
+    FreeControlComponentType.suck => const {'suck', 'suction'},
+    FreeControlComponentType.heat => const {'heat', 'heating'},
+    FreeControlComponentType.mode ||
+    FreeControlComponentType.oneClickClimax => const <String>{},
+  };
+
+  /// 在后台能力动作列表中查找本模块类型对应的动作；未配置时返回 `null`。
+  Map<String, dynamic>? findAction(List<Map<String, dynamic>> actions) {
+    final codes = _actionCodes;
+    for (final action in actions) {
+      final code = action['code']?.toString().toLowerCase();
+      if (code != null && codes.contains(code)) return action;
+    }
+    return null;
+  }
 }
 
 /// 单个组件在布局中的配置。
@@ -217,8 +248,30 @@ final class FreeControlComponentConfig {
   /// 模式名称列表（用于 mode/multi 变体）。
   final List<String> modes;
 
+  /// 分档控件实际使用的最大档位；后台未配置时兜底 6 档，与设计稿一致。
+  int get resolvedGearMax => gearMax ?? 6;
+
   /// 是否跨满整行（即占 2 列）。
   bool get isFullWidth => cols >= 2;
+
+  /// 返回仅替换当前档位的副本，用于把设备上报的实时档位注入分档控件。
+  FreeControlComponentConfig withGearCurrent(int? value) =>
+      FreeControlComponentConfig(
+        type: type,
+        variant: variant,
+        rows: rows,
+        cols: cols,
+        row: row,
+        col: col,
+        order: order,
+        label: label,
+        gearMax: gearMax,
+        gearMin: gearMin,
+        gearCurrent: value,
+        variableSpeedSupported: variableSpeedSupported,
+        defaultValue: defaultValue,
+        modes: modes,
+      );
 
   /// 预设尺寸对应的参考高度（单位逻辑像素，基于设计稿比例）。
   /// 单行单列（1x1）：105
@@ -250,20 +303,24 @@ final class FreeControlComponentConfig {
     };
   }
 
-  /// 从后台 json 解析。
-  static FreeControlComponentConfig? fromJson(Map<String, dynamic> json) {
+  /// 从后台 json 解析；[capability] 为同类型的能力动作，用于补齐模块未下发的
+  /// `gearMax` / `modes`。
+  static FreeControlComponentConfig? fromJson(
+    Map<String, dynamic> json, {
+    Map<String, dynamic>? capability,
+  }) {
     final typeStr = json['type'] as String?;
     final type = FreeControlComponentType.fromString(typeStr);
     if (type == null) return null;
 
     final variant = json['variant'] as String? ?? '';
-    final row = json['row'] as int? ?? 0;
-    final col = json['col'] as int? ?? 0;
-    final order = json['order'] as int? ?? 0;
+    final row = _intOf(json['row']) ?? 0;
+    final col = _intOf(json['col']) ?? 0;
+    final order = _intOf(json['order']) ?? 0;
 
     // 解析 rows 和 cols（优先使用后端显式返回的 rows/cols，其次从 variant 解析，如 "xxx_3x1" -> rows=3, cols=1）
-    var rows = json['rows'] as int? ?? 1;
-    var cols = json['cols'] as int? ?? 1;
+    var rows = _intOf(json['rows']) ?? 1;
+    var cols = _intOf(json['cols']) ?? 1;
     if (json['rows'] == null || json['cols'] == null) {
       final sizeMatch = RegExp(r'(\d+)x(\d+)$').firstMatch(variant);
       if (sizeMatch != null) {
@@ -279,12 +336,20 @@ final class FreeControlComponentConfig {
     }
 
     final isVariable = variant.contains('variable');
+    // 能力配置中 gearMax <= 0 表示不适用（如加热），不能作为档位数使用。
+    final capabilityGearMax = _intOf(capability?['gearMax']);
     final gearMax =
-        json['gearMax'] as int? ?? (variant.contains('mode') ? 6 : null);
-    final gearMin = json['gearMin'] as int? ?? 1;
+        _intOf(json['gearMax']) ??
+        (capabilityGearMax != null && capabilityGearMax > 0
+            ? capabilityGearMax
+            : null) ??
+        (variant.contains('mode') ? 6 : null);
+    final gearMin = _intOf(json['gearMin']) ?? 1;
+    // 不从能力配置补 defaultValue：能力侧是 0–100 逻辑值，模块侧是档位序号，语义不同。
     final defaultValue =
-        json['defaultValue'] as int? ?? (gearMin > 0 ? gearMin : 1);
-    final gearCurrent = json['gearCurrent'] as int? ?? defaultValue;
+        _intOf(json['defaultValue']) ?? (gearMin > 0 ? gearMin : 1);
+    final gearCurrent = _intOf(json['gearCurrent']) ?? defaultValue;
+    final moduleModes = _modeNames(json['modes']);
 
     return FreeControlComponentConfig(
       type: type,
@@ -301,9 +366,30 @@ final class FreeControlComponentConfig {
       variableSpeedSupported:
           isVariable || (json['variableSpeedSupported'] as bool? ?? false),
       defaultValue: defaultValue,
-      modes:
-          (json['modes'] as List?)?.map((e) => e.toString()).toList() ??
-          const [],
+      // 模式顺序即协议模式号（下标 + 1），因此只整体替换，不与能力列表混合。
+      modes: moduleModes.isNotEmpty
+          ? moduleModes
+          : _modeNames(capability?['modes']),
     );
+  }
+
+  /// 兼容 int / double / 数字字符串的整数解析；无法解析时返回 `null`。
+  static int? _intOf(Object? value) => switch (value) {
+    final num number => number.toInt(),
+    final String text => int.tryParse(text.trim()),
+    _ => null,
+  };
+
+  /// 解析模式名称列表：模块下发字符串数组，能力配置下发 `{id, name}` 对象数组。
+  static List<String> _modeNames(Object? raw) {
+    if (raw is! List) return const [];
+    final names = <String>[];
+    for (var i = 0; i < raw.length; i++) {
+      final item = raw[i];
+      final name = item is Map ? item['name']?.toString() : item?.toString();
+      // 缺名模式仍占用模式号位置，用序号兜底以保持下标与协议模式号对齐。
+      names.add(name == null || name.trim().isEmpty ? 'Mode ${i + 1}' : name);
+    }
+    return List.unmodifiable(names);
   }
 }

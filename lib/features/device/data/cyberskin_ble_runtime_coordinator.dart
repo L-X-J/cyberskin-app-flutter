@@ -12,9 +12,7 @@ import '../domain/connected_device_state.dart';
 import '../domain/repositories/device_catalog_repository.dart';
 import '../domain/repositories/user_device_repository.dart';
 import 'ble_known_device_store.dart';
-
-/// BLE 诊断日志开关：仅在 debug 模式下输出，release 构建自动关闭。
-const bool _kBleLog = kDebugMode;
+import 'ble_runtime_status_log.dart';
 
 /// Cyberskin 的 BLE 运行时协调器。
 ///
@@ -94,6 +92,12 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   /// 设备 Profile 是否已成功配置到 SDK [manager]。
   bool _profilesConfigured = false;
+
+  /// 设备上报运行态的中文诊断日志器；只读打印，不参与任何状态流转。
+  ///
+  /// 设备每帧上报都会经过这里，便于在 console 里直接看到解析后的功率/开关/电量，
+  /// 排查“控件刷新后回落到初始值”这类问题时不需要再猜原始帧含义。
+  final BleRuntimeStatusLogger _runtimeLog = BleRuntimeStatusLogger();
 
   /// 共享的蓝牙初始化 Future，防止并发重复初始化。
   Future<void>? _initializeFuture;
@@ -554,6 +558,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
             clearConnectedDevice();
           }
           runtime.remove(remoteId);
+          _runtimeLog.reset();
           final wasIntentional = _intentionalDisconnects.remove(remoteId);
           _bleLog(
             '设备断开: id=$remoteId '
@@ -568,6 +573,8 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
           }
         }
       case BleRuntimeChanged(:final remoteId, :final status):
+        // 先打印解析后的上报内容（只读，不影响后续状态写入时序）。
+        _runtimeLog.onStatus(remoteId, status);
         runtime[remoteId] = status;
         final connected = connectedDevice.value;
         if (connected != null && connected.remoteId == remoteId) {
@@ -591,21 +598,19 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   }
 }
 
-/// 输出 BLE 诊断日志，仅在调试模式下打印。
-void _bleLog(String message) {
-  if (_kBleLog) debugPrint('[BLE] $message');
-}
+/// 协调器内部日志的简写别名；实现与开关统一由 [bleLog] 提供。
+void _bleLog(String message) => bleLog(message);
 
-/// 提供给 SDK 内部使用的日志适配器，将 SDK 内部调试信息转接至 [_bleLog]。
+/// 提供给 SDK 内部使用的日志适配器，将 SDK 内部调试信息转接至 [bleLog]。
 final class _AppBleLogger implements BleLogger {
   @override
   void debug(String message) {
-    if (_kBleLog) debugPrint('[BLE:SDK] $message');
+    if (kBleDiagnosticLog) debugPrint('[BLE:SDK] $message');
   }
 
   @override
   void warning(String message, [Object? error]) {
-    if (_kBleLog) {
+    if (kBleDiagnosticLog) {
       debugPrint('[BLE:SDK⚠] $message${error != null ? ' | $error' : ''}');
     }
   }

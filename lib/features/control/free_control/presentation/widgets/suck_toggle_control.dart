@@ -37,6 +37,15 @@ final class SuckToggleControl extends StatefulWidget {
 final class _SuckToggleControlState extends State<SuckToggleControl> {
   late bool _isOn = widget.initialValue;
 
+  @override
+  void didUpdateWidget(covariant SuckToggleControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 仅在外部状态（设备上报）真正变化时同步，避免覆盖用户刚点击、设备尚未回报的状态。
+    if (widget.initialValue != oldWidget.initialValue) {
+      setState(() => _isOn = widget.initialValue);
+    }
+  }
+
   void _toggle() {
     final next = !_isOn;
     setState(() => _isOn = next);
@@ -139,61 +148,6 @@ final class _SuckSwitch extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-    return Semantics(
-      button: true,
-      toggled: isOn,
-      label: 'Suck ${isOn ? 'on' : 'off'}',
-      child: GestureDetector(
-        onTap: onTap,
-        child: LiquidGlassLayer(
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              color: const Color(0x665E5878),
-              border: Border.all(color: const Color(0x779B98B6)),
-            ),
-            child: Stack(
-              children: [
-                AnimatedAlign(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  alignment: isOn
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: SizedBox(
-                      width: 62,
-                      height: 40,
-                      child: CustomPaint(painter: _SuckToggleSegmentPainter()),
-                    ),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Align(
-                    alignment: isOn
-                        ? Alignment.centerLeft
-                        : Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Text(
-                        isOn ? 'ON' : 'OFF',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: isOn ? Colors.white : const Color(0xFFA6A1C1),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),

@@ -1,8 +1,14 @@
 # Project Status
 
-Last updated: 2026-10-13
+Last updated: 2026-10-20
 
 Current Focus: 接入真实 BLE、视频播放器/本地选择、平台 OAuth；玻璃与模糊实机光学验收。
+
+Free control (2026-10-20): 模块已接入后台布局+能力合并、语义指令下发（latest-wins 串行）和遥测回显，
+控制相关 80 项测试通过；未经真机验证。`mode_2x2` / `climax_2x2` 仍是静态兜底，一键高潮未实现。
+待确认：SDK generic profile 对 `s:o` / `h:o` 写出强度字节 50，而 BLE 协议文档吮吸/加热操作位为 01/02/03，需真机核对。
+全量测试另有 3 项失败，均不引用 control 代码：`device_manual_product_hero_test`（测试文件调用未定义的
+`HomeBleCardState.ready`，编译失败）、`app_layered_gradient_card_test`、`repository_contract_test`；未在 HEAD 上复跑确认。
 
 In Progress: Google/Apple OAuth 入口等待平台插件和控制台配置；玻璃、内阴影和模糊仍需 iOS/Android 实机光学对照。
 

@@ -1,6 +1,7 @@
 import 'package:cyberskin_app/app/app_routes.dart';
 import 'package:cyberskin_app/app/floating_control_controller.dart';
 import 'package:cyberskin_app/core/result/result.dart';
+import 'package:cyberskin_app/features/control/domain/device_command_repository.dart';
 import 'package:cyberskin_app/features/control/domain/device_session.dart';
 import 'package:cyberskin_app/features/control/free_control/presentation/free_control_controller.dart';
 import 'package:cyberskin_app/features/control/free_control/presentation/free_control_page.dart';
@@ -30,6 +31,15 @@ final class _FakeCatalogRepository implements DeviceCatalogRepository {
       throw UnimplementedError();
 }
 
+final class _NoopCommandRepository implements DeviceCommandRepository {
+  @override
+  Future<Result<void>> send(
+    String command, {
+    int? modelId,
+    String? remoteId,
+  }) async => const Result.ok(null);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -56,6 +66,7 @@ void main() {
         catalogRepository: _FakeCatalogRepository(),
         bleCoordinator: bleCoordinator,
         sessionController: sessionController,
+        commandRepository: _NoopCommandRepository(),
       );
       Get.put<FreeControlController>(controller);
     });
@@ -75,7 +86,8 @@ void main() {
 
       // 验证大标题与副标题
       expect(find.text('Free control mode'), findsOneWidget);
-      expect(find.textContaining('Connected'), findsOneWidget);
+      // 未连接设备时副标题必须如实显示断开状态。
+      expect(find.text('Cyberskin Pro · Disconnected'), findsOneWidget);
     });
 
     testWidgets('collapsing on scroll fades subtitle and animates header', (

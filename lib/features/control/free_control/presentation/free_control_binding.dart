@@ -2,8 +2,10 @@
 
 import 'package:get/get.dart';
 
+import '../../../../core/logging/app_log.dart';
 import '../../../device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../../device/domain/repositories/device_catalog_repository.dart';
+import '../../domain/device_command_repository.dart';
 import '../../presentation/control_session_controller.dart';
 import 'free_control_controller.dart';
 
@@ -15,6 +17,8 @@ final class FreeControlBinding extends Bindings {
         catalogRepository: Get.find<DeviceCatalogRepository>(),
         bleCoordinator: Get.find<CyberskinBleRuntimeCoordinator>(),
         sessionController: Get.find<ControlSessionController>(),
+        commandRepository: Get.find<DeviceCommandRepository>(),
+        log: Get.find<AppLog>(),
       ),
     );
   }

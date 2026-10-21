@@ -64,6 +64,11 @@ Cyberskin App 是面向美国男性用户的英文 Flutter 客户端，连接并
 - 所有函数都必须有中文 Dart doc；函数内部稍复杂、非显然或有状态/并发/缓存语义的代码块，
   必须补充中文行内注释，说明原因、边界和失败策略，不能只给类或公开方法写注释。
 - `Obx` 只包裹最小可变 Widget 子树，避免整页重建。
+- 自由控制布局模块的后台存储只有 `type/variant/row/col/order`（WebAdmin `toPersistedLayout`），
+  后端读路径不补能力字段；`gearMax` / `modes` 必须由客户端从 `supportedActions` 按类型合并
+  （code 别名 `thrust|telescopic`、`vibration|vibrate`、`suck|suction`、`heat|heating`）。
+  能力侧 `defaultValue` 是 0–100 逻辑值，不能当作模块档位序号；`gearMax <= 0` 表示不适用。
+- 通用业务协议只允许 `t/v` 携带普通数字强度；吮吸模式必须写 `CM->s:N`，`s:N` 会被解析器拒绝。
 - Repository 是数据访问单一入口，错误转换为显式结果/领域错误。
 - 领域模型不可变；测试文件以 `_test.dart` 结尾。
 - 注释描述职责、契约与边界，不逐行复述实现；UI 文案仍以英文为准。
