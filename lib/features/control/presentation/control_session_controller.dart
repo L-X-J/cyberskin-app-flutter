@@ -10,6 +10,7 @@ import '../../device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../device/domain/connected_device_state.dart';
 import '../../device/domain/device.dart';
 import '../../device/domain/device_capability.dart';
+import '../../rhythm/domain/services/rhythm_playback.dart';
 import '../domain/device_command_repository.dart';
 import '../domain/device_session.dart';
 
@@ -17,15 +18,20 @@ import '../domain/device_session.dart';
 final class ControlSessionController extends GetxController {
   /// 创建全局控制会话控制器。
   ControlSessionController({
+    RhythmPlayback? rhythmPlayback,
     CyberskinBleRuntimeCoordinator? bleCoordinator,
     DeviceCommandRepository? commandRepository,
     SessionController? sessionController,
     AppLog log = const NoopAppLog(),
-  }) : _bleCoordinator = bleCoordinator,
+  }) : _rhythmPlayback = rhythmPlayback,
+       _bleCoordinator = bleCoordinator,
        _commandRepository = commandRepository,
        _sessionController = sessionController,
        _log = log;
 
+  final RhythmPlayback? _rhythmPlayback;
+  StreamSubscription<RhythmPlaybackSnapshot>? _rhythmSubscription;
+  bool _hadRhythmSession = false;
   final CyberskinBleRuntimeCoordinator? _bleCoordinator;
   final DeviceCommandRepository? _commandRepository;
   final SessionController? _sessionController;
@@ -36,11 +42,30 @@ final class ControlSessionController extends GetxController {
 
   final List<Worker> _bleWorkers = <Worker>[];
   final List<Worker> _telemetryWorkers = <Worker>[];
+  StreamSubscription<String>? _telemetrySubscription;
+  int _stateRevision = 0;
 
   @override
   void onInit() {
     super.onInit();
     _bindBleWorkers();
+    _rhythmSubscription = _rhythmPlayback?.changes.listen((snapshot) {
+      if (_rhythmPlayback.editing) {
+        updateState(DeviceSessionState.paused);
+        return;
+      }
+      if (_rhythmPlayback.active) {
+        _hadRhythmSession = true;
+        updateState(
+          snapshot.phase == RhythmPlaybackPhase.running
+              ? DeviceSessionState.running
+              : DeviceSessionState.paused,
+        );
+      } else if (_hadRhythmSession) {
+        _hadRhythmSession = false;
+        updateState(DeviceSessionState.idle);
+      }
+    });
   }
 
   void _bindBleWorkers() {
@@ -59,6 +84,12 @@ final class ControlSessionController extends GetxController {
       }),
     );
 
+    // 心跳在完整快照提交后逐帧广播，同值帧也必须纠正快捷操作的乐观状态。
+    _telemetrySubscription = coordinator.rhythmHeartbeats.listen((remoteId) {
+      if (remoteId == coordinator.connectedDevice.value?.remoteId) {
+        _syncTelemetry();
+      }
+    });
     _syncConnectionAndSession();
     _bindTelemetry(coordinator.connectedDevice.value);
   }
@@ -104,31 +135,6 @@ final class ControlSessionController extends GetxController {
 
     if (connected == null) return;
 
-    void checkTelemetry() {
-      final motor = connected.motorPower.value;
-      final vibrate = connected.vibrateMotorPower.value;
-      final suck = connected.suckState.value;
-
-      final isRunning =
-          (motor > 0) || (vibrate > 0) || (suck == 2 || suck == 3);
-
-      if (isRunning) {
-        if (state.value != DeviceSessionState.running) {
-          updateState(DeviceSessionState.running);
-        }
-      } else if (motor == 0 && vibrate == 0 && suck != 2 && suck != 3) {
-        if (state.value == DeviceSessionState.running) {
-          updateState(DeviceSessionState.paused);
-        }
-      }
-    }
-
-    _telemetryWorkers.add(ever(connected.motorPower, (_) => checkTelemetry()));
-    _telemetryWorkers.add(
-      ever(connected.vibrateMotorPower, (_) => checkTelemetry()),
-    );
-    _telemetryWorkers.add(ever(connected.suckState, (_) => checkTelemetry()));
-
     _telemetryWorkers.add(
       ever(connected.batteryLevel, (battery) {
         if (_sessionController == null) return;
@@ -146,11 +152,52 @@ final class ControlSessionController extends GetxController {
       }),
     );
 
-    checkTelemetry();
+    _syncTelemetry();
+  }
+
+  /// 只用完整的当前功率快照校正手动会话；历史功率和加热不代表运动。
+  /// 支持的运动通道必须明确停止，未知值不能作为停止证据。
+  void _syncTelemetry() {
+    final coordinator = _bleCoordinator;
+    final connected = coordinator?.connectedDevice.value;
+    if (connected == null || coordinator?.hasConnectedDevice != true) return;
+    if (_rhythmPlayback?.active == true || _rhythmPlayback?.editing == true) {
+      return;
+    }
+    final status = coordinator!.runtime[connected.remoteId];
+    if (status == null) return;
+    if (status.motorPower > 0 ||
+        status.vibrateMotorPower > 0 ||
+        status.suckState == 2 ||
+        status.suckState == 3) {
+      updateState(DeviceSessionState.running);
+      return;
+    }
+    final channels = connected.device.capabilities.channels
+        .map((capability) => capability.channel)
+        .where((channel) => channel != DeviceChannel.heat);
+    final stopped =
+        channels.isNotEmpty &&
+        channels.every(
+          (channel) => switch (channel) {
+            DeviceChannel.telescopic => status.motorPower == 0,
+            DeviceChannel.vibration => status.vibrateMotorPower == 0,
+            DeviceChannel.suck => status.suckState == 1,
+            DeviceChannel.heat => false,
+          },
+        );
+    if (stopped) {
+      updateState(
+        state.value == DeviceSessionState.running
+            ? DeviceSessionState.paused
+            : state.value,
+      );
+    }
   }
 
   /// 在 Repository 或 BLE 事件到达后更新会话状态。
   void updateState(DeviceSessionState nextState) {
+    _stateRevision++;
     if (state.value == nextState) {
       return;
     }
@@ -159,18 +206,14 @@ final class ControlSessionController extends GetxController {
 
   /// 暂停运行中的会话，或恢复已暂停的会话。
   void togglePause() {
-    final nextState = switch (state.value) {
-      DeviceSessionState.running => DeviceSessionState.paused,
-      DeviceSessionState.paused => DeviceSessionState.running,
-      DeviceSessionState.idle || DeviceSessionState.connecting => state.value,
-    };
-    if (nextState != state.value) {
-      updateState(nextState);
-      if (nextState == DeviceSessionState.paused) {
-        unawaited(sendPause());
-      } else if (nextState == DeviceSessionState.running) {
-        unawaited(sendResume());
-      }
+    if (_rhythmPlayback?.editing == true) return;
+    if (_rhythmPlayback?.active == true) {
+      unawaited(activateQuickControl());
+      return;
+    }
+    if (state.value == DeviceSessionState.running ||
+        state.value == DeviceSessionState.paused) {
+      unawaited(activateQuickControl());
     }
   }
 
@@ -178,19 +221,39 @@ final class ControlSessionController extends GetxController {
   /// - 运行中（running / runningLowBattery）：发送暂停指令并置为 paused；
   /// - 暂停或待启动（paused / idle）：发送继续/启动指令并置为 running。
   Future<void> activateQuickControl() async {
-    if (state.value == DeviceSessionState.running) {
-      updateState(DeviceSessionState.paused);
-      await sendPause();
-    } else {
-      updateState(DeviceSessionState.running);
-      await sendResume();
+    final rhythm = _rhythmPlayback;
+    if (rhythm?.editing == true) return;
+    if (rhythm?.active == true) {
+      if (rhythm!.snapshot.phase == RhythmPlaybackPhase.running) {
+        await rhythm.pause();
+      } else {
+        await rhythm.resume();
+      }
+      return;
+    }
+    final previous = state.value;
+    final pausing = previous == DeviceSessionState.running;
+    updateState(
+      pausing ? DeviceSessionState.paused : DeviceSessionState.running,
+    );
+    final revision = _stateRevision;
+    final remoteId = _bleCoordinator?.connectedRemoteId;
+    final succeeded = pausing ? await sendPause() : await sendResume();
+    // 失败只回滚本次乐观状态，不覆盖后到的遥测、节奏或其他快捷操作。
+    if (!succeeded &&
+        revision == _stateRevision &&
+        remoteId == _bleCoordinator?.connectedRemoteId) {
+      updateState(previous);
     }
   }
 
   /// 向当前连接设备发送暂停指令。
-  Future<void> sendPause() async {
+  Future<bool> sendPause() async {
+    if (_rhythmPlayback?.active == true) {
+      return _rhythmPlayback!.pause();
+    }
     final repository = _commandRepository;
-    if (repository == null) return;
+    if (repository == null) return true;
 
     final connected = _bleCoordinator?.connectedDevice.value;
     final capabilities = connected?.device.capabilities;
@@ -208,12 +271,17 @@ final class ControlSessionController extends GetxController {
         error: result.failureOrNull?.message,
       );
     }
+    return result.isSuccess;
   }
 
   /// 向当前连接设备发送恢复/开始运行指令。
-  Future<void> sendResume() async {
+  Future<bool> sendResume() async {
+    if (_rhythmPlayback?.editing == true) return false;
+    if (_rhythmPlayback?.active == true) {
+      return _rhythmPlayback!.resume();
+    }
     final repository = _commandRepository;
-    if (repository == null) return;
+    if (repository == null) return true;
 
     final connected = _bleCoordinator?.connectedDevice.value;
     final capabilities = connected?.device.capabilities;
@@ -231,6 +299,7 @@ final class ControlSessionController extends GetxController {
         error: result.failureOrNull?.message,
       );
     }
+    return result.isSuccess;
   }
 
   /// 根据能力构建暂停指令。
@@ -265,6 +334,8 @@ final class ControlSessionController extends GetxController {
 
   @override
   void onClose() {
+    unawaited(_rhythmSubscription?.cancel());
+    unawaited(_telemetrySubscription?.cancel());
     for (final worker in _telemetryWorkers) {
       worker.dispose();
     }

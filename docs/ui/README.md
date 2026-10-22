@@ -65,3 +65,5 @@
 - <https://docs.flutter.dev/ui/adaptive-responsive/best-practices>
 - <https://docs.flutter.dev/ui/adaptive-responsive/general>
 - <https://docs.flutter.dev/ui/adaptive-responsive/large-screens>
+
+自定义节奏的六态 Ardot 映射、布局和后台运行边界见 [节奏页面](pages/rhythm.md)。

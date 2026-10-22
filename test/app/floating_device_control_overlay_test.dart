@@ -14,6 +14,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
+import '../support/ble_control_fixture.dart';
+
 void main() {
   late FloatingControlController floating;
   late SessionController session;
@@ -103,6 +105,37 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
   }
+
+  testWidgets(
+    'stopped repeated telemetry changes Running to Paused without layout changes',
+    (tester) async {
+      await Get.delete<ControlSessionController>(force: true);
+      final fixture = BleControlFixture(session: session, initialize: false);
+      addTearDown(fixture.coordinator.onClose);
+      control = Get.put(fixture.control, permanent: true);
+      fixture.emit(stoppedStatus);
+      await render(tester);
+      final pill = find.byType(DeviceControlPill);
+      final initialRect = tester.getRect(pill);
+      await control.activateQuickControl();
+      await tester.pump();
+      expect(find.text('Running'), findsOneWidget);
+      fixture.emit(stoppedStatus);
+      await tester.pump();
+      expect(find.text('Running'), findsNothing);
+      expect(find.text('Paused'), findsOneWidget);
+      expect(find.text('Tap to resume'), findsOneWidget);
+      expect(tester.getRect(pill), initialRect);
+      await tester.tap(pill);
+      await tester.pump();
+      expect(find.text('Running'), findsOneWidget);
+      fixture.emit(stoppedStatus);
+      await tester.pump();
+      expect(find.text('Paused'), findsOneWidget);
+      expect(fixture.commands.sent, ['t:c|v:c', 't:c|v:c']);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'single host docks without overlapping navigation and fixed routes reject dragging',

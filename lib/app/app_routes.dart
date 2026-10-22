@@ -13,9 +13,19 @@ import '../features/home/presentation/home_page.dart';
 import '../features/init/presentation/init_page.dart';
 import '../features/profile/presentation/profile_binding.dart';
 import '../features/profile/presentation/profile_page.dart';
+import '../features/rhythm/domain/entities/rhythm.dart';
+import '../features/rhythm/domain/repositories/rhythm_catalog.dart';
+import '../features/rhythm/domain/repositories/rhythm_repository.dart';
+import '../features/rhythm/domain/services/rhythm_playback.dart';
+import '../features/rhythm/presentation/pages/edit/rhythm_edit_controller.dart';
+import '../features/rhythm/presentation/pages/edit/rhythm_edit_page.dart';
+import '../features/rhythm/presentation/pages/home/rhythm_home_controller.dart';
+import '../features/rhythm/presentation/pages/home/rhythm_home_page.dart';
+import '../features/rhythm/presentation/pages/info/rhythm_info_page.dart';
+import '../features/rhythm/presentation/rhythm_edit_guard.dart';
 import '../features/video/presentation/video_binding.dart';
-import '../features/video/presentation/video_page.dart';
 import '../features/video/presentation/video_browser_page.dart';
+import '../features/video/presentation/video_page.dart';
 import 'bindings/device_binding.dart';
 import 'bindings/init_binding.dart';
 import 'floating_control_controller.dart';
@@ -51,6 +61,15 @@ abstract final class AppRoutes {
   /// 自由控制模式路由。
   static const String freeControl = '/control/free';
 
+  /// 自定义节奏列表，断连仍可浏览。
+  static const rhythmHome = '/rhythm';
+
+  /// 新增与编辑共用路由，需要暂停锁。
+  static const rhythmEdit = '/rhythm/edit';
+
+  /// 节奏运行详情，页面返回不停止会话。
+  static const rhythmInfo = '/rhythm/info';
+
   /// 显式页面策略；新增二级页必须登记，登录和未声明页面默认隐藏。
   static const Map<String, FloatingControlPolicy> floatingControlPolicies = {
     home: FloatingControlPolicy.fixed,
@@ -60,6 +79,9 @@ abstract final class AppRoutes {
     videoBrowser: FloatingControlPolicy.draggable,
     profile: FloatingControlPolicy.draggable,
     freeControl: FloatingControlPolicy.hidden,
+    rhythmHome: FloatingControlPolicy.fixed,
+    rhythmEdit: FloatingControlPolicy.hidden,
+    rhythmInfo: FloatingControlPolicy.hidden,
     init: FloatingControlPolicy.hidden,
     login: FloatingControlPolicy.hidden,
   };
@@ -82,30 +104,64 @@ abstract final class AppRoutes {
     if (Get.currentRoute == home) return;
     Get.until((route) => route.settings.name == home);
     if (Get.currentRoute != home) {
-      Get.offAllNamed(home);
+      Get.offAllNamed<void>(home);
     }
   }
 
   /// 所有顶层路由及其局部依赖绑定。
+  ///
+  /// 注意：Get 的全局路由树以 `List<GetPage>` 保存页面，匹配后会通过 `copy()`
+  /// 重新包装成 `GetPage<dynamic>`，因此此处声明的泛型不会传到最终路由上。
+  /// 命名路由一律派发 `Route<dynamic>`，`Get.toNamed<T>` 不能依赖 `T` 做类型转换。
   static final List<GetPage<dynamic>> pages = <GetPage<dynamic>>[
-    GetPage<dynamic>(
+    GetPage<void>(
+      name: rhythmHome,
+      page: () => const RhythmHomePage(),
+      binding: BindingsBuilder<void>(
+        () => Get.lazyPut(
+          () => RhythmHomeController(Get.find<RhythmRepository>()),
+        ),
+      ),
+      middlewares: [RouteAuthMiddleware()],
+    ),
+    GetPage<bool>(
+      name: rhythmEdit,
+      page: () => const RhythmEditPage(),
+      binding: BindingsBuilder<void>(
+        () => Get.lazyPut(
+          () => RhythmEditController(
+            Get.find<RhythmRepository>(),
+            Get.find<RhythmCatalog>(),
+            Get.find<RhythmPlayback>(),
+            Get.arguments is Rhythm ? Get.arguments as Rhythm : null,
+          ),
+        ),
+      ),
+      middlewares: [RouteAuthMiddleware(), RhythmEditGuard()],
+    ),
+    GetPage<void>(
+      name: rhythmInfo,
+      page: () => const RhythmInfoPage(),
+      middlewares: [RouteAuthMiddleware()],
+    ),
+    GetPage<void>(
       name: init,
       page: () => const InitPage(),
       binding: InitBinding(),
       customTransition: InitRouteTransition(),
       transitionDuration: const Duration(milliseconds: 420),
     ),
-    GetPage<dynamic>(
+    GetPage<void>(
       name: login,
       page: () => const LoginPage(),
       binding: LoginBinding(),
     ),
-    GetPage<dynamic>(
+    GetPage<void>(
       name: home,
       page: () => const HomePage(),
       binding: HomeBinding(),
     ),
-    GetPage<dynamic>(
+    GetPage<void>(
       name: device,
       page: () => const DeviceHomePage(),
       binding: DeviceBinding(),
@@ -113,26 +169,26 @@ abstract final class AppRoutes {
       transitionDuration: const Duration(milliseconds: 1200),
       middlewares: <GetMiddleware>[RouteAuthMiddleware()],
     ),
-    GetPage<dynamic>(
+    GetPage<void>(
       name: deviceManual,
       page: () => const DeviceManualPage(),
       binding: DeviceManualBinding(),
       customTransition: DeviceManualRouteTransition(),
       transitionDuration: const Duration(milliseconds: 520),
     ),
-    GetPage<dynamic>(
+    GetPage<void>(
       name: video,
       page: () => const VideoPage(),
       binding: VideoBinding(),
     ),
-    GetPage<dynamic>(name: videoBrowser, page: () => const VideoBrowserPage()),
-    GetPage<dynamic>(
+    GetPage<void>(name: videoBrowser, page: () => const VideoBrowserPage()),
+    GetPage<void>(
       name: profile,
       page: () => const ProfilePage(),
       binding: ProfileBinding(),
       middlewares: <GetMiddleware>[RouteAuthMiddleware()],
     ),
-    GetPage<dynamic>(
+    GetPage<void>(
       name: freeControl,
       page: () => const FreeControlPage(),
       binding: FreeControlBinding(),

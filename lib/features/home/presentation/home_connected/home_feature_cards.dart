@@ -12,6 +12,7 @@ import '../../../../core/widgets/app_image.dart';
 import '../../../../core/widgets/app_img_group_80_card.dart';
 import '../../../../core/widgets/app_liquid_glass_button.dart';
 import '../../../control/free_control/presentation/widgets/free_control_title.dart';
+import '../../../rhythm/presentation/widgets/rhythm_title.dart';
 
 /// 功能入口网格；平铺展示自由控制与自定义节奏模式入口卡片。
 final class HomeFeatureGrid extends StatelessWidget {
@@ -56,9 +57,15 @@ final class HomeFeatureGrid extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: HomeFeatureCard(
-              title: 'Customrhythm',
+              title: 'Custom rhythm',
+              titleChild: const RhythmTitle(
+                compact: true,
+                style: AppTypography.bodyMedium,
+              ),
               colors: const [Color(0xFFBEF77A), Color(0xFF4B9C58)],
-              onTap: onCustomRhythm,
+              onTap:
+                  onCustomRhythm ??
+                  () => unawaited(Get.toNamed(AppRoutes.rhythmHome)),
               preview: AppImage.load('control/Group_5'.assetsSvg),
             ),
           ),

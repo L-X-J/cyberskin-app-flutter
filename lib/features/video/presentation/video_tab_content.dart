@@ -1,6 +1,7 @@
 // 共享 TabBar 与横向 PageView，组合官方信息流、网页入口和本地播放三个常驻子页。
 import 'dart:async';
 
+import 'package:cyberskin_app/core/extensions/ui_ext.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -92,7 +93,8 @@ final class _VideoTabContentState extends State<VideoTabContent>
 
   /// 仅消费外层横向滚动通知，官方流的纵向滑动不影响来源许可。
   bool _onScroll(ScrollNotification notification) {
-    if (notification.depth != 0 || notification.metrics.axis != Axis.horizontal) {
+    if (notification.depth != 0 ||
+        notification.metrics.axis != Axis.horizontal) {
       return false;
     }
     if (notification is ScrollStartNotification && !_switching) {
@@ -184,7 +186,7 @@ final class _VideoTabContentState extends State<VideoTabContent>
             ),
             if (!fullscreen)
               Positioned(
-                top: 0,
+                top: 1.statusBarHeight,
                 left: 0,
                 right: 0,
                 child: SafeArea(
@@ -375,7 +377,7 @@ final class _OfficialVideosState extends State<_OfficialVideos> {
           child: VideoPlayerSurface(
             key: _player,
             items: videos.map((video) => video.media).toList(growable: false),
-          feedId: 'cyberskin-official-$revision',
+            feedId: 'cyberskin-official-$revision',
             active: widget.active,
             fullscreen: widget.fullscreen,
             bottomPadding: widget.bottomPadding,

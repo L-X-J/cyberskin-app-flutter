@@ -1,8 +1,8 @@
-# rhythm/presentation 目录
+# rhythm/presentation
 
-自定义节奏功能的展示层预留目录，当前尚无实现。
+GetX 状态编排与节奏界面，不执行 HTTP、缓存 IO 或 BLE 帧拼接。
 
-后续页面、编辑组件和 GetxController 放在此处。时间编辑、校验和持久化由领域层与
-Controller 编排，页面不得直接构造设备命令。
-
-当前目录无 Dart 文件；后续页面、编辑组件和 Controller 应在这里实现。
+- `pages/`：按 home、edit、info 分离页面；每页独有组件放各自 widgets。
+- `rhythm_edit_guard.dart`：拦截绕过暂停确认的编辑器直达导航。
+- `rhythm_session_controller.dart`：独立执行会话的原子响应式字段、隔离的详情预览选择、启动/停止请求防重与过期保护；停止/完成保留详情供重启。
+- `widgets/`：跨节奏页面复用的背景、表面、片段摘要及确认交互。

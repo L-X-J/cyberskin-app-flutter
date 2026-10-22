@@ -78,12 +78,16 @@ final class AppLiquidGlassButton extends StatefulWidget {
   final Color? labelColorOverride;
 
   /// 由变体统一选择包含不透明度的主题填充，页面不复制色值。
-  Color get fillColor => fillColorOverride ?? switch (variant) {
-    AppLiquidGlassButtonVariant.highlighted => AppColors.liquidGlassButtonFill,
-    AppLiquidGlassButtonVariant.subtle => AppColors.liquidGlassButtonSubtleFill,
-    AppLiquidGlassButtonVariant.translucent =>
-      AppColors.liquidGlassButtonTranslucentFill,
-  };
+  Color get fillColor =>
+      fillColorOverride ??
+      switch (variant) {
+        AppLiquidGlassButtonVariant.highlighted =>
+          AppColors.liquidGlassButtonFill,
+        AppLiquidGlassButtonVariant.subtle =>
+          AppColors.liquidGlassButtonSubtleFill,
+        AppLiquidGlassButtonVariant.translucent =>
+          AppColors.liquidGlassButtonTranslucentFill,
+      };
 
   /// 按图层顺序排列的内阴影，不包含外投影。
   List<AppEffectSpec> get innerShadows => switch (variant) {
@@ -154,6 +158,13 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
   /// 加载期间禁止键盘提交，保持与触控一致的契约。
   bool get _enabled => !widget.isLoading && widget.onPressed != null;
 
+  /// 所有有效激活共用轻触反馈；不等待平台响应，避免延迟业务回调。
+  void _activate() {
+    if (!_enabled) return;
+    HapticFeedback.lightImpact();
+    widget.onPressed!();
+  }
+
   @override
   Widget build(BuildContext context) {
     final textStyle = _resolvedTextStyle(context);
@@ -220,7 +231,7 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
             actions: {
               ActivateIntent: CallbackAction<ActivateIntent>(
                 onInvoke: (_) {
-                  if (_enabled) widget.onPressed!();
+                  _activate();
                   return null;
                 },
               ),
@@ -239,9 +250,7 @@ final class _AppLiquidGlassButtonState extends State<AppLiquidGlassButton> {
                     ? '${widget.label}, loading'
                     : widget.label,
                 enabled: _enabled,
-                onTap: () {
-                  if (_enabled) widget.onPressed!();
-                },
+                onTap: _activate,
                 useOwnLayer: true,
                 quality: widget.quality,
                 settings: widget.glassSettings.copyWith(

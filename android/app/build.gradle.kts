@@ -1,12 +1,18 @@
 plugins {
     id("com.android.application")
+    // 本工程在 gradle.properties 中关闭了 AGP 9 的 Built-in Kotlin（android.builtInKotlin=false），
+    // 因此必须显式应用 KGP；否则 app 模块的 Kotlin 编译不会拿到 Flutter embedding 的编译类路径，
+    // MainActivity 会报 Unresolved reference 'FlutterEngine'。
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
     namespace = "com.cyberskin.app.cyberskin_app"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android 14.x 以 Android SDK 37 编译（AAR 元数据硬性要求），
+    // 因此这里必须显式指定 37，不能用 Flutter 默认的 flutter.compileSdkVersion（当前为 36）。
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

@@ -1399,7 +1399,7 @@
           },
           "segments": {
             "type": "array",
-            "description": "新的节奏片段列表，最多 30 条；不传表示不变",
+            "description": "新的节奏片段列表，最多 30 条，每段 durationSec 为 1–120 整数秒，模式与速度必须匹配已发布型号能力；不传表示不变",
             "items": {
               "type": "object",
               "additionalProperties": {}
@@ -1424,6 +1424,15 @@
             "format": "int64",
             "description": "设备型号 ID",
             "example": 20001
+          },
+          "deviceModelName": {
+            "type": "string",
+            "description": "适用设备型号名称"
+          },
+          "createTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "创建时间，用于列表日期徽标"
           },
           "name": {
             "type": "string",
@@ -1538,7 +1547,7 @@
           },
           "segments": {
             "type": "array",
-            "description": "节奏片段列表，最多 30 条；元素支持 durationSec + channels，兼容通道对象扁平字段",
+            "description": "节奏片段列表，最多 30 条，每段 durationSec 为 1–120 整数秒，模式与速度必须匹配已发布型号能力；元素支持 durationSec + channels，兼容通道对象扁平字段",
             "items": {
               "type": "object",
               "additionalProperties": {}

@@ -1,14 +1,9 @@
-# rhythm Feature
+# rhythm
 
-片段式自定义节奏业务域，负责节奏定义、编辑、保存和播放编排。
+自定义节奏模块：云端 CRUD、会话隔离缓存、能力驱动的片段编辑及跨页面设备执行。
 
-当前目录仅完成分层骨架。领域模型和 Repository 契约进入 `domain/`，API、本地缓存或
-BLE 节奏下发进入 `data/`，页面与 Controller 进入 `presentation/`；节奏不得在 UI 中
-转换为设备命令。
+- `data/`：远端 CRUD、安全缓存和共享 BLE/原生后台能力的适配实现。
+- `domain/`：不依赖 Flutter 的节奏模型、访问接口与执行状态机。
+- `presentation/`：GetX 状态编排与节奏界面，不执行 HTTP、缓存 IO 或 BLE 帧拼接。
 
-目录与文件：
-
-- `data/`：节奏 API、缓存和后续设备 Adapter；当前有 `rhythm_remote_repository.dart`。
-- `domain/`：节奏模型和 CRUD 契约；下含 `entities/`、`repositories/`。
-- `presentation/`：编辑页、列表页和 Controller 的预留展示层，当前无 Dart 文件。
-- 当前 Feature 根目录无 Dart 文件。
+入口路由与依赖由 `app/` 组装。界面验收及运行边界见 `docs/ui/pages/rhythm.md`。

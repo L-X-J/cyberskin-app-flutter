@@ -207,21 +207,38 @@ void main() {
       '$variant supports touch and keyboard and blocks loading activation',
       (tester) async {
         var activated = 0;
-        Future<void> render({bool loading = false}) => tester.pumpWidget(
-          MaterialApp(
-            home: Center(
-              child: SizedBox(
-                width: 353,
-                child: AppLiquidGlassButton(
-                  label: 'Continue',
-                  variant: variant,
-                  isLoading: loading,
-                  onPressed: () => activated++,
+        final haptics = <Object?>[];
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'HapticFeedback.vibrate') {
+              haptics.add(call.arguments);
+            }
+            return null;
+          },
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
+        Future<void> render({bool loading = false, bool enabled = true}) =>
+            tester.pumpWidget(
+              MaterialApp(
+                home: Center(
+                  child: SizedBox(
+                    width: 353,
+                    child: AppLiquidGlassButton(
+                      label: 'Continue',
+                      variant: variant,
+                      isLoading: loading,
+                      onPressed: enabled ? () => activated++ : null,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        );
+            );
         await render();
         final button = tester.widget<LGButton>(find.byType(LGButton));
         expect(button.useOwnLayer, isTrue);
@@ -236,10 +253,20 @@ void main() {
         await tester.pump();
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         expect(activated, 2);
+        expect(haptics, [
+          'HapticFeedbackType.lightImpact',
+          'HapticFeedbackType.lightImpact',
+        ]);
         await render(loading: true);
         await tester.tap(find.byType(LGButton));
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         expect(activated, 2);
+        expect(haptics, hasLength(2));
+        await render(enabled: false);
+        await tester.tap(find.byType(LGButton));
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        expect(activated, 2);
+        expect(haptics, hasLength(2));
         expect(
           tester.getSize(find.byType(AppLiquidGlassButton)),
           const Size(353, 58),

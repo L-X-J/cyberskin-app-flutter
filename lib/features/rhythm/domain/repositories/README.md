@@ -1,9 +1,7 @@
-# rhythm/domain/repositories 目录
+# rhythm/domain/repositories
 
-包含节奏读取、创建、更新和删除的 Repository 抽象及输入值对象。
+节奏持久化、型号能力、设备及后台服务的领域边界。
 
-接口不暴露 REST、数据库或 BLE 类型；具体实现归 `rhythm/data`。
-
-文件职责：
-
-- `rhythm_repository.dart`：定义节奏列表、详情、创建、更新和删除接口，以及新增/更新请求值对象。
+- `rhythm_catalog.dart`：节奏可选择的已绑定型号及其能力访问边界。
+- `rhythm_device_port.dart`：节奏执行所需的设备及后台能力边界；展示层不接触 BLE 协调器。
+- `rhythm_repository.dart`：自定义节奏 CRUD 的领域访问抽象。

@@ -1,6 +1,8 @@
 import 'package:cyberskin_app/app/app_routes.dart';
 import 'package:cyberskin_app/features/device/presentation/device_manual_page.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 
 void main() {
   test('uses the custom init exit transition', () {
@@ -56,5 +58,40 @@ void main() {
     expect(AppRoutes.requiresConnectedDevice(AppRoutes.video), isFalse);
     expect(AppRoutes.requiresConnectedDevice(AppRoutes.login), isFalse);
     expect(AppRoutes.requiresConnectedDevice(null), isFalse);
+  });
+
+  test('declares editor route result as an accepted value type', () {
+    // 编辑页以 Get.back(result: true/false) 回传结果。Get 的全局路由树以
+    // List<GetPage> 保存页面并在匹配时 copy() 成 GetPage<dynamic>，
+    // 所以这里声明的泛型只表达意图，不能使调用侧依赖 Get.toNamed<bool>。
+    final editPage = AppRoutes.pages.firstWhere(
+      (page) => page.name == AppRoutes.rhythmEdit,
+    );
+
+    expect(editPage, isA<GetPage<bool>>());
+  });
+
+  testWidgets('pushing the editor route dispatches a Route<dynamic>', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      GetMaterialApp(home: const SizedBox.shrink(), getPages: AppRoutes.pages),
+    );
+    await tester.pumpAndSettle();
+
+    // 即使 AppRoutes.rhythmEdit 声明为 GetPage<bool>，Get 在分派前会把页面
+    // 重包为 GetPage<dynamic>，最终派发 Route<dynamic>。调用侧因此不能用
+    // Get.toNamed<bool>，否则 Navigator.pushNamed<bool> 的
+    // `route as Route<bool?>?` 会抛 TypeError。
+    final navigator = Get.key.currentState!;
+    expect(
+      () => navigator.pushNamed<bool>(AppRoutes.rhythmEdit),
+      throwsA(isA<TypeError>()),
+    );
+
+    final route = navigator.pushNamed<dynamic>(AppRoutes.rhythmEdit);
+    expect(tester.takeException(), isNull);
+    expect(route, isNotNull);
+    expect(Get.key.currentState!.canPop(), isTrue);
   });
 }

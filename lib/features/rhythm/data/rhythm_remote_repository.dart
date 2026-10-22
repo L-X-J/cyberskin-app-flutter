@@ -76,6 +76,8 @@ final class RhythmRemoteRepository extends BaseRemoteRepository
       deviceModelId: ApiJson.integer(json, 'deviceModelId'),
       name: ApiJson.string(json, 'name'),
       segmentCount: ApiJson.integer(json, 'segmentCount'),
+      createTime: DateTime.tryParse('${json['createTime'] ?? ''}'),
+      deviceModelName: ApiJson.string(json, 'deviceModelName'),
       segments: rawSegments == null
           ? const <RhythmSegment>[]
           : ApiJson.objectList(

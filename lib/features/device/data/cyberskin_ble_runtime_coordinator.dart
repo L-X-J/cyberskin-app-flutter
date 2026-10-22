@@ -34,6 +34,13 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
        _preferencesFuture =
            preferencesFuture ?? SharedPreferences.getInstance();
 
+  /// 每条已解析的状态通知均广播，不做数值去重，供后台节奏推进使用。
+  final _rhythmHeartbeats = StreamController<String>.broadcast(sync: true);
+
+  /// 完整运行态快照提交后逐帧广播，不受响应式字段去重影响。
+  /// 节奏执行器用作心跳，快捷控制用作真实遥测校正通知。
+  Stream<String> get rhythmHeartbeats => _rhythmHeartbeats.stream;
+
   /// 设备目录数据仓储，用于获取设备型号及 GATT Profile 详情。
   final DeviceCatalogRepository _catalogRepository;
 
@@ -536,6 +543,10 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     );
   }
 
+  /// 测试入口：让 SDK 事件经过与真实事件订阅相同的投影路径。
+  @visibleForTesting
+  void handleEventForTesting(BleEvent event) => _onEvent(event);
+
   /// 响应并处理 BLE SDK 广播的各种运行时事件。
   void _onEvent(BleEvent event) {
     switch (event) {
@@ -647,6 +658,8 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
         if (connected != null && connected.remoteId == remoteId) {
           connected.applyStatus(status);
         }
+        // 同步广播必须晚于完整快照提交；订阅者不能读到上一帧或半更新字段。
+        _rhythmHeartbeats.add(remoteId);
       case BleFailure(:final code, :final message):
         _bleLog('BLE 错误: code=$code message=$message');
         failureCode.value = code;
@@ -660,6 +673,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   @override
   void onClose() {
     unawaited(_events?.cancel());
+    unawaited(_rhythmHeartbeats.close());
     if (_manager != null) unawaited(manager.dispose());
     super.onClose();
   }

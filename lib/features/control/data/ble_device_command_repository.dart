@@ -7,12 +7,23 @@ import '../domain/device_command_repository.dart';
 /// Cyberskin BLE 语义指令 Repository。
 final class BleDeviceCommandRepository implements DeviceCommandRepository {
   /// 创建 BLE 语义指令 Repository 实例。
-  BleDeviceCommandRepository(this._coordinator);
+  BleDeviceCommandRepository(this._coordinator, {this.runWithControl});
+
+  /// 手动控制在下发前先取得设备控制权；节奏端口使用未装饰的实例。
+  final Future<Result<void>> Function(Future<Result<void>> Function())?
+  runWithControl;
 
   final CyberskinBleRuntimeCoordinator _coordinator;
 
   @override
-  Future<Result<void>> send(
+  Future<Result<void>> send(String command, {int? modelId, String? remoteId}) =>
+      runWithControl == null
+      ? _send(command, modelId: modelId, remoteId: remoteId)
+      : runWithControl!(
+          () => _send(command, modelId: modelId, remoteId: remoteId),
+        );
+
+  Future<Result<void>> _send(
     String command, {
     int? modelId,
     String? remoteId,

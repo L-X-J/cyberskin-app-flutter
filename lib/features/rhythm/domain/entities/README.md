@@ -1,10 +1,6 @@
-# rhythm/domain/entities 目录
+# rhythm/domain/entities
 
-包含用户节奏与开放片段协议模型。
+不可变节奏快照、片段解析、型号能力及执行前校验。
 
-片段当前同时兼容扁平通道字段和历史 `channels` 包装，因此在执行前保持不可变原始 JSON；
-真正的硬件指令解释仍归协议/控制数据边界。
-
-文件职责：
-
-- `rhythm.dart`：定义不可变的 `Rhythm` 节奏模型和保留开放 JSON 的 `RhythmSegment` 值对象。
+- `rhythm.dart`：自定义节奏领域模型与开放片段协议值对象。
+- `rhythm_program.dart`：节奏片段的类型化解析、设备能力与执行前校验；集中定义客户端 1–1200 整数秒边界，不依赖 Flutter。远端契约同步限制见 `docs/ui/pages/rhythm.md`。
