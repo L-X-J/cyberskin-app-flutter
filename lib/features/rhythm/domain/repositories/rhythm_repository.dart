@@ -44,10 +44,10 @@ final class RhythmUpdateRequest {
 
 /// 用户自定义节奏的领域访问入口。
 abstract interface class RhythmRepository {
-  /// 列出当前用户的节奏，可按设备型号过滤。
+  /// 列出当前用户的节奏元数据、统计和前 3 段快照，可按型号过滤。
   Future<Result<List<Rhythm>>> list({int? deviceModelId});
 
-  /// 获取节奏详情。
+  /// 获取节奏详情；应用装配的缓存 Repository 同时下载/读取完整 JSON。
   Future<Result<Rhythm>> getById(int id);
 
   /// 创建一条节奏。

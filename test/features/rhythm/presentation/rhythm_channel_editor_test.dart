@@ -139,7 +139,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Delta'), findsNothing);
       expect(setting.mode, 4);
-      expect(setting.value, 65);
+      expect(setting.value, isNull);
       expect(setting.on, isTrue);
       expect(tester.takeException(), isNull);
     });
@@ -163,7 +163,13 @@ void main() {
     expect(cleared.channel, initial.channel);
     expect(cleared.on, isTrue);
     expect(cleared.value, 65);
-    expect(cleared.toJson().containsKey('mode'), isFalse);
+    expect(
+      RhythmStep(
+        durationSec: 3,
+        channels: [cleared],
+      ).encode().payload['command_data'],
+      't:65',
+    );
     final step = RhythmStep(durationSec: 3, channels: [cleared]);
     expect(() => step.validate([capability]), returnsNormally);
     expect(RhythmStep.decode(step.encode()).channels.single.mode, isNull);
@@ -206,7 +212,7 @@ void main() {
       await tester.tap(find.text(label));
       await tester.pumpAndSettle();
       expect(setting.on, isTrue);
-      expect(setting.value, 65);
+      expect(setting.value, isNull);
       expectSelected(switch (setting.mode) {
         1 => 'Mode A',
         2 => 'Mode B',

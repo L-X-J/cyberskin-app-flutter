@@ -28,7 +28,7 @@ final class RhythmLocalStore {
   Future<Object?> read(String key, String? owner) async {
     if (owner == null || await this.owner() != owner) return null;
     try {
-      final text = await _storage.read(key: 'cyberskin.rhythm.$key');
+      final text = await _storage.read(key: 'cyberskin.rhythm.program_v3.$key');
       if (text == null) return null;
       final json = jsonDecode(text) as Map;
       if (await this.owner() != owner) return null;
@@ -43,7 +43,7 @@ final class RhythmLocalStore {
     if (owner == null || await this.owner() != owner) return;
     try {
       await _storage.write(
-        key: 'cyberskin.rhythm.$key',
+        key: 'cyberskin.rhythm.program_v3.$key',
         value: jsonEncode({'owner': owner, 'data': data}),
       );
     } catch (_) {

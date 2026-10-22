@@ -8,3 +8,5 @@
 文件职责：
 
 - `training.dart`：定义课程摘要、课程详情、开放阶段协议和 `customMode` 打点模型。
+
+`TrainingCustomMode.toProgramSegment()` 对接公共标准打点与 `CommonProgramCompiler`，复用节奏播放；Training 后端持久化本次未迁移。

@@ -125,9 +125,9 @@ final class RhythmSessionController extends GetxController {
     infoRemaining.value = 0;
     infoTotalRemaining.value = 0;
     try {
-      final steps = value.segments.map(RhythmStep.decode).toList();
-      infoRemaining.value = steps.isEmpty ? 0 : steps.first.durationSec;
-      infoTotalRemaining.value = steps.fold(0, (n, s) => n + s.durationSec);
+      final steps = value.segments.map((segment) => segment.program).toList();
+      infoRemaining.value = steps.isEmpty ? 0 : steps.first.durationSeconds;
+      infoTotalRemaining.value = steps.fold(0, (n, s) => n + s.durationSeconds);
     } on FormatException catch (e) {
       infoError.value = e.message;
     }

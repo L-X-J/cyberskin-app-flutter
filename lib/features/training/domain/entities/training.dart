@@ -1,4 +1,5 @@
 // 训练课程领域模型与开放阶段协议值对象。
+import '../../../control/domain/entities/common_program_segment.dart';
 
 /// 已发布训练课程摘要。
 final class TrainingSummary {
@@ -69,6 +70,13 @@ final class TrainingCustomMode {
 
   /// 可交由 CommonBusinessCommand 验证的命令文本。
   final String? commandData;
+
+  /// 转成与自定义节奏完全相同的公共打点值，供 CommonProgramCompiler 使用。
+  CommonProgramSegment toProgramSegment() => CommonProgramSegment.fromJson({
+    'start-end': range,
+    'des': description,
+    'command_data': commandData,
+  });
 
   /// 未知扩展字段。
   final Map<String, dynamic> additionalProperties;

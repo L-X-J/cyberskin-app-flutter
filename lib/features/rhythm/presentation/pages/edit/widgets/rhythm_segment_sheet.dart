@@ -63,7 +63,8 @@ final class _RhythmSegmentSheetState extends State<RhythmSegmentSheet>
       return RhythmChannelSetting(
         channel: c.channel,
         on: step == null,
-        value: c.channel == RhythmChannel.suck
+        value:
+            c.channel == RhythmChannel.suck || c.channel == RhythmChannel.heat
             ? null
             : c.defaultValue > 0
             ? c.defaultValue.clamp(0, 100)
@@ -173,9 +174,32 @@ final class _RhythmSegmentSheetState extends State<RhythmSegmentSheet>
               capability: widget.controller.capabilities[i],
               setting: settings[i],
               onChanged: (value) {
-                if (!_transitioning) setState(() => settings[i] = value);
+                if (!_transitioning) {
+                  setState(() {
+                    // CM-> 的数字全是模式号；选择模式与数字速度必须切换整段语义。
+                    if (value.mode != null) {
+                      settings = settings
+                          .map((setting) => setting.copyWith(clearValue: true))
+                          .toList();
+                      value = value.copyWith(clearValue: true);
+                    } else if (value.value != null) {
+                      settings = settings
+                          .map((setting) => setting.copyWith(clearMode: true))
+                          .toList();
+                    }
+                    settings[i] = value;
+                  });
+                }
               },
             ),
+          ),
+        ),
+      if (settings.any((setting) => setting.on && setting.mode != null))
+        const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Text(
+            'Mode control selected. Adjusting speed switches this segment to speed control.',
+            style: TextStyle(fontSize: 12),
           ),
         ),
       RhythmError(error),

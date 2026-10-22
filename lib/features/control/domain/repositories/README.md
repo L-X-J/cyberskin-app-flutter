@@ -1,6 +1,5 @@
-# control/domain/repositories 目录
+# control/domain/repositories
 
-自由控制领域 Repository 抽象预留目录，当前尚无实现。
+控制领域与设备 IO 的抽象边界，不暴露 BLE 特征值或具体插件类型。
 
-当控制数据访问形成稳定契约时在此声明接口。接口只表达领域语义和统一结果，不暴露 HTTP、
-BLE 特征值、数据库 API 或具体 Adapter 类型；实现放在 `control/data`。
+- `device_playback_port.dart`：公共播放的物理设备身份、连接/心跳/账号失效事件，以及语义发令和后台资源端口；实现归属 `control/data`。

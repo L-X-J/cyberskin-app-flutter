@@ -9,7 +9,7 @@ final class BleDeviceCommandRepository implements DeviceCommandRepository {
   /// 创建 BLE 语义指令 Repository 实例。
   BleDeviceCommandRepository(this._coordinator, {this.runWithControl});
 
-  /// 手动控制在下发前先取得设备控制权；节奏端口使用未装饰的实例。
+  /// 手动控制在下发前先取得设备控制权；公共播放端口使用未装饰的实例。
   final Future<Result<void>> Function(Future<Result<void>> Function())?
   runWithControl;
 

@@ -12,7 +12,10 @@ import '../../features/content/data/content_configuration_cache.dart';
 import '../../features/content/data/content_remote_repository.dart';
 import '../../features/content/domain/repositories/content_repository.dart';
 import '../../features/control/data/ble_device_command_repository.dart';
+import '../../features/control/data/ble_device_playback_port.dart';
+import '../../features/control/data/common_program_file_cache.dart';
 import '../../features/control/domain/device_command_repository.dart';
+import '../../features/control/domain/services/device_program_playback.dart';
 import '../../features/control/presentation/control_session_controller.dart';
 import '../../features/device/data/cached_user_device_repository.dart';
 import '../../features/device/data/connected_device_repository.dart';
@@ -26,7 +29,6 @@ import '../../features/feedback/data/feedback_remote_repository.dart';
 import '../../features/feedback/domain/repositories/feedback_repository.dart';
 import '../../features/profile/data/profile_remote_repository.dart';
 import '../../features/profile/domain/repositories/profile_repository.dart';
-import '../../features/rhythm/data/ble_rhythm_device_port.dart';
 import '../../features/rhythm/data/cached_rhythm_repository.dart';
 import '../../features/rhythm/data/rhythm_catalog_repository.dart';
 import '../../features/rhythm/data/rhythm_local_store.dart';
@@ -122,6 +124,7 @@ final class AppBinding extends Bindings {
       permanent: true,
     );
     final rhythmStore = RhythmLocalStore(sessionStore);
+    final programFiles = Get.put(CommonProgramFileCache(), permanent: true);
     Get.put<RhythmRepository>(
       CachedRhythmRepository(
         RhythmRemoteRepository(
@@ -129,6 +132,7 @@ final class AppBinding extends Bindings {
           sessionStore: sessionStore,
         ),
         rhythmStore,
+        programFiles: programFiles,
       ),
       permanent: true,
     );
@@ -143,12 +147,19 @@ final class AppBinding extends Bindings {
       ),
       permanent: true,
     );
-    final rhythmPort = BleRhythmDevicePort(
+    final playbackPort = BleDevicePlaybackPort(
       Get.find<CyberskinBleRuntimeCoordinator>(),
       BleDeviceCommandRepository(Get.find<CyberskinBleRuntimeCoordinator>()),
       sessionStore,
     );
-    final playback = Get.put(RhythmPlayback(rhythmPort), permanent: true);
+    final devicePlayback = Get.put(
+      DeviceProgramPlayback(playbackPort),
+      permanent: true,
+    );
+    final playback = Get.put(
+      RhythmPlayback.fromEngine(devicePlayback),
+      permanent: true,
+    );
     Get.put(
       RhythmSessionController(playback, Get.find<RhythmCatalog>()),
       permanent: true,
@@ -191,7 +202,7 @@ final class AppBinding extends Bindings {
     Get.put<DeviceCommandRepository>(
       BleDeviceCommandRepository(
         Get.find<CyberskinBleRuntimeCoordinator>(),
-        runWithControl: playback.runManualCommand,
+        runWithControl: devicePlayback.runManualCommand,
       ),
       permanent: true,
     );
@@ -201,7 +212,7 @@ final class AppBinding extends Bindings {
     );
     Get.put<ControlSessionController>(
       ControlSessionController(
-        rhythmPlayback: playback,
+        programPlayback: devicePlayback,
         bleCoordinator: Get.find<CyberskinBleRuntimeCoordinator>(),
         commandRepository: Get.find<DeviceCommandRepository>(),
         sessionController: Get.find<SessionController>(),

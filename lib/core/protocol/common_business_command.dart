@@ -1,3 +1,4 @@
+// 通用业务协议 v1.2 的模块、指令值对象与严格语法校验。
 /// 通用业务协议中与具体设备无关的模块键。
 enum CommonModule {
   /// 伸缩通道。
@@ -114,6 +115,9 @@ final class CommonBusinessCommand {
   ) {
     final numericValue = int.tryParse(value);
     if (numericValue != null) {
+      if (!RegExp(r'^(0|[1-9]\d{0,2})$').hasMatch(value)) {
+        throw FormatException('Invalid numeric instruction: $value');
+      }
       if (isModeCommand) {
         if (numericValue < 1 || numericValue > 100) {
           throw FormatException('Mode must be between 1 and 100: $value');

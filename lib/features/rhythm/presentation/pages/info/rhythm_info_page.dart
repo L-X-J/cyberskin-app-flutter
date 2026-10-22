@@ -86,7 +86,7 @@ final class _RhythmInfoPageState extends State<RhythmInfoPage> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Total segments: ${session.infoRhythm.value?.segments.length ?? 0}',
+                          'Total segments: ${session.infoRhythm.value?.segmentCount ?? session.infoRhythm.value?.segments.length ?? 0}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppRhythmStyle.secondary,

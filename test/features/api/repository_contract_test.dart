@@ -137,12 +137,20 @@ Object? _dataFor(AppApiOperation operation) => switch (operation) {
     'deviceModelId': 2,
     'name': 'Rhythm',
     'segmentCount': 1,
-    'segments': <Map<String, dynamic>>[
-      <String, dynamic>{'durationSec': 5, 'v': 1},
+    'totalSeconds': 5,
+    'programUrl': 'https://cdn.example.test/rhythm/program.json',
+    'programDownloadUrl':
+        'https://cdn.example.test/rhythm/program.json?signature=short',
+    'previewSegments': <Map<String, dynamic>>[
+      <String, dynamic>{
+        'start-end': '00:00-00:05',
+        'des': 'Vibration 1%',
+        'command_data': 'v:1',
+      },
     ],
   },
   AppApiOperation.listRhythms => <Map<String, dynamic>>[
-    <String, dynamic>{'id': 1, 'segments': <Map<String, dynamic>>[]},
+    <String, dynamic>{'id': 1, 'previewSegments': <Map<String, dynamic>>[]},
   ],
   AppApiOperation.listUserDevices || AppApiOperation.bindUserDevice =>
     operation == AppApiOperation.listUserDevices
@@ -231,6 +239,24 @@ Object? _dataFor(AppApiOperation operation) => switch (operation) {
 
 void main() {
   test(
+    'rhythm metadata contains preview and statistics without playable segments',
+    () async {
+      final repository = RhythmRemoteRepository(
+        transport: _RecordingTransport(),
+        sessionStore: _MemorySessionStore(_session()),
+      );
+      final result = await repository.getById(1);
+      expect(result.isSuccess, isTrue);
+      final value = result.valueOrNull!;
+      expect(value.previewSegments, hasLength(1));
+      expect(value.segmentCount, 1);
+      expect(value.totalSeconds, 5);
+      expect(value.programDownloadUrl, contains('signature='));
+      expect(value.segments, isEmpty);
+      expect(value.hasCompleteProgram, isFalse);
+    },
+  );
+  test(
     'repositories map every OpenAPI operation to its registered operation',
     () async {
       final store = _MemorySessionStore(_session());
@@ -280,7 +306,11 @@ void main() {
         sessionStore: store,
       );
 
-      await rhythms.getById(1);
+      final rhythmMetadata = (await rhythms.getById(1)).valueOrNull!;
+      expect(rhythmMetadata.segments, isEmpty);
+      expect(rhythmMetadata.previewSegments, hasLength(1));
+      expect(rhythmMetadata.totalSeconds, 5);
+      expect(rhythmMetadata.hasCompleteProgram, isFalse);
       await rhythms.update(1, RhythmUpdateRequest(name: 'New'));
       await rhythms.delete(1);
       await devices.rename(1, 'Desk');
@@ -292,7 +322,11 @@ void main() {
           deviceModelId: 2,
           name: 'New',
           segments: <RhythmSegment>[
-            RhythmSegment(<String, dynamic>{'v': 1}),
+            RhythmSegment(<String, dynamic>{
+              'start-end': '00:00-00:05',
+              'des': 'Vibration 1%',
+              'command_data': 'v:1',
+            }),
           ],
         ),
       );
@@ -364,7 +398,11 @@ void main() {
         'deviceModelId': 2,
         'name': 'New',
         'segments': <Map<String, dynamic>>[
-          <String, dynamic>{'v': 1},
+          <String, dynamic>{
+            'start-end': '00:00-00:05',
+            'des': 'Vibration 1%',
+            'command_data': 'v:1',
+          },
         ],
       });
     },

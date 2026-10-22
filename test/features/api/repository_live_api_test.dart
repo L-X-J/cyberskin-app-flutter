@@ -216,14 +216,9 @@ void main() {
             name: 'Flutter live rhythm',
             segments: <RhythmSegment>[
               RhythmSegment(<String, dynamic>{
-                'durationSec': 1,
-                'channels': <Map<String, dynamic>>[
-                  <String, dynamic>{
-                    'channel': 'thrust',
-                    'on': true,
-                    'value': 1,
-                  },
-                ],
+                'start-end': '00:00-00:01',
+                'des': 'Stretch 1%',
+                'command_data': 't:1',
               }),
             ],
           ),

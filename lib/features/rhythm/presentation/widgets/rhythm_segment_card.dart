@@ -18,11 +18,17 @@ final class RhythmChannelIcon extends StatelessWidget {
   /// 运行卡采用较紧凑的图标，编辑卡保留完整图标尺寸。
   final double size;
   @override
-  Widget build(BuildContext context) => SvgPicture.asset(
-    'assets/images/rhythm/${channel == RhythmChannel.thrust ? 'stretch' : channel.name}.svg',
-    width: size,
-    height: size,
-  );
+  Widget build(BuildContext context) => channel == RhythmChannel.heat
+      ? Image.asset(
+          'assets/images/device_modules/heat/heat.png',
+          width: size,
+          height: size,
+        )
+      : SvgPicture.asset(
+          'assets/images/rhythm/${channel == RhythmChannel.thrust ? 'stretch' : channel.name}.svg',
+          width: size,
+          height: size,
+        );
 }
 
 /// 复用片段摘要，编辑和运行状态由参数明确区分。
@@ -161,7 +167,7 @@ final class _ChannelSummary extends StatelessWidget {
             ? cap.modes[mode - 1]
             : 'Mode $mode',
       if (setting.value != null) 'Speed ${setting.value}%',
-      if (mode == null && setting.value == null) 'Turn on',
+      if (mode == null && setting.value == null) setting.operation ?? 'Turn on',
     ];
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

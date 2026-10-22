@@ -10,28 +10,28 @@ import '../../device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../device/domain/connected_device_state.dart';
 import '../../device/domain/device.dart';
 import '../../device/domain/device_capability.dart';
-import '../../rhythm/domain/services/rhythm_playback.dart';
 import '../domain/device_command_repository.dart';
 import '../domain/device_session.dart';
+import '../domain/services/device_program_playback.dart';
 
 /// 为全局设备快捷控制条提供共享状态与语义指令编排的 GetX 控制器。
 final class ControlSessionController extends GetxController {
   /// 创建全局控制会话控制器。
   ControlSessionController({
-    RhythmPlayback? rhythmPlayback,
+    DeviceProgramPlayback? programPlayback,
     CyberskinBleRuntimeCoordinator? bleCoordinator,
     DeviceCommandRepository? commandRepository,
     SessionController? sessionController,
     AppLog log = const NoopAppLog(),
-  }) : _rhythmPlayback = rhythmPlayback,
+  }) : _programPlayback = programPlayback,
        _bleCoordinator = bleCoordinator,
        _commandRepository = commandRepository,
        _sessionController = sessionController,
        _log = log;
 
-  final RhythmPlayback? _rhythmPlayback;
-  StreamSubscription<RhythmPlaybackSnapshot>? _rhythmSubscription;
-  bool _hadRhythmSession = false;
+  final DeviceProgramPlayback? _programPlayback;
+  StreamSubscription<DeviceProgramPlaybackSnapshot>? _programSubscription;
+  bool _hadProgramSession = false;
   final CyberskinBleRuntimeCoordinator? _bleCoordinator;
   final DeviceCommandRepository? _commandRepository;
   final SessionController? _sessionController;
@@ -49,20 +49,20 @@ final class ControlSessionController extends GetxController {
   void onInit() {
     super.onInit();
     _bindBleWorkers();
-    _rhythmSubscription = _rhythmPlayback?.changes.listen((snapshot) {
-      if (_rhythmPlayback.editing) {
+    _programSubscription = _programPlayback?.changes.listen((snapshot) {
+      if (_programPlayback.editing) {
         updateState(DeviceSessionState.paused);
         return;
       }
-      if (_rhythmPlayback.active) {
-        _hadRhythmSession = true;
+      if (_programPlayback.active) {
+        _hadProgramSession = true;
         updateState(
-          snapshot.phase == RhythmPlaybackPhase.running
+          snapshot.phase == DeviceProgramPlaybackPhase.running
               ? DeviceSessionState.running
               : DeviceSessionState.paused,
         );
-      } else if (_hadRhythmSession) {
-        _hadRhythmSession = false;
+      } else if (_hadProgramSession) {
+        _hadProgramSession = false;
         updateState(DeviceSessionState.idle);
       }
     });
@@ -161,7 +161,7 @@ final class ControlSessionController extends GetxController {
     final coordinator = _bleCoordinator;
     final connected = coordinator?.connectedDevice.value;
     if (connected == null || coordinator?.hasConnectedDevice != true) return;
-    if (_rhythmPlayback?.active == true || _rhythmPlayback?.editing == true) {
+    if (_programPlayback?.active == true || _programPlayback?.editing == true) {
       return;
     }
     final status = coordinator!.runtime[connected.remoteId];
@@ -206,8 +206,8 @@ final class ControlSessionController extends GetxController {
 
   /// 暂停运行中的会话，或恢复已暂停的会话。
   void togglePause() {
-    if (_rhythmPlayback?.editing == true) return;
-    if (_rhythmPlayback?.active == true) {
+    if (_programPlayback?.editing == true) return;
+    if (_programPlayback?.active == true) {
       unawaited(activateQuickControl());
       return;
     }
@@ -221,13 +221,13 @@ final class ControlSessionController extends GetxController {
   /// - 运行中（running / runningLowBattery）：发送暂停指令并置为 paused；
   /// - 暂停或待启动（paused / idle）：发送继续/启动指令并置为 running。
   Future<void> activateQuickControl() async {
-    final rhythm = _rhythmPlayback;
-    if (rhythm?.editing == true) return;
-    if (rhythm?.active == true) {
-      if (rhythm!.snapshot.phase == RhythmPlaybackPhase.running) {
-        await rhythm.pause();
+    final playback = _programPlayback;
+    if (playback?.editing == true) return;
+    if (playback?.active == true) {
+      if (playback!.snapshot.phase == DeviceProgramPlaybackPhase.running) {
+        await playback.pause();
       } else {
-        await rhythm.resume();
+        await playback.resume();
       }
       return;
     }
@@ -239,7 +239,7 @@ final class ControlSessionController extends GetxController {
     final revision = _stateRevision;
     final remoteId = _bleCoordinator?.connectedRemoteId;
     final succeeded = pausing ? await sendPause() : await sendResume();
-    // 失败只回滚本次乐观状态，不覆盖后到的遥测、节奏或其他快捷操作。
+    // 失败只回滚本次乐观状态，不覆盖后到的遥测、序列或其他快捷操作。
     if (!succeeded &&
         revision == _stateRevision &&
         remoteId == _bleCoordinator?.connectedRemoteId) {
@@ -249,8 +249,8 @@ final class ControlSessionController extends GetxController {
 
   /// 向当前连接设备发送暂停指令。
   Future<bool> sendPause() async {
-    if (_rhythmPlayback?.active == true) {
-      return _rhythmPlayback!.pause();
+    if (_programPlayback?.active == true) {
+      return _programPlayback!.pause();
     }
     final repository = _commandRepository;
     if (repository == null) return true;
@@ -276,9 +276,9 @@ final class ControlSessionController extends GetxController {
 
   /// 向当前连接设备发送恢复/开始运行指令。
   Future<bool> sendResume() async {
-    if (_rhythmPlayback?.editing == true) return false;
-    if (_rhythmPlayback?.active == true) {
-      return _rhythmPlayback!.resume();
+    if (_programPlayback?.editing == true) return false;
+    if (_programPlayback?.active == true) {
+      return _programPlayback!.resume();
     }
     final repository = _commandRepository;
     if (repository == null) return true;
@@ -334,7 +334,7 @@ final class ControlSessionController extends GetxController {
 
   @override
   void onClose() {
-    unawaited(_rhythmSubscription?.cancel());
+    unawaited(_programSubscription?.cancel());
     unawaited(_telemetrySubscription?.cancel());
     for (final worker in _telemetryWorkers) {
       worker.dispose();

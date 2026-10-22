@@ -79,7 +79,7 @@ class BleControlFixture {
     control = ControlSessionController(
       bleCoordinator: coordinator,
       commandRepository: commands,
-      rhythmPlayback: rhythm,
+      programPlayback: rhythm?.engine,
       sessionController: session,
     );
     if (initialize) control.onInit();

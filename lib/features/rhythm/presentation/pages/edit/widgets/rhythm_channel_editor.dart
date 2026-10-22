@@ -71,6 +71,7 @@ final class RhythmChannelEditor extends StatelessWidget {
             ),
           if (setting.on &&
               capability.channel != RhythmChannel.suck &&
+              capability.channel != RhythmChannel.heat &&
               (capability.variableSpeed || (capability.gearMax ?? 0) > 0))
             Row(
               children: [
@@ -89,8 +90,9 @@ final class RhythmChannelEditor extends StatelessWidget {
                     inactiveColor: AppRhythmStyle.glass,
                     thumbRadius: 18,
                     rightLabel: 'fast',
-                    onChanged: (v) =>
-                        onChanged(setting.copyWith(value: v.round())),
+                    onChanged: (v) => onChanged(
+                      setting.copyWith(value: v.round(), clearMode: true),
+                    ),
                   ),
                 ),
               ],
@@ -174,6 +176,7 @@ final class _RhythmModesState extends State<_RhythmModes> {
         onPressed: () => widget.onChanged(
           widget.setting.copyWith(
             mode: i + 1,
+            clearValue: true,
             clearMode: widget.setting.mode == i + 1,
           ),
         ),

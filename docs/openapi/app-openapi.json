@@ -11,7 +11,7 @@
   "servers": [
     {
       "url": "http://127.0.0.1:8090",
-      "description": "Configured server url"
+      "description": "Generated server url"
     }
   ],
   "paths": {
@@ -1399,15 +1399,46 @@
           },
           "segments": {
             "type": "array",
-            "description": "新的节奏片段列表，最多 30 条，每段 durationSec 为 1–120 整数秒，模式与速度必须匹配已发布型号能力；不传表示不变",
+            "description": "新的节奏片段列表，最多 30 条，每段为 start-end/des/command_data，从00:00连续，每段1–1200秒，指令匹配通用协议v1.2及已发布型号能力；不传表示不变",
             "items": {
-              "type": "object",
-              "additionalProperties": {}
+              "$ref": "#/components/schemas/CommonProgramItem"
             },
             "maxItems": 30,
             "minItems": 0
           }
         }
+      },
+      "CommonProgramItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "通用协议打点；只包含 start-end、des、command_data",
+        "properties": {
+          "des": {
+            "type": "string",
+            "description": "该打点的展示说明",
+            "example": "Stretch 50%; Vibration 30%",
+            "maxLength": 1000,
+            "minLength": 0
+          },
+          "start-end": {
+            "type": "string",
+            "description": "半开时间区间，分钟至少两位、秒为00–59",
+            "example": "00:00-00:03",
+            "minLength": 1
+          },
+          "command_data": {
+            "type": "string",
+            "description": "单行通用业务协议，CM->后的数字为模式号，普通数字为t/v百分比",
+            "example": "t:50|v:30",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "command_data",
+          "des",
+          "start-end"
+        ]
       },
       "AppRhythmVo": {
         "type": "object",
@@ -1445,13 +1476,25 @@
             "description": "节奏片段数量",
             "example": 8
           },
-          "segments": {
+          "previewSegments": {
             "type": "array",
-            "description": "节奏片段列表；支持 durationSec + channels，兼容通道对象扁平字段",
+            "description": "前 3 个节奏片段的短快照；仅供列表预览，不能用于完整播放",
             "items": {
-              "type": "object",
-              "additionalProperties": {}
+              "$ref": "#/components/schemas/CommonProgramItem"
             }
+          },
+          "programUrl": {
+            "type": "string",
+            "description": "完整 JSON 的稳定文件地址，同时作为 App 文件缓存键；不由客户端传入"
+          },
+          "programDownloadUrl": {
+            "type": "string",
+            "description": "详情/保存响应中的短时签名下载地址，有效 15 分钟；列表为空，不落库、不作缓存键"
+          },
+          "totalSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "description": "服务端根据时间轴派生的总秒数"
           }
         }
       },
@@ -1547,10 +1590,9 @@
           },
           "segments": {
             "type": "array",
-            "description": "节奏片段列表，最多 30 条，每段 durationSec 为 1–120 整数秒，模式与速度必须匹配已发布型号能力；元素支持 durationSec + channels，兼容通道对象扁平字段",
+            "description": "节奏片段列表，最多 30 条，每段为 start-end/des/command_data，时间轴从00:00连续，每段1–1200秒，指令匹配通用协议v1.2及已发布型号能力",
             "items": {
-              "type": "object",
-              "additionalProperties": {}
+              "$ref": "#/components/schemas/CommonProgramItem"
             },
             "maxItems": 30,
             "minItems": 0

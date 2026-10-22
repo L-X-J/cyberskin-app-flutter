@@ -11,7 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 
-/** 保持当前 Flutter/BLE 会话运行；不创建第二条 GATT 连接，不自动重启节奏。 */
+/** 保持当前 Flutter/BLE 会话运行；不创建第二条 GATT 连接，不自动重启播放。 */
 class RhythmForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     override fun onCreate() {
@@ -19,12 +19,12 @@ class RhythmForegroundService : Service() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26) {
             manager.createNotificationChannel(NotificationChannel(
-                "rhythm", "Device rhythm", NotificationManager.IMPORTANCE_LOW))
+                "rhythm", "Device playback", NotificationManager.IMPORTANCE_LOW))
         }
         val intent = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, "rhythm") else Notification.Builder(this)
-        val notification = builder.setContentTitle("Cyberskin rhythm")
+        val notification = builder.setContentTitle("Cyberskin device session")
             .setContentText("Device session active. Open Cyberskin to pause or end.")
             .setSmallIcon(android.R.drawable.ic_media_play).setOngoing(true)
             .setContentIntent(intent).build()

@@ -1,4 +1,4 @@
-// 将 BLE 状态通知与原生后台运行能力适配为节奏领域端口。
+// 将 BLE 状态通知与原生后台运行能力适配为公共播放端口。
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -7,29 +7,29 @@ import 'package:get/get.dart';
 
 import '../../../core/result/result.dart';
 import '../../../core/storage/session_credential_store.dart';
-import '../../control/domain/device_command_repository.dart';
 import '../../device/data/cyberskin_ble_runtime_coordinator.dart';
-import '../domain/repositories/rhythm_device_port.dart';
+import '../domain/device_command_repository.dart';
+import '../domain/repositories/device_playback_port.dart';
 
 /// 把已连接设备、每次状态通知与后台服务组合为执行端口。
-final class BleRhythmDevicePort implements RhythmDevicePort {
+final class BleDevicePlaybackPort implements DevicePlaybackPort {
   /// 创建实例；依赖及初始状态由调用方提供。
-  BleRhythmDevicePort(
+  BleDevicePlaybackPort(
     this.coordinator,
     this.commands,
     SessionCredentialStore credentials,
   ) {
     _worker = ever(
       coordinator.connectedDevice,
-      (_) => _events.add(RhythmDeviceEvent(target)),
+      (_) => _events.add(DevicePlaybackEvent(target)),
     );
     _heartbeat = coordinator.rhythmHeartbeats.listen((remoteId) {
       if (target?.remoteId == remoteId) {
-        _events.add(RhythmDeviceEvent(target, heartbeat: true));
+        _events.add(DevicePlaybackEvent(target, heartbeat: true));
       }
     });
     _credentials = credentials.invalidated.listen(
-      (_) => _events.add(RhythmDeviceEvent(target, sessionExpired: true)),
+      (_) => _events.add(DevicePlaybackEvent(target, sessionExpired: true)),
     );
   }
 
@@ -38,19 +38,20 @@ final class BleRhythmDevicePort implements RhythmDevicePort {
 
   /// 原始语义命令通道，由执行器统一串行调度。
   final DeviceCommandRepository commands;
+  // 沿用现有原生通道名；节奏与 Training 共用这一份后台服务。
   static const _channel = MethodChannel('cyberskin/rhythm_background');
-  final _events = StreamController<RhythmDeviceEvent>.broadcast(sync: true);
+  final _events = StreamController<DevicePlaybackEvent>.broadcast(sync: true);
   late final Worker _worker;
   late final StreamSubscription<String> _heartbeat;
   late final StreamSubscription<void> _credentials;
   @override
-  RhythmDeviceTarget? get target {
+  DevicePlaybackTarget? get target {
     final connected = coordinator.connectedDevice.value;
     final model = coordinator.connectedModelId;
     if (connected == null || model == null || !coordinator.hasConnectedDevice) {
       return null;
     }
-    return RhythmDeviceTarget(
+    return DevicePlaybackTarget(
       modelId: model,
       remoteId: connected.remoteId,
       name: connected.device.name,
@@ -58,9 +59,9 @@ final class BleRhythmDevicePort implements RhythmDevicePort {
   }
 
   @override
-  Stream<RhythmDeviceEvent> get events => _events.stream;
+  Stream<DevicePlaybackEvent> get events => _events.stream;
   @override
-  Future<Result<void>> send(String command, RhythmDeviceTarget target) =>
+  Future<Result<void>> send(String command, DevicePlaybackTarget target) =>
       commands.send(
         command,
         modelId: target.modelId,

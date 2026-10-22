@@ -1,9 +1,10 @@
 // 节奏片段的类型化解析、设备能力与执行前校验；不依赖 Flutter。
 import '../../../../core/protocol/common_business_command.dart';
+import '../../../control/domain/entities/common_program_segment.dart';
 import '../../../device/domain/repositories/device_catalog_repository.dart';
 import 'rhythm.dart';
 
-/// 节奏编辑器支持的运动通道；加热不属于本期片段控制。
+/// 通用协议的四类通道；可见项由已发布设备能力决定。
 enum RhythmChannel {
   /// 伸缩运动通道。
   thrust('Stretch', CommonModule.telescopic),
@@ -12,7 +13,10 @@ enum RhythmChannel {
   vibration('Vibration', CommonModule.vibration),
 
   /// 吸吮运动通道。
-  suck('Suck', CommonModule.suck);
+  suck('Suck', CommonModule.suck),
+
+  /// 加热通道，只允许开启/关闭。
+  heat('Heat', CommonModule.heat);
 
   const RhythmChannel(this.label, this.module);
 
@@ -27,6 +31,7 @@ enum RhythmChannel {
     'thrust' || 'telescopic' || 't' => thrust,
     'vibration' || 'vibrate' || 'v' => vibration,
     'suck' || 'suction' || 's' => suck,
+    'heat' || 'heating' || 'h' => heat,
     _ => throw FormatException('Unsupported rhythm channel: $value'),
   };
 }
@@ -86,6 +91,16 @@ final class RhythmChannelCapability {
         ),
       );
     }
+    if (model.heatSupported &&
+        !result.any((cap) => cap.channel == RhythmChannel.heat)) {
+      result.add(
+        const RhythmChannelCapability(
+          channel: RhythmChannel.heat,
+          modes: [],
+          variableSpeed: false,
+        ),
+      );
+    }
     return List.unmodifiable(result);
   }
 }
@@ -98,6 +113,7 @@ final class RhythmChannelSetting {
     this.on = false,
     this.mode,
     this.value,
+    this.operation,
   });
 
   /// 对应的运动通道。
@@ -106,11 +122,14 @@ final class RhythmChannelSetting {
   /// 本片段是否启用该通道；关闭时执行器会明确发送停止。
   final bool on;
 
-  /// 1-based 模式号；为空时执行使用该通道默认模式。
+  /// 1-based 模式号；为空时不自动插入模式指令。
   final int? mode;
 
   /// 逻辑强度百分比；不存储设备专属硬件档位。
   final int? value;
+
+  /// 通用协议的其他操作符（如 +、-、u、d）；读取后编辑时保留。
+  final String? operation;
 
   /// 产生新的通道草稿；未传字段保持不变，clearMode 显式清除模式。
   RhythmChannelSetting copyWith({
@@ -118,28 +137,54 @@ final class RhythmChannelSetting {
     int? mode,
     int? value,
     bool clearMode = false,
+    bool clearValue = false,
   }) => RhythmChannelSetting(
     channel: channel,
     on: on ?? this.on,
     mode: clearMode ? null : mode ?? this.mode,
-    value: value ?? this.value,
+    value: clearValue ? null : value ?? this.value,
+    operation: on != null || mode != null || value != null || clearMode
+        ? null
+        : operation,
   );
-
-  /// 序列化为现有 channels 数组条目。
-  Map<String, Object?> toJson() => {
-    'channel': channel.name,
-    'on': on,
-    if (mode != null) 'mode': mode,
-    if (value != null) 'value': value,
-  };
 }
 
 /// 可执行片段；开放原始 payload 仍由 RhythmSegment 保留。
 final class RhythmStep {
+  /// 从标准打点还原编辑草稿；通用协议数字的含义由 CM-> 决定。
+  factory RhythmStep.decode(RhythmSegment segment) {
+    final program = segment.program;
+    if (!isValidDuration(program.durationSeconds)) {
+      throw const FormatException(durationError);
+    }
+    final channels = program.command.instructions.map((instruction) {
+      final channel = RhythmChannel.parse(instruction.module.key);
+      final numeric = int.tryParse(instruction.value);
+      return RhythmChannelSetting(
+        channel: channel,
+        on: !const {'s', 'f', '0'}.contains(instruction.value),
+        mode: instruction.isMode ? numeric : null,
+        value: !instruction.isMode ? numeric : null,
+        operation:
+            numeric == null &&
+                !const {'o', 's', 'f'}.contains(instruction.value)
+            ? instruction.value
+            : null,
+      );
+    }).toList();
+    return RhythmStep(durationSec: program.durationSeconds, channels: channels);
+  }
+
+  /// 创建实例；依赖及初始状态由调用方提供。
+  RhythmStep({
+    required this.durationSec,
+    required List<RhythmChannelSetting> channels,
+  }) : channels = List.unmodifiable(channels);
+
   /// 客户端片段最短整数秒；解析与输入共用同一边界。
   static const minDurationSec = 1;
 
-  /// 用户确认的客户端上限；远端契约须同步支持后才能保证云端保存。
+  /// App 与服务端共用的单段最大时长。
   static const maxDurationSec = 1200;
 
   /// 整数秒边界校验，供解析、执行和输入复用。
@@ -149,131 +194,51 @@ final class RhythmStep {
   /// 可直接展示的时长边界错误。
   static const durationError = 'Duration must be 1–1200 seconds.';
 
-  /// 解析历史及当前片段结构，拒绝无法安全执行的歧义数据。
-  factory RhythmStep.decode(RhythmSegment segment) {
-    final raw = segment.payload;
-    final duration = _integer(raw['durationSec'], 'Duration');
-    if (!isValidDuration(duration)) {
-      throw const FormatException(durationError);
-    }
-
-    final items = <Map<String, dynamic>>[];
-    final nested = raw['channels'];
-    if (nested != null &&
-        raw.keys.any((key) => key != 'durationSec' && key != 'channels')) {
-      throw const FormatException(
-        'Do not mix nested and flat channel settings.',
-      );
-    }
-    if (nested is List) {
-      for (final item in nested) {
-        if (item is! Map) throw const FormatException('Invalid channel data.');
-        items.add(Map<String, dynamic>.from(item));
-      }
-    } else if (nested == null || nested is Map) {
-      final map = nested is Map ? Map<String, dynamic>.from(nested) : raw;
-      for (final entry in map.entries) {
-        if (entry.key == 'durationSec') continue;
-        if (entry.value is! Map) {
-          throw const FormatException('Unsupported segment data.');
-        }
-        items.add({
-          ...Map<String, dynamic>.from(entry.value as Map),
-          'channel': entry.key,
-        });
-      }
-    } else {
-      throw const FormatException('Unsupported segment data.');
-    }
-    if (raw.keys.any(
-      (key) =>
-          key != 'durationSec' &&
-          key != 'channels' &&
-          ![
-            'thrust',
-            'telescopic',
-            'vibration',
-            'vibrate',
-            'suck',
-            'suction',
-            't',
-            'v',
-            's',
-          ].contains(key),
-    )) {
-      throw const FormatException(
-        'This segment contains unsupported settings.',
-      );
-    }
-    final values = <RhythmChannelSetting>[];
-    final seen = <RhythmChannel>{};
-    for (final item in items) {
-      if (item.keys.any(
-        (key) => !['channel', 'on', 'mode', 'value'].contains(key),
-      )) {
-        throw const FormatException(
-          'This channel contains unsupported settings.',
-        );
-      }
-
-      final channel = RhythmChannel.parse('${item['channel']}');
-      if (!seen.add(channel)) {
-        throw const FormatException('Duplicate rhythm channel.');
-      }
-      if (item['on'] is! bool) {
-        throw const FormatException('Channel on must be boolean.');
-      }
-
-      final mode = item['mode'] == null ? null : _integer(item['mode'], 'Mode');
-
-      final value = item['value'] == null
-          ? null
-          : _integer(item['value'], 'Speed');
-      if (mode != null && (mode < 1 || mode > 100)) {
-        throw const FormatException('Invalid mode.');
-      }
-      if (value != null && (value < 0 || value > 100)) {
-        throw const FormatException('Invalid speed.');
-      }
-      if (channel == RhythmChannel.suck && value != null) {
-        throw const FormatException('Suck does not support speed.');
-      }
-      values.add(
-        RhythmChannelSetting(
-          channel: channel,
-          on: item['on'] as bool,
-          mode: mode,
-          value: value,
-        ),
-      );
-    }
-    return RhythmStep(durationSec: duration, channels: values);
-  }
-
-  /// 创建实例；依赖及初始状态由调用方提供。
-  RhythmStep({
-    required this.durationSec,
-    required List<RhythmChannelSetting> channels,
-  }) : channels = List.unmodifiable(channels);
-
   /// 片段持续整数秒，范围由 minDurationSec / maxDurationSec 定义。
   final int durationSec;
 
   /// 冻结的通道设置列表。
   final List<RhythmChannelSetting> channels;
 
-  static int _integer(Object? value, String field) {
-    if (value is! num || !value.isFinite || value != value.roundToDouble()) {
-      throw FormatException('$field must be an integer.');
+  /// 生成样例规定的标准打点；设备能力只决定缺省停止通道，不写入文件。
+  RhythmSegment encode({
+    int startSeconds = 0,
+    List<RhythmChannelCapability>? capabilities,
+  }) {
+    if (!isValidDuration(durationSec)) {
+      throw const FormatException(durationError);
     }
-    return value.toInt();
+    final command = _command(capabilities);
+    final description = channels
+        .where((setting) => setting.on)
+        .map(
+          (setting) =>
+              '${setting.channel.label}: ${setting.mode != null
+                  ? 'Mode ${setting.mode}'
+                  : setting.value != null
+                  ? '${setting.value}%'
+                  : setting.operation ?? 'on'}',
+        )
+        .join('; ');
+    return RhythmSegment({
+      'start-end':
+          '${CommonProgramSegment.formatTime(startSeconds)}-${CommonProgramSegment.formatTime(startSeconds + durationSec)}',
+      'des': description.isEmpty ? 'Rest; all channels off' : description,
+      'command_data': command.toString(),
+    });
   }
 
-  /// 生成当前规范结构的片段快照。
-  RhythmSegment encode() => RhythmSegment({
-    'durationSec': durationSec,
-    'channels': channels.map((e) => e.toJson()).toList(),
-  });
+  /// 编辑/删除后统一重排时间轴，命令及说明保持原值。
+  static List<RhythmSegment> timeline(Iterable<RhythmSegment> segments) {
+    var start = 0;
+    return segments
+        .map((segment) {
+          final program = segment.program.at(start);
+          start = program.endSeconds;
+          return RhythmSegment(program.toJson());
+        })
+        .toList(growable: false);
+  }
 
   /// 在保存及执行前核对时长与型号能力，防止失效模式被下发。
   void validate(List<RhythmChannelCapability> capabilities) {
@@ -285,10 +250,20 @@ final class RhythmStep {
         'This device has no supported rhythm channels.',
       );
     }
+    if (channels.any((setting) => setting.on && setting.mode != null) &&
+        channels.any((setting) => setting.on && setting.value != null)) {
+      throw const FormatException(
+        'Use modes or numeric speeds in one segment.',
+      );
+    }
     final seen = <RhythmChannel>{};
     for (final setting in channels) {
       if (!seen.add(setting.channel)) {
         throw const FormatException('Duplicate rhythm channel.');
+      }
+      if (setting.channel == RhythmChannel.heat &&
+          (setting.value != null || setting.mode != null)) {
+        throw const FormatException('Heat only supports on/off.');
       }
       if (setting.channel == RhythmChannel.suck && setting.value != null) {
         throw const FormatException('Suck does not support speed.');
@@ -315,53 +290,47 @@ final class RhythmStep {
     }
   }
 
-  /// 每段重发所有可用运动通道；关闭未开启的通道，避免遗留上段参数。
+  /// 每个打点只有一条通用指令；模式和数字速度不能在同条指令混用。
   List<CommonBusinessCommand> commands(
     List<RhythmChannelCapability> capabilities,
   ) {
     validate(capabilities);
+    return [_command(capabilities)];
+  }
 
-    final modes = <CommonInstruction>[];
-    final levels = <CommonInstruction>[];
-    for (final cap in capabilities) {
-      final settings = channels.where((s) => s.channel == cap.channel);
-
-      final setting = settings.isEmpty
-          ? RhythmChannelSetting(channel: cap.channel)
-          : settings.first;
-
-      final mode = setting.mode ?? (cap.modes.isNotEmpty ? 1 : null);
-      if (setting.on && mode != null) {
-        modes.add(
-          CommonInstruction(
-            module: cap.channel.module,
-            value: '$mode',
-            isMode: true,
-          ),
-        );
-      }
-
-      final value = !setting.on
-          ? 's'
-          : cap.channel == RhythmChannel.suck
-          ? 'o'
-          : setting.value != null
-          ? '${setting.value}'
-          : cap.defaultValue > 0
-          ? '${cap.defaultValue.clamp(0, 100)}'
-          : 'o';
-      levels.add(
-        CommonInstruction(
-          module: cap.channel.module,
-          value: value,
-          isMode: false,
-        ),
+  CommonBusinessCommand _command(List<RhythmChannelCapability>? capabilities) {
+    final modeCommand = channels.any(
+      (setting) => setting.on && setting.mode != null,
+    );
+    if (modeCommand &&
+        channels.any((setting) => setting.on && setting.value != null)) {
+      throw const FormatException(
+        'Use modes or numeric speeds in one segment.',
       );
     }
-    return [
-      if (modes.isNotEmpty)
-        CommonBusinessCommand(isModeCommand: true, instructions: modes),
-      CommonBusinessCommand(isModeCommand: false, instructions: levels),
-    ];
+    final ordered =
+        capabilities?.map((capability) => capability.channel).toList() ??
+        (channels.isEmpty
+            ? [RhythmChannel.thrust]
+            : channels.map((setting) => setting.channel).toList());
+    final parts = <String>[];
+    for (final channel in ordered) {
+      final matches = channels.where((setting) => setting.channel == channel);
+      final setting = matches.isEmpty
+          ? RhythmChannelSetting(channel: channel)
+          : matches.first;
+      final value = !setting.on
+          ? channel == RhythmChannel.heat
+                ? 'f'
+                : 's'
+          : setting.mode?.toString() ??
+                setting.value?.toString() ??
+                setting.operation ??
+                'o';
+      parts.add('${channel.module.key}:$value');
+    }
+    return CommonBusinessCommand.parse(
+      '${modeCommand ? 'CM->' : ''}${parts.join('|')}',
+    );
   }
 }

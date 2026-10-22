@@ -70,19 +70,22 @@ final class RhythmRemoteRepository extends BaseRemoteRepository
 
   /// 解码开放节奏片段协议，并复制为不可变值对象。
   Rhythm _decodeRhythm(Map<String, dynamic> json) {
-    final rawSegments = json['segments'];
+    final rawSegments = json['previewSegments'];
     return Rhythm(
       id: ApiJson.integer(json, 'id'),
       deviceModelId: ApiJson.integer(json, 'deviceModelId'),
       name: ApiJson.string(json, 'name'),
       segmentCount: ApiJson.integer(json, 'segmentCount'),
+      programUrl: ApiJson.string(json, 'programUrl'),
+      programDownloadUrl: ApiJson.string(json, 'programDownloadUrl'),
+      totalSeconds: ApiJson.integer(json, 'totalSeconds'),
       createTime: DateTime.tryParse('${json['createTime'] ?? ''}'),
       deviceModelName: ApiJson.string(json, 'deviceModelName'),
-      segments: rawSegments == null
+      previewSegments: rawSegments == null
           ? const <RhythmSegment>[]
           : ApiJson.objectList(
               rawSegments,
-              field: 'segments',
+              field: 'previewSegments',
             ).map(RhythmSegment.new).toList(growable: false),
     );
   }

@@ -31,7 +31,10 @@ Rhythm fixture(int id, {int seconds = 30, int count = 2}) => Rhythm(
   name: 'Rhythm $id',
   segments: List.generate(
     count,
-    (_) => RhythmStep(durationSec: seconds, channels: []).encode(),
+    (index) => RhythmStep(
+      durationSec: seconds,
+      channels: [],
+    ).encode(startSeconds: index * seconds),
   ),
 );
 
@@ -291,8 +294,7 @@ void main() {
               RhythmChannelSetting(
                 channel: channel,
                 on: true,
-                mode: 1,
-                value: channel == RhythmChannel.suck ? null : 80,
+                mode: channel == RhythmChannel.heat ? null : 1,
               ),
           ],
         ).encode(),

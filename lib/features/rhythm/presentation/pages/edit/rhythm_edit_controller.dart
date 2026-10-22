@@ -122,6 +122,7 @@ final class RhythmEditController extends GetxController {
     if (saving.value || loading.value) return false;
     try {
       step.validate(capabilities);
+      step.encode(capabilities: capabilities);
     } on FormatException catch (e) {
       error.value = e.message;
       return false;
@@ -131,10 +132,11 @@ final class RhythmEditController extends GetxController {
       return false;
     }
     if (at == null) {
-      segments.add(step.encode());
+      segments.add(step.encode(capabilities: capabilities));
     } else {
-      segments[at] = step.encode();
+      segments[at] = step.encode(capabilities: capabilities);
     }
+    segments.assignAll(RhythmStep.timeline(segments));
     dirty.value = true;
     return true;
   }
@@ -143,6 +145,7 @@ final class RhythmEditController extends GetxController {
   void deleteSegment(int index) {
     if (saving.value) return;
     segments.removeAt(index);
+    segments.assignAll(RhythmStep.timeline(segments));
     dirty.value = true;
   }
 
@@ -175,6 +178,7 @@ final class RhythmEditController extends GetxController {
       error.value = e.message;
       return false;
     }
+    segments.assignAll(RhythmStep.timeline(segments));
     saving.value = true;
     if (playback.active &&
         playback.snapshot.rhythm?.id == original?.id &&
