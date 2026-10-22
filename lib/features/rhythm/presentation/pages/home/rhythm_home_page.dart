@@ -1,4 +1,5 @@
 // 自定义节奏列表页：进入运行、创建/编辑、长按菜单及删除确认。
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cyberskin_app/app/app_routes.dart';
@@ -30,6 +31,7 @@ final class _RhythmHomePageState extends State<RhythmHomePage> {
   final controller = Get.find<RhythmHomeController>();
   final _seen = <Object>{};
   final _scroll = ScrollController();
+  bool _openingInfo = false;
 
   @override
   void dispose() {
@@ -194,11 +196,15 @@ final class _RhythmHomePageState extends State<RhythmHomePage> {
   );
 
   Future<void> _run(Rhythm item, RhythmSessionController session) async {
-    final rhythm = await controller.detail(item);
-    if (rhythm == null) return;
-    // 选择详情不触发设备，旧活动会话继续由独立执行器持有。
-    session.select(rhythm);
-    await Get.toNamed<void>(AppRoutes.rhythmInfo);
+    if (_openingInfo || controller.acting.value) return;
+    _openingInfo = true;
+    try {
+      // 立即跳转，完整 JSON 和能力由详情状态异步准备并显示 loading。
+      unawaited(session.select(item));
+      await Get.toNamed<void>(AppRoutes.rhythmInfo);
+    } finally {
+      _openingInfo = false;
+    }
     if (!controller.isClosed) await controller.refreshList();
   }
 

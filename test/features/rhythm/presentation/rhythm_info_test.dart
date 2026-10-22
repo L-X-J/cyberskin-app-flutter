@@ -3,11 +3,14 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:cyberskin_app/core/error/app_failure.dart';
 import 'package:cyberskin_app/core/result/result.dart';
+import 'package:cyberskin_app/core/widgets/app_liquid_glass_button.dart';
 import 'package:cyberskin_app/features/rhythm/domain/entities/rhythm.dart';
 import 'package:cyberskin_app/features/rhythm/domain/entities/rhythm_program.dart';
 import 'package:cyberskin_app/features/rhythm/domain/repositories/rhythm_catalog.dart';
 import 'package:cyberskin_app/features/rhythm/domain/repositories/rhythm_device_port.dart';
+import 'package:cyberskin_app/features/rhythm/domain/repositories/rhythm_repository.dart';
 import 'package:cyberskin_app/features/rhythm/domain/services/rhythm_playback.dart';
 import 'package:cyberskin_app/features/rhythm/presentation/pages/info/rhythm_info_page.dart';
 import 'package:cyberskin_app/features/rhythm/presentation/pages/info/widgets/rhythm_segment_queue.dart';
@@ -75,22 +78,110 @@ class Catalog implements RhythmCatalog {
   Future<Result<List<RhythmModel>>> models() async => const Result.ok([]);
 }
 
+class Repository extends Fake implements RhythmRepository {
+  Completer<Result<Rhythm>>? pending;
+  int loads = 0;
+  @override
+  Future<Result<Rhythm>> getById(int id) async {
+    loads++;
+    return pending?.future ?? Result.ok(fixture(id));
+  }
+}
+
 void main() {
   late Port port;
   late Catalog catalog;
   late RhythmPlayback playback;
   late RhythmSessionController session;
+  late Repository repository;
   setUp(() {
     Get.testMode = true;
     port = Port();
     catalog = Catalog();
     playback = RhythmPlayback(port);
-    session = Get.put(RhythmSessionController(playback, catalog));
+    repository = Repository();
+    session = Get.put(
+      RhythmSessionController(playback, catalog, repository: repository),
+    );
   });
   tearDown(() async {
     await playback.dispose();
     await port.eventsController.close();
     Get.reset();
+  });
+  testWidgets('详情先展示元数据和loading，完整JSON就绪前不能编辑或播放', (tester) async {
+    repository.pending = Completer();
+    final loading = session.select(
+      Rhythm(
+        id: 1,
+        deviceModelId: 1,
+        name: 'Rhythm 1',
+        segmentCount: 2,
+        totalSeconds: 60,
+      ),
+    );
+    await tester.pumpWidget(const GetMaterialApp(home: RhythmInfoPage()));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('rhythm-info-loading')), findsOneWidget);
+    expect(find.text('Rhythm 1'), findsOneWidget);
+    expect(find.text('Total segments: 2'), findsOneWidget);
+    expect(session.infoTotalRemaining.value, 60);
+    final buttons = tester.widgetList<AppLiquidGlassButton>(
+      find.byType(AppLiquidGlassButton),
+    );
+    expect(
+      buttons.singleWhere((button) => button.label == 'Edit').onPressed,
+      isNull,
+    );
+    expect(
+      buttons.singleWhere((button) => button.label == 'Start').onPressed,
+      isNull,
+    );
+    await session.toggleInfo();
+    expect(port.commands, isEmpty);
+    repository.pending!.complete(Result.ok(fixture(1)));
+    await loading;
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('rhythm-info-loading')), findsNothing);
+    expect(session.infoReady.value, isTrue);
+    expect(session.infoRhythm.value!.hasCompleteProgram, isTrue);
+    expect(port.commands, isEmpty);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  test('详情加载失败可重试，失败及加载期间不启动设备', () async {
+    repository.pending = Completer();
+    final loading = session.select(Rhythm(id: 1, deviceModelId: 1));
+    repository.pending!.complete(
+      const Result.failure(
+        AppFailure(code: FailureCode.network, message: 'Download failed'),
+      ),
+    );
+    await loading;
+    expect(session.infoLoading.value, isFalse);
+    expect(session.infoReady.value, isFalse);
+    expect(session.infoError.value, 'Download failed');
+    await session.toggleInfo();
+    expect(port.commands, isEmpty);
+    repository.pending = null;
+    await session.retryInfo();
+    expect(repository.loads, 2);
+    expect(session.infoReady.value, isTrue);
+    expect(session.infoError.value, isNull);
+  });
+  test('离开后的JSON响应不覆盖新选择或结束新页面loading', () async {
+    repository.pending = Completer();
+    final old = session.select(Rhythm(id: 1, deviceModelId: 1));
+    final pending = repository.pending!;
+    session.leaveInfo();
+    final selected = fixture(2);
+    await session.select(selected);
+    pending.complete(Result.ok(fixture(1)));
+    await old;
+    expect(session.infoRhythm.value, same(selected));
+    expect(session.infoLoading.value, isFalse);
+    expect(session.infoReady.value, isTrue);
+    expect(port.commands, isEmpty);
   });
   test('预览无指令，其他旧会话不能覆盖选择，同会话返回保留暂停', () async {
     final a = fixture(1), b = fixture(2);
@@ -117,6 +208,26 @@ void main() {
     await session.toggleInfo();
     expect(playback.snapshot.index, 0);
     expect(playback.snapshot.phase, RhythmPlaybackPhase.running);
+  });
+  test('返回活动会话时刷新能力不阻止立即停止设备', () async {
+    final selected = fixture(1);
+    await session.select(selected);
+    await session.toggleInfo();
+    catalog.pending = Completer();
+    final loading = session.select(selected);
+    expect(session.infoLoading.value, isFalse);
+    expect(session.infoReady.value, isTrue);
+    await session.toggleInfo();
+    expect(playback.active, isFalse);
+    catalog.pending!.complete(
+      const Result.failure(
+        AppFailure(
+          code: FailureCode.network,
+          message: 'Capabilities unavailable',
+        ),
+      ),
+    );
+    await loading;
   });
   test('异步启动防连击，离开页面使等待能力请求失效', () async {
     await session.select(fixture(1));

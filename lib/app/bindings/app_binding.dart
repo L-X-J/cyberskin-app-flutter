@@ -161,7 +161,11 @@ final class AppBinding extends Bindings {
       permanent: true,
     );
     Get.put(
-      RhythmSessionController(playback, Get.find<RhythmCatalog>()),
+      RhythmSessionController(
+        playback,
+        Get.find<RhythmCatalog>(),
+        repository: Get.find<RhythmRepository>(),
+      ),
       permanent: true,
     );
     Get.put<TrainingRepository>(

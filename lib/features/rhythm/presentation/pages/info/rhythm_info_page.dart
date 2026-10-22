@@ -9,6 +9,7 @@ import '../../rhythm_session_controller.dart';
 import '../../widgets/rhythm_dialogs.dart';
 import '../../widgets/rhythm_page_frame.dart';
 import '../../widgets/rhythm_surface.dart';
+import 'widgets/rhythm_info_load_state.dart';
 import 'widgets/rhythm_segment_queue.dart';
 import 'widgets/rhythm_timer.dart';
 
@@ -31,22 +32,26 @@ final class _RhythmInfoPageState extends State<RhythmInfoPage> {
   @override
   Widget build(BuildContext context) => RhythmPageFrame(
     onBack: () => Get.back<void>(),
-    trailing: AppLiquidGlassButton(
-      label: 'Edit',
-      leadingIcon: Icons.edit_outlined,
-      height: 32,
-      iconSize: 12,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-      textStyle: const TextStyle(fontSize: 12, color: Colors.white),
-      variant: AppLiquidGlassButtonVariant.translucent,
-      onPressed: () async {
-        final rhythm = session.infoRhythm.value;
-        if (rhythm != null &&
-            await openRhythmEditor(rhythm: rhythm) &&
-            mounted) {
-          Get.back<void>();
-        }
-      },
+    trailing: Obx(
+      () => AppLiquidGlassButton(
+        label: 'Edit',
+        leadingIcon: Icons.edit_outlined,
+        height: 32,
+        iconSize: 12,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+        textStyle: const TextStyle(fontSize: 12, color: Colors.white),
+        variant: AppLiquidGlassButtonVariant.translucent,
+        onPressed: session.infoLoading.value || !session.infoReady.value
+            ? null
+            : () async {
+                final rhythm = session.infoRhythm.value;
+                if (rhythm != null &&
+                    await openRhythmEditor(rhythm: rhythm) &&
+                    mounted) {
+                  Get.back<void>();
+                }
+              },
+      ),
     ),
     body: ListView(
       children: [
@@ -99,6 +104,12 @@ final class _RhythmInfoPageState extends State<RhythmInfoPage> {
                 const SizedBox(height: 10),
                 Obx(() => RhythmError(session.infoError.value)),
                 Obx(() {
+                  if (session.infoLoading.value || !session.infoReady.value) {
+                    return RhythmInfoLoadState(
+                      loading: session.infoLoading.value,
+                      onRetry: session.retryInfo,
+                    );
+                  }
                   final rhythm = session.infoRhythm.value;
 
                   final index = session.infoIndex.value;
@@ -155,7 +166,9 @@ final class _RhythmInfoPageState extends State<RhythmInfoPage> {
         isLoading: session.infoBusy.value || session.busy.value,
         width: double.infinity,
         height: MediaQuery.textScalerOf(context).scale(20) > 26 ? 104 : 58,
-        onPressed: session.toggleInfo,
+        onPressed: session.infoLoading.value || !session.infoReady.value
+            ? null
+            : session.toggleInfo,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Text(

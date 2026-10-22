@@ -68,8 +68,14 @@ void main() {
     Get.testMode = true;
     port = fixtures.Port();
     playback = RhythmPlayback(port);
-    Get.put(RhythmSessionController(playback, fixtures.Catalog()));
     repository = _Repository();
+    Get.put(
+      RhythmSessionController(
+        playback,
+        fixtures.Catalog(),
+        repository: repository,
+      ),
+    );
     controller = Get.put(RhythmHomeController(repository));
   });
   tearDown(() async {

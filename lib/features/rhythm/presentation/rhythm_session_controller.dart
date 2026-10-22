@@ -8,18 +8,26 @@ import '../domain/entities/rhythm.dart';
 import '../domain/entities/rhythm_program.dart';
 import '../domain/repositories/rhythm_catalog.dart';
 import '../domain/repositories/rhythm_device_port.dart';
+import '../domain/repositories/rhythm_repository.dart';
 import '../domain/services/rhythm_playback.dart';
 
 /// 将执行器快照拆成原子响应式字段，页面无需订阅 BLE 实现。
 final class RhythmSessionController extends GetxController {
   /// 创建实例；依赖及初始状态由调用方提供。
-  RhythmSessionController(this.playback, this.catalog);
+  RhythmSessionController(
+    this.playback,
+    this.catalog, {
+    required this.repository,
+  });
 
   /// 应用级执行会话，页面销毁不释放它。
   final RhythmPlayback playback;
 
   /// 已绑定型号及已发布能力的访问边界。
   final RhythmCatalog catalog;
+
+  /// 详情元数据与完整 JSON 的统一访问入口，下载和缓存仍归 Repository。
+  final RhythmRepository repository;
 
   /// 当前会话绑定的不可变节奏快照。
   final rhythm = Rxn<Rhythm>();
@@ -51,7 +59,13 @@ final class RhythmSessionController extends GetxController {
   /// 当前详情片段与倒计时，独立订阅避免整页刷新。
   final infoIndex = 0.obs, infoRemaining = 0.obs, infoTotalRemaining = 0.obs;
 
-  /// 详情能力加载/按钮请求与已结束标志。
+  /// 详情文件及能力加载中；独立于设备按钮请求。
+  final infoLoading = false.obs;
+
+  /// 完整程序和型号能力已准备好，只有此时允许播放和编辑。
+  final infoReady = false.obs;
+
+  /// 详情按钮请求与已结束标志。
   final infoBusy = false.obs, infoFinished = false.obs;
 
   /// 详情专属错误，不被其他后台会话错误覆盖。
@@ -76,6 +90,8 @@ final class RhythmSessionController extends GetxController {
         _following = false;
         infoRhythm.value = null;
         infoBusy.value = false;
+        infoLoading.value = false;
+        infoReady.value = false;
         infoError.value = null;
         rhythm.value = null;
         capabilities.clear();
@@ -112,56 +128,98 @@ final class RhythmSessionController extends GetxController {
     }
   }
 
-  /// 只准备详情；能力请求过期后不能污染新选择，也不触发设备操作。
+  /// 先展示列表元数据，再异步准备完整程序与能力；选择详情不会启动设备。
   Future<void> select(Rhythm value) async {
     final generation = ++_selectionGeneration;
     final sessionGeneration = _sessionGeneration;
+    bool current() =>
+        !isClosed &&
+        generation == _selectionGeneration &&
+        sessionGeneration == _sessionGeneration;
     _following = playback.active && playback.snapshot.rhythm?.id == value.id;
-    infoRhythm.value = _following ? playback.snapshot.rhythm : value;
+    var selected = _following ? playback.snapshot.rhythm! : value;
+    infoRhythm.value = selected;
     infoFinished.value = false;
     infoError.value = null;
     infoPhase.value = RhythmPlaybackPhase.idle;
     infoIndex.value = 0;
-    infoRemaining.value = 0;
-    infoTotalRemaining.value = 0;
-    try {
-      final steps = value.segments.map((segment) => segment.program).toList();
-      infoRemaining.value = steps.isEmpty ? 0 : steps.first.durationSeconds;
-      infoTotalRemaining.value = steps.fold(0, (n, s) => n + s.durationSeconds);
-    } on FormatException catch (e) {
-      infoError.value = e.message;
-    }
+    _setInfoTime(selected);
     capabilities.clear();
     infoBusy.value = false;
+    // 已运行的会话已有完整程序；后台刷新能力不能阻止用户立即停止设备。
+    infoReady.value = _following && selected.hasCompleteProgram;
+    infoLoading.value = !infoReady.value;
     if (_following) _apply(playback.snapshot);
-    if (value.deviceModelId == null) return;
-    infoBusy.value = true;
     try {
-      final result = await catalog.capabilities(value.deviceModelId!);
-      if (isClosed ||
-          generation != _selectionGeneration ||
-          sessionGeneration != _sessionGeneration) {
+      if (!selected.hasCompleteProgram) {
+        if (selected.id == null) {
+          infoError.value = 'Missing rhythm ID.';
+          return;
+        }
+        final detail = await repository.getById(selected.id!);
+        if (!current()) return;
+        if (detail.isFailure) {
+          infoError.value = detail.failureOrNull!.message;
+          return;
+        }
+        selected = detail.valueOrNull!;
+        if (!selected.hasCompleteProgram) {
+          infoError.value = 'Unable to load the complete rhythm.';
+          return;
+        }
+        infoRhythm.value = selected;
+        _setInfoTime(selected);
+      }
+      if (selected.deviceModelId == null) {
+        infoError.value = 'Missing device model.';
         return;
       }
+      final result = await catalog.capabilities(selected.deviceModelId!);
+      if (!current()) return;
       if (result.isSuccess) {
         capabilities.assignAll(result.valueOrNull!);
+        infoReady.value = true;
       } else {
         infoError.value = result.failureOrNull!.message;
       }
+    } on Object {
+      if (current()) {
+        infoError.value = 'Unable to load this rhythm. Please try again.';
+      }
     } finally {
-      if (generation == _selectionGeneration) infoBusy.value = false;
+      if (current()) infoLoading.value = false;
     }
+  }
+
+  void _setInfoTime(Rhythm value) {
+    final steps = value.segments.map((segment) => segment.program).toList();
+    infoRemaining.value = steps.isEmpty ? 0 : steps.first.durationSeconds;
+    infoTotalRemaining.value =
+        value.totalSeconds ??
+        steps.fold(0, (total, segment) => total + segment.durationSeconds);
+  }
+
+  /// 加载失败后重试当前选择，在途重复点击不会创建第二个请求。
+  Future<void> retryInfo() async {
+    final selected = infoRhythm.value;
+    if (infoLoading.value || selected == null) return;
+    await select(selected);
   }
 
   /// 离开详情只使等待中的启动失效，不停止已运行设备。
   void leaveInfo() {
     _selectionGeneration++;
     infoBusy.value = false;
+    infoLoading.value = false;
   }
 
   /// 活动会话只能明确停止；暂停/中断不绕过原设备恢复保护。
   Future<void> toggleInfo() async {
-    if (infoBusy.value || playback.snapshot.busy || infoRhythm.value == null) {
+    if (infoLoading.value ||
+        !infoReady.value ||
+        infoBusy.value ||
+        playback.snapshot.busy ||
+        infoRhythm.value == null) {
       return;
     }
     infoBusy.value = true;
