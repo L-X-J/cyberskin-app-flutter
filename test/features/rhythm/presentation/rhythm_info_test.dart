@@ -80,11 +80,33 @@ class Catalog implements RhythmCatalog {
 
 class Repository extends Fake implements RhythmRepository {
   Completer<Result<Rhythm>>? pending;
-  int loads = 0;
+  int loads = 0, downloads = 0;
   @override
-  Future<Result<Rhythm>> getById(int id) async {
+  Future<Result<Rhythm>> getById(int id, {bool loadProgram = true}) async {
     loads++;
-    return pending?.future ?? Result.ok(fixture(id));
+    final result =
+        await (pending?.future ?? Future.value(Result.ok(fixture(id))));
+    if (loadProgram) {
+      downloads++;
+      return result;
+    }
+    if (result.isFailure) return result;
+    final value = result.valueOrNull!;
+    return Result.ok(
+      Rhythm(
+        id: value.id,
+        deviceModelId: value.deviceModelId,
+        name: value.name,
+        segmentCount: value.segmentCount ?? value.segments.length,
+        totalSeconds:
+            value.totalSeconds ??
+            value.segments.fold<int>(
+              0,
+              (total, segment) => total + segment.program.durationSeconds,
+            ),
+        previewSegments: value.segments.take(3).toList(),
+      ),
+    );
   }
 }
 
@@ -109,7 +131,7 @@ void main() {
     await port.eventsController.close();
     Get.reset();
   });
-  testWidgets('详情先展示元数据和loading，完整JSON就绪前不能编辑或播放', (tester) async {
+  testWidgets('详情与能力加载期间不可播放，短预览不下载完整JSON', (tester) async {
     repository.pending = Completer();
     final loading = session.select(
       Rhythm(
@@ -144,10 +166,22 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('rhythm-info-loading')), findsNothing);
     expect(session.infoReady.value, isTrue);
-    expect(session.infoRhythm.value!.hasCompleteProgram, isTrue);
+    expect(session.infoRhythm.value!.hasCompleteProgram, isFalse);
+    expect(repository.downloads, 0);
     expect(port.commands, isEmpty);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+  });
+  test('详情只取短预览，Start 才加载完整程序', () async {
+    await session.select(Rhythm(id: 1, deviceModelId: 1));
+    expect(repository.loads, 1);
+    expect(repository.downloads, 0);
+    expect(session.infoRhythm.value!.hasCompleteProgram, isFalse);
+    expect(session.infoRhythm.value!.previewSegments, hasLength(2));
+    expect(port.commands, isEmpty);
+    await session.toggleInfo();
+    expect(repository.downloads, 1);
+    expect(playback.active, isTrue);
   });
   test('详情加载失败可重试，失败及加载期间不启动设备', () async {
     repository.pending = Completer();

@@ -27,6 +27,8 @@ import '../../features/device/domain/repositories/device_catalog_repository.dart
 import '../../features/device/domain/repositories/user_device_repository.dart';
 import '../../features/feedback/data/feedback_remote_repository.dart';
 import '../../features/feedback/domain/repositories/feedback_repository.dart';
+import '../../features/home/data/home_remote_repository.dart';
+import '../../features/home/domain/repositories/home_repository.dart';
 import '../../features/profile/data/profile_remote_repository.dart';
 import '../../features/profile/domain/repositories/profile_repository.dart';
 import '../../features/rhythm/data/cached_rhythm_repository.dart';
@@ -39,6 +41,7 @@ import '../../features/rhythm/domain/services/rhythm_playback.dart';
 import '../../features/rhythm/presentation/rhythm_session_controller.dart';
 import '../../features/training/data/training_remote_repository.dart';
 import '../../features/training/domain/repositories/training_repository.dart';
+import '../../features/training/presentation/training_session_controller.dart';
 import '../../features/version/data/version_remote_repository.dart';
 import '../../features/version/domain/repositories/version_repository.dart';
 import '../../features/video/data/local_video_repository_impl.dart';
@@ -172,7 +175,20 @@ final class AppBinding extends Bindings {
       TrainingRemoteRepository(
         transport: transport,
         sessionStore: sessionStore,
+        programFiles: programFiles,
       ),
+      permanent: true,
+    );
+    Get.put<TrainingSessionController>(
+      TrainingSessionController(
+        Get.find<TrainingRepository>(),
+        Get.find<DeviceCatalogRepository>(),
+        devicePlayback,
+      ),
+      permanent: true,
+    );
+    Get.put<HomeRepository>(
+      HomeRemoteRepository(transport: transport, sessionStore: sessionStore),
       permanent: true,
     );
     Get.put<LocalVideoRepository>(LocalVideoRepositoryImpl(), permanent: true);

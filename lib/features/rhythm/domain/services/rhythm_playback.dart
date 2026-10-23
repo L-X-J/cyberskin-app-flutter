@@ -145,12 +145,13 @@ final class RhythmPlayback {
   /// 校验型号和片段后启动节奏。
   Future<bool> start(
     Rhythm rhythm,
-    List<RhythmChannelCapability> capabilities,
-  ) => engine.prepareAndStart(() {
+    List<RhythmChannelCapability> capabilities, {
+    bool Function()? isCurrent,
+  }) => engine.prepareAndStart(() {
     final program = _programFor(rhythm, capabilities);
     _rhythms[program] = rhythm;
     return program;
-  });
+  }, isCurrent: isCurrent);
 
   /// 暂停当前节奏，保留剩余时间。
   Future<bool> pause() {

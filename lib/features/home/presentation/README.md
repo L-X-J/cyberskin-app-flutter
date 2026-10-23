@@ -25,3 +25,5 @@
 - `home_binding.dart`：装配主页 Controller 与领域 Repository。
 
 页面不直接访问 HTTP、BLE 或持久化；主页通过 Controller 接收扫描状态和首次发现设备，Controller 将 BLE 事件同步到 SessionController 与设备 Repository。型号展示数据消费后台颜色和标签，公共表面绘制位于 `core/widgets`，默认视觉参数位于 `core/theme`，产品图通过素材流程提供。
+
+首页训练与广告通过 HomeRepository 一次聚合；HomeController 对内容加载单独维护请求世代、加载状态和错误，型号优先级为实际连接 → 绑定 → 不筛选。

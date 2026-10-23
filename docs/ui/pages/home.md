@@ -31,8 +31,9 @@
 
 - 设备彩色卡片不是整图资源，使用 Flutter 双层表面绘制：底层 `#D94126`，叠加 `#F9765F` 内阴影（blur 20，y=1），上层径向渐变自上而下由 `#000000` 至 `#D94126`，模糊半径 14。
 - 公共表面由 `AppLayeredGradientCard` 绘制，参数归 `AppLayeredGradientStyle`；型号卡消费后台 `cardColor`，默认上层终点跟随底色。径向中心为顶部中央，范围按短边归一化，使方形卡底部接近渐变终点，参考 `build/ui/img.png` 的明暗分布；设计未提供椭圆尺寸，精确光学效果仍需人工对照。图层 blur 使用 `AppBlur` 的统一工程映射，不宣称与设计工具的光学效果完全一致。
+- 训练推荐背景独立使用 `HomeTrainingBackground`，参考 `assets/images/home/training_mode_bg.svg`：深蓝底、白色内发光、中心菱形渐变及柔化胶囊光晕，不使用公共双层径向渐变卡片。装饰坐标按 SVG 的局部基准映射到卡片边界，圆角复用 `AppRadius.card`，内容高度仍由布局决定；滤镜只作用于背景，不模糊文字与按钮。视觉效果待 Flutter 截图对照。
 - Ardot 导出的设备图、训练缩略图和广告产品图位于 `assets/images/home/`。
-- 设备型号、绑定设备、训练和广告内容均来自领域 Repository；无内容时显示可操作空态或设计示例占位。
+- 设备型号、绑定设备、训练和广告内容均来自领域 Repository；无内容时显示可操作空态，不展示示例训练或广告。
 
 ## 数据与状态
 
@@ -51,8 +52,22 @@
 - 公共卡片像素回归：`test/core/widgets/app_layered_gradient_card_test.dart`；运行后生成 `build/ui/layered_gradient_card_red_170x170_text1.0.png`，验证渐变方向、前景清晰度、裁切、内阴影偏移与图层覆盖。该截图不是经设计确认的 Golden 基线。
 - 未验证项：默认字体与 MiSans 差异、内阴影与模糊的实机光学效果、真实 BLE 连接数据。
 
+## 一级底部玻璃导航（本地横向适配）
+
+- 参考首页 Figma `172:2774` 的 Device / Video 结构，以及现有悬浮设备快捷控件的玻璃表面；本次未重新获取设计节点，不宣称新增设计参数已获确认。
+- `AppLGBottomBar` / `AppLGBottomBarTab` 是从 `flutter_liquid_glass_plus 0.0.7` 导航源码裁剪适配的本地版本，保留来源和 MIT 许可；仅包含等宽分段导航，不复制搜索、额外按钮和拖动指示器。
+- 每个分段使用真实 Row，图标在左、标签在右；同一个 TextButton 负责触控、键盘焦点、Enter / Space 和辅助技术激活。选中样式保持黑底绿边，选中状态由 `selectedTab` / `onSelected` 外部控制。
+- 外框基准为 211 × 68，宽度继续由 `widthFor` 计算，并受父级局部宽度约束；实际宽度小于 176 或 16px 文案缩放后大于 20 时仅显示图标，仍保留完整 Device / Video 语义名称，不压缩文字。
+- 与悬浮控件共用 `AppDeviceControlStyle.glass`、`surface`，通过 LGContainer 的独立玻璃层与 `LGQuality.standard` 渲染；没有溢出图标、零字号标签或交互覆盖层。
+- 组件 Widget 验证入口：`test/app/app_primary_tab_navigation_test.dart`。真实 Flutter 渲染产物：`build/ui/primary_navigation_device_402x200_text1.0.png`、`primary_navigation_video_402x200_text1.0.png`、`primary_navigation_viewport_220x200_text1.0.png`、`primary_navigation_viewport_320x200_text3.0.png`、`primary_navigation_constrained_402x200_text1.0.png`（局部宽度 140）、`primary_navigation_viewport_1024x200_text1.0.png`；均相对于 `build/ui/`。测试背景为固定蓝紫渐变，字体为 SDK Roboto，组件截图不等于整页或真机截图，也未建立已获设计确认的 Golden。
+- 本次验证范围：横向几何、外部选择更新、两个按钮点击、键盘操作、选中语义、窄屏/局部窄约束、大字体和宽屏。未验证：首页完整组合截图、iOS/Android GPU 玻璃光学效果、读屏实机体验、MiSans 差异及设计叠图验收。既有应用测试在显示导航前的 Add Device 初始断言失败，独立记录，不据此宣称整页流程通过。
+
 ## 自由控制入口转场
 
 - 点击 Free control 卡片或箭头后，卡片表面绕 Y 轴翻转并淡出，标题通过 Hero 从两行移动并排成控制页的单行标题；返回时沿相同路径还原。
 - 自由控制路由使用 560ms 淡入，避免默认侧滑干扰共享标题轨迹。标题与旋转表面分离，保证 Hero 的测量边界始终轴对齐。
 - 系统减少动态效果时跳过标题飞行、卡片翻转及页面淡入。静态卡片样式和布局保持原约定。
+
+## 聚合内容接入（2026-10-22）
+
+训练和广告改为 `/app/v1/home` 一次聚合，型号过滤、真实摘要、轮播生命周期和跳转契约见 [Training 页面](training.md)。训练只展示首条，More 进入完整目录。刷新失败保留真实旧内容。

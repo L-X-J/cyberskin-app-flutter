@@ -14,6 +14,7 @@ import '../../../../core/widgets/app_liquid_glass_button.dart';
 import '../../../device/domain/connected_device_state.dart';
 import '../../../device/domain/device.dart';
 import '../../../device/presentation/device_home_controller.dart';
+import '../home_controller.dart';
 import '../widgets/home_shared_widgets.dart';
 import 'connected_device_hero_card.dart';
 import 'home_advertisement_card.dart';
@@ -41,10 +42,18 @@ final class HomeConnectedView extends StatefulWidget {
     this.onCustomRhythm,
     this.onTrainingMore,
     this.scrollController,
+    this.homeController,
+    this.contentActive = true,
   });
 
   /// 外部传入的滚动控制器，用于联动主页 Header 高斯模糊等动态效果。
   final ScrollController? scrollController;
+
+  /// 首页真实内容控制器；独立设备页可不提供。
+  final HomeController? homeController;
+
+  /// 当前首页标签是否可见，用于轮播生命周期。
+  final bool contentActive;
 
   /// 当前已连接的设备实体模型。
   final Device device;
@@ -179,12 +188,48 @@ final class _HomeConnectedViewState extends State<HomeConnectedView>
             onCustomRhythm: widget.onCustomRhythm,
           ),
           const SizedBox(height: 16),
-          HomeTrainingCard(
-            fadeAnimation: _trainingFade,
-            onMore: widget.onTrainingMore,
-          ),
+          if (widget.homeController case final home?)
+            Obx(() {
+              final courses = home.dashboard.value.trainings;
+              return HomeTrainingCard(
+                fadeAnimation: _trainingFade,
+                training: courses.firstOrNull,
+                onMore: home.openTrainingList,
+                onTraining: courses.isEmpty
+                    ? null
+                    : () => home.openTraining(courses.first),
+              );
+            })
+          else
+            HomeTrainingCard(
+              fadeAnimation: _trainingFade,
+              onMore: widget.onTrainingMore,
+            ),
           const SizedBox(height: 16),
-          HomeAdvertisementCard(fadeAnimation: _adFade),
+          if (widget.homeController case final home?)
+            Obx(
+              () => HomeAdvertisementCard(
+                fadeAnimation: _adFade,
+                advertisements: home.dashboard.value.advertisements,
+                active: widget.contentActive,
+                onAdvertisement: (ad) => unawaited(home.openAdvertisement(ad)),
+              ),
+            ),
+          if (widget.homeController case final home?)
+            Obx(
+              () => Column(
+                children: [
+                  if (home.contentLoading.value)
+                    const LinearProgressIndicator(minHeight: 2),
+                  if (home.contentFailure.value case final failure?)
+                    AppInlineHint(
+                      icon: Icons.sync_problem_outlined,
+                      text: failure.message,
+                      onTap: () => unawaited(home.refreshContent(force: true)),
+                    ),
+                ],
+              ),
+            ),
           if (widget.failureMessage != null) ...[
             const SizedBox(height: 12),
             _buildFailureBanner(),
@@ -272,6 +317,8 @@ final class DeviceBodyContent extends StatelessWidget {
     this.topPaddingOverride,
     this.onPowerOff,
     this.scrollController,
+    this.homeController,
+    this.contentActive = true,
   });
 
   /// 设备主页控制器，持有设备列表和 BLE 发现状态；为空时从 Get 容器自动解析。
@@ -291,6 +338,12 @@ final class DeviceBodyContent extends StatelessWidget {
 
   /// 外部传入的滚动控制器，用于联动主页 Header 高斯模糊等动态效果。
   final ScrollController? scrollController;
+
+  /// 首页真实内容控制器；独立设备页可不提供。
+  final HomeController? homeController;
+
+  /// 当前首页标签是否可见，用于轮播生命周期。
+  final bool contentActive;
 
   @override
   Widget build(BuildContext context) {
@@ -330,7 +383,10 @@ final class DeviceBodyContent extends StatelessWidget {
       return RefreshIndicator(
         color: AppColors.secondary,
         backgroundColor: AppColors.surface,
-        onRefresh: activeController.reload,
+        onRefresh: () async {
+          await activeController.reload();
+          await homeController?.reload();
+        },
         child: HomeConnectedView(
           device: devices.first,
           isLoading: isLoading,
@@ -341,6 +397,8 @@ final class DeviceBodyContent extends StatelessWidget {
           onPowerOff: onPowerOff,
           onReload: () => unawaited(activeController.reload()),
           scrollController: scrollController,
+          homeController: homeController,
+          contentActive: contentActive,
         ),
       );
     });

@@ -155,9 +155,9 @@ final class DeviceProgramPlayback {
       }
       _busy = true;
       if (notifyBusy) _emit();
+      var succeeded = false;
       try {
-        final ok = await action();
-        result.complete(ok && sessionEpoch == _sessionEpoch);
+        succeeded = await action();
       } catch (error) {
         _freeze();
         _phase = DeviceProgramPlaybackPhase.interrupted;
@@ -169,7 +169,7 @@ final class DeviceProgramPlayback {
         _message = error is FormatException
             ? error.message
             : 'Unable to control the device. Please try again.';
-        result.complete(false);
+        succeeded = false;
       } finally {
         // 中断保留进度，但无需继续持有 Android 通知及唤醒锁。
         if (_phase != DeviceProgramPlaybackPhase.running) {
@@ -177,6 +177,8 @@ final class DeviceProgramPlayback {
         }
         _busy = false;
         _emit();
+        // 返回 Future 前先发布最终状态，避免刚停止后的 Restart 被旧 busy 拦截。
+        result.complete(succeeded && sessionEpoch == _sessionEpoch);
       }
     });
     return result.future;
@@ -202,8 +204,10 @@ final class DeviceProgramPlayback {
 
   /// 在队列内完成业务转换；无效输入不会停止正在播放的其他会话。
   Future<bool> prepareAndStart(
-    DeviceProgram Function() prepare,
-  ) => _serial(() async {
+    DeviceProgram Function() prepare, {
+    bool Function()? isCurrent,
+  }) => _serial(() async {
+    if (isCurrent?.call() == false) return false;
     if (_editing) {
       _message = 'Finish editing before starting playback.';
       return false;
@@ -228,7 +232,9 @@ final class DeviceProgramPlayback {
     }
     final sessionEpoch = _sessionEpoch;
     if (active && !await _stop()) return false;
-    if (sessionEpoch != _sessionEpoch) return false;
+    if (sessionEpoch != _sessionEpoch || isCurrent?.call() == false) {
+      return false;
+    }
     // 新来源接管前停止其拥有的通道，避免继承手动输出。
     final stopped = await port.send(program.stopCommand.toString(), target);
     if (stopped.isFailure) {
@@ -236,12 +242,14 @@ final class DeviceProgramPlayback {
       return false;
     }
     if (sessionEpoch != _sessionEpoch ||
+        isCurrent?.call() == false ||
         port.target?.remoteId != target.remoteId ||
         port.target?.modelId != target.modelId) {
       return false;
     }
     await _startBackground();
     if (sessionEpoch != _sessionEpoch ||
+        isCurrent?.call() == false ||
         port.target?.remoteId != target.remoteId ||
         port.target?.modelId != target.modelId) {
       return false;

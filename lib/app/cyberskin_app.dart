@@ -7,6 +7,7 @@ import '../core/theme/app_theme.dart';
 import '../features/content/data/content_configuration_cache.dart';
 import '../features/device/domain/device_repository.dart';
 import 'app_route_logger.dart';
+import 'app_route_visibility.dart';
 import 'app_routes.dart';
 import 'bindings/app_binding.dart';
 import 'floating_control_controller.dart';
@@ -36,6 +37,7 @@ final class CyberskinApp extends StatefulWidget {
 }
 
 final class _CyberskinAppState extends State<CyberskinApp> {
+  final _pageObserver = RouteObserver<PageRoute<dynamic>>();
   final FloatingControlObserver _floatingObserver = FloatingControlObserver(
     policies: AppRoutes.floatingControlPolicies,
     resetRoutes: {AppRoutes.home},
@@ -50,9 +52,13 @@ final class _CyberskinAppState extends State<CyberskinApp> {
       initialRoute: AppRoutes.init,
       getPages: AppRoutes.pages,
       routingCallback: (routing) => AppRouteLogger.record(widget.log, routing),
-      navigatorObservers: [_floatingObserver],
-      builder: (context, child) =>
-          FloatingDeviceControlOverlay(child: child ?? const SizedBox.shrink()),
+      navigatorObservers: [_floatingObserver, _pageObserver],
+      builder: (context, child) => AppRouteVisibility(
+        observer: _pageObserver,
+        child: FloatingDeviceControlOverlay(
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
       initialBinding: AppBinding(
         deviceRepository: widget.deviceRepository,
         contentConfigurationCache:

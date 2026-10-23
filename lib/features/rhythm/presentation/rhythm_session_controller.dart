@@ -59,10 +59,10 @@ final class RhythmSessionController extends GetxController {
   /// 当前详情片段与倒计时，独立订阅避免整页刷新。
   final infoIndex = 0.obs, infoRemaining = 0.obs, infoTotalRemaining = 0.obs;
 
-  /// 详情文件及能力加载中；独立于设备按钮请求。
+  /// 详情元数据及能力加载中；独立于设备按钮请求。
   final infoLoading = false.obs;
 
-  /// 完整程序和型号能力已准备好，只有此时允许播放和编辑。
+  /// 详情和型号能力已准备好，允许请求播放；播放/编辑另行加载完整文件。
   final infoReady = false.obs;
 
   /// 详情按钮请求与已结束标志。
@@ -128,7 +128,7 @@ final class RhythmSessionController extends GetxController {
     }
   }
 
-  /// 先展示列表元数据，再异步准备完整程序与能力；选择详情不会启动设备。
+  /// 先展示列表摘要，再准备详情短预览与能力，完整文件等 Start 才下载；选择详情不会启动设备。
   Future<void> select(Rhythm value) async {
     final generation = ++_selectionGeneration;
     final sessionGeneration = _sessionGeneration;
@@ -156,17 +156,16 @@ final class RhythmSessionController extends GetxController {
           infoError.value = 'Missing rhythm ID.';
           return;
         }
-        final detail = await repository.getById(selected.id!);
+        final detail = await repository.getById(
+          selected.id!,
+          loadProgram: false,
+        );
         if (!current()) return;
         if (detail.isFailure) {
           infoError.value = detail.failureOrNull!.message;
           return;
         }
         selected = detail.valueOrNull!;
-        if (!selected.hasCompleteProgram) {
-          infoError.value = 'Unable to load the complete rhythm.';
-          return;
-        }
         infoRhythm.value = selected;
         _setInfoTime(selected);
       }
@@ -192,7 +191,10 @@ final class RhythmSessionController extends GetxController {
   }
 
   void _setInfoTime(Rhythm value) {
-    final steps = value.segments.map((segment) => segment.program).toList();
+    final steps =
+        (value.hasCompleteProgram ? value.segments : value.previewSegments)
+            .map((segment) => segment.program)
+            .toList();
     infoRemaining.value = steps.isEmpty ? 0 : steps.first.durationSeconds;
     infoTotalRemaining.value =
         value.totalSeconds ??
@@ -224,12 +226,27 @@ final class RhythmSessionController extends GetxController {
     }
     infoBusy.value = true;
     final generation = _selectionGeneration;
-    final selected = infoRhythm.value!;
+    var selected = infoRhythm.value!;
     try {
       if (_following && playback.active) {
         await playback.stop();
         if (generation == _selectionGeneration) _apply(playback.snapshot);
       } else {
+        if (!selected.hasCompleteProgram) {
+          final loaded = await repository.getById(selected.id!);
+          if (generation != _selectionGeneration || isClosed) return;
+          if (loaded.isFailure) {
+            infoError.value = loaded.failureOrNull!.message;
+            return;
+          }
+          selected = loaded.valueOrNull!;
+          if (!selected.hasCompleteProgram) {
+            infoError.value = 'Unable to load the complete rhythm.';
+            return;
+          }
+          infoRhythm.value = selected;
+          _setInfoTime(selected);
+        }
         final ok = await start(
           selected,
           isCurrent: () => !isClosed && generation == _selectionGeneration,
@@ -267,7 +284,14 @@ final class RhythmSessionController extends GetxController {
       return false;
     }
 
-    final ok = await playback.start(value, result.valueOrNull!);
+    final ok = await playback.start(
+      value,
+      result.valueOrNull!,
+      isCurrent: () =>
+          !isClosed &&
+          generation == _sessionGeneration &&
+          isCurrent?.call() != false,
+    );
     if (generation != _sessionGeneration) return false;
     if (ok) capabilities.assignAll(result.valueOrNull!);
     return ok;

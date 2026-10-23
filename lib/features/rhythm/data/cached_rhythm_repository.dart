@@ -109,19 +109,21 @@ final class CachedRhythmRepository implements RhythmRepository {
   }
 
   @override
-  Future<Result<Rhythm>> getById(int id) async {
+  Future<Result<Rhythm>> getById(int id, {bool loadProgram = true}) async {
     final owner = await store.owner();
     final result = await remote.getById(id);
     if (!await _sameOwner(owner)) return _signedOut();
     if (result.isSuccess) {
       final metadata = result.valueOrNull!;
       await _merge(owner, metadata);
+      if (!loadProgram) return result;
       // 已取得新版元数据后下载失败不能回退为旧版程序。
       return _hydrate(metadata, owner, cachedOnly: false);
     }
     if (result.failureOrNull?.code == FailureCode.network) {
       final matches = (await _read(owner)).where((r) => r.id == id);
       if (matches.isNotEmpty) {
+        if (!loadProgram) return Result.ok(matches.first);
         return _hydrate(matches.first, owner, cachedOnly: true);
       }
     }

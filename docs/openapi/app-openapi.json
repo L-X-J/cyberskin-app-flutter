@@ -11,7 +11,7 @@
   "servers": [
     {
       "url": "http://127.0.0.1:8090",
-      "description": "Generated server url"
+      "description": "Configured server url"
     }
   ],
   "paths": {
@@ -1030,6 +1030,18 @@
         "summary": "查询已发布训练课程。",
         "description": "查询已发布训练课程。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
         "operationId": "list_2",
+        "parameters": [
+          {
+            "name": "deviceModelId",
+            "in": "query",
+            "description": "可选设备型号 ID，按发布快照筛选",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
         "responses": {
           "401": {
             "description": "Unauthorized",
@@ -1088,11 +1100,56 @@
             }
           },
           "200": {
-            "description": "课程详情、已发布 stages 和 customMode 打点",
+            "description": "已发布详情、最多三段短预览及 JSON 文件地址",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/RAppTrainingDetailVo"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/app/v1/home": {
+      "get": {
+        "tags": [
+          "App-首页"
+        ],
+        "summary": "查询首页内容",
+        "description": "公开接口。训练为已发布且启用课程，可按型号筛选；广告为 online 且投放时间有效的通用广告。每类最多三条，按 sort ASC、id DESC 排序。<br><h3>访问权限</h3><br>> **权限策略**：忽略权限检查<br>",
+        "operationId": "home",
+        "parameters": [
+          {
+            "name": "deviceModelId",
+            "in": "query",
+            "description": "可选设备型号 ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAppHomeVo"
                 }
               }
             }
@@ -1478,7 +1535,7 @@
           },
           "previewSegments": {
             "type": "array",
-            "description": "前 3 个节奏片段的短快照；仅供列表预览，不能用于完整播放",
+            "description": "最多前 3 个片段的短快照；仅详情/保存响应返回，不能用于完整播放",
             "items": {
               "$ref": "#/components/schemas/CommonProgramItem"
             }
@@ -2269,8 +2326,8 @@
           },
           "intensity": {
             "type": "string",
-            "description": "强度",
-            "example": "medium"
+            "description": "后台发布的课程强度，字符串 1–10",
+            "example": "5"
           },
           "sort": {
             "type": "integer",
@@ -2341,8 +2398,8 @@
           },
           "intensity": {
             "type": "string",
-            "description": "强度",
-            "example": "medium"
+            "description": "后台发布的课程强度，字符串 1–10",
+            "example": "5"
           },
           "sort": {
             "type": "integer",
@@ -2360,20 +2417,19 @@
             "type": "string",
             "description": "已发布课程说明 HTML"
           },
-          "stages": {
-            "type": "array",
-            "description": "课程阶段列表；元素结构由训练协议定义",
-            "items": {
-              "type": "object",
-              "additionalProperties": {}
-            }
+          "programUrl": {
+            "type": "string",
+            "description": "完整标准打点 JSON 的稳定文件地址，作为 App 文件缓存键"
           },
-          "customMode": {
+          "programDownloadUrl": {
+            "type": "string",
+            "description": "有效 15 分钟的签名下载地址；App 点击 Start 后才下载"
+          },
+          "previewSegments": {
             "type": "array",
-            "description": "已发布 customMode 打点列表；元素字段为 start-end、des、command_data",
+            "description": "最多前 3 个片段的预览快照，不能作为完整播放程序；仅详情返回",
             "items": {
-              "type": "object",
-              "additionalProperties": {}
+              "$ref": "#/components/schemas/CommonProgramItem"
             }
           }
         }
@@ -2441,6 +2497,85 @@
           }
         }
       },
+      "AppAdVo": {
+        "type": "object",
+        "description": "App 广告位条目",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "广告 ID",
+            "example": 10001
+          },
+          "imageUrl": {
+            "type": "string",
+            "description": "广告图片 URL"
+          },
+          "titleEn": {
+            "type": "string",
+            "description": "英文标题"
+          },
+          "subtitleEn": {
+            "type": "string",
+            "description": "英文副标题"
+          },
+          "jumpType": {
+            "type": "string",
+            "description": "跳转类型",
+            "example": "url"
+          },
+          "jumpTarget": {
+            "type": "string",
+            "description": "跳转目标",
+            "example": "https://example.com/activity"
+          },
+          "sort": {
+            "type": "integer",
+            "format": "int32",
+            "description": "排序值，越小越靠前",
+            "example": 1
+          }
+        }
+      },
+      "AppHomeVo": {
+        "type": "object",
+        "description": "首页已发布内容，每类最多三条，按 sort 升序、id 倒序",
+        "properties": {
+          "trainings": {
+            "type": "array",
+            "description": "课程摘要，最多三条",
+            "items": {
+              "$ref": "#/components/schemas/AppTrainingSummaryVo"
+            }
+          },
+          "advertisements": {
+            "type": "array",
+            "description": "当前有效的通用广告，最多三条",
+            "items": {
+              "$ref": "#/components/schemas/AppAdVo"
+            }
+          }
+        }
+      },
+      "RAppHomeVo": {
+        "type": "object",
+        "description": "响应信息主体",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "响应状态码"
+          },
+          "msg": {
+            "type": "string",
+            "description": "响应提示信息"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AppHomeVo",
+            "description": "响应业务数据"
+          }
+        }
+      },
       "AppDeviceSummaryVo": {
         "type": "object",
         "description": "App 设备型号摘要",
@@ -2500,46 +2635,6 @@
             "items": {
               "$ref": "#/components/schemas/AppDeviceSummaryVo"
             }
-          }
-        }
-      },
-      "AppAdVo": {
-        "type": "object",
-        "description": "App 广告位条目",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "description": "广告 ID",
-            "example": 10001
-          },
-          "imageUrl": {
-            "type": "string",
-            "description": "广告图片 URL"
-          },
-          "titleEn": {
-            "type": "string",
-            "description": "英文标题"
-          },
-          "subtitleEn": {
-            "type": "string",
-            "description": "英文副标题"
-          },
-          "jumpType": {
-            "type": "string",
-            "description": "跳转类型",
-            "example": "url"
-          },
-          "jumpTarget": {
-            "type": "string",
-            "description": "跳转目标",
-            "example": "https://example.com/activity"
-          },
-          "sort": {
-            "type": "integer",
-            "format": "int32",
-            "description": "排序值，越小越靠前",
-            "example": 1
           }
         }
       },

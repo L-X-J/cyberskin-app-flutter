@@ -23,6 +23,9 @@ import '../features/rhythm/presentation/pages/home/rhythm_home_controller.dart';
 import '../features/rhythm/presentation/pages/home/rhythm_home_page.dart';
 import '../features/rhythm/presentation/pages/info/rhythm_info_page.dart';
 import '../features/rhythm/presentation/rhythm_edit_guard.dart';
+import '../features/training/presentation/pages/home/training_home_page.dart';
+import '../features/training/presentation/pages/info/training_info_page.dart';
+import '../features/training/presentation/training_binding.dart';
 import '../features/video/presentation/video_binding.dart';
 import '../features/video/presentation/video_browser_page.dart';
 import '../features/video/presentation/video_page.dart';
@@ -61,6 +64,15 @@ abstract final class AppRoutes {
   /// 自由控制模式路由。
   static const String freeControl = '/control/free';
 
+  /// 训练列表和按 ID 独立加载的详情路由。
+  static const trainingHome = '/training';
+
+  /// 按课程主键加载完整详情。
+  static const trainingInfo = '/training/info/:id';
+
+  /// 生成具体课程的命名路由。
+  static String trainingInfoPath(int id) => '/training/info/$id';
+
   /// 自定义节奏列表，断连仍可浏览。
   static const rhythmHome = '/rhythm';
 
@@ -79,6 +91,8 @@ abstract final class AppRoutes {
     videoBrowser: FloatingControlPolicy.draggable,
     profile: FloatingControlPolicy.draggable,
     freeControl: FloatingControlPolicy.hidden,
+    trainingHome: FloatingControlPolicy.fixed,
+    trainingInfo: FloatingControlPolicy.hidden,
     rhythmHome: FloatingControlPolicy.fixed,
     rhythmEdit: FloatingControlPolicy.hidden,
     rhythmInfo: FloatingControlPolicy.hidden,
@@ -114,6 +128,17 @@ abstract final class AppRoutes {
   /// 重新包装成 `GetPage<dynamic>`，因此此处声明的泛型不会传到最终路由上。
   /// 命名路由一律派发 `Route<dynamic>`，`Get.toNamed<T>` 不能依赖 `T` 做类型转换。
   static final List<GetPage<dynamic>> pages = <GetPage<dynamic>>[
+    GetPage<void>(
+      name: trainingHome,
+      page: () => const TrainingHomePage(),
+      binding: TrainingBinding(),
+      middlewares: [RouteAuthMiddleware()],
+    ),
+    GetPage<void>(
+      name: trainingInfo,
+      page: () => const TrainingInfoPage(),
+      middlewares: [RouteAuthMiddleware()],
+    ),
     GetPage<void>(
       name: rhythmHome,
       page: () => const RhythmHomePage(),

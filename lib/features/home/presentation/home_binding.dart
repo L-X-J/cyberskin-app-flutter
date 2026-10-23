@@ -1,17 +1,17 @@
+// 首页、设备标签及视频的局部依赖绑定，内容经 HomeRepository 聚合。
 import 'package:get/get.dart';
 
 import '../../../app/session_controller.dart';
-import '../../content/domain/repositories/content_repository.dart';
 import '../../control/domain/device_command_repository.dart';
 import '../../device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../device/domain/device_repository.dart';
 import '../../device/domain/repositories/device_catalog_repository.dart';
 import '../../device/domain/repositories/user_device_repository.dart';
 import '../../device/presentation/device_home_controller.dart';
-import '../../training/domain/repositories/training_repository.dart';
-import '../../video/domain/repositories/video_repository.dart';
 import '../../video/domain/repositories/local_video_repository.dart';
+import '../../video/domain/repositories/video_repository.dart';
 import '../../video/presentation/video_controller.dart';
+import '../domain/repositories/home_repository.dart';
 import 'home_controller.dart';
 
 /// 注册主页生命周期内的展示层控制器。
@@ -48,8 +48,7 @@ final class HomeBinding extends Bindings {
         deviceRepository: Get.find<DeviceRepository>(),
         userDeviceRepository: Get.find<UserDeviceRepository>(),
         deviceCatalogRepository: Get.find<DeviceCatalogRepository>(),
-        trainingRepository: Get.find<TrainingRepository>(),
-        contentRepository: Get.find<ContentRepository>(),
+        homeRepository: Get.find<HomeRepository>(),
         bleCoordinator: Get.find<CyberskinBleRuntimeCoordinator>(),
         deviceCommandRepository: Get.find<DeviceCommandRepository>(),
       ),

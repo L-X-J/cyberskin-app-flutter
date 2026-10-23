@@ -1,13 +1,7 @@
-# training Feature
+# Training
 
-训练课程与运行业务域，负责课程浏览、启动、进度和运行状态。
+- `domain/`：不可变摘要、详情、Repository 抽象和公共程序编译门禁。
+- `data/`：训练列表／详情远端读取；列表可按型号筛选，详情返回文件 URL 和最多3段预览，Start 才下载完整 JSON。
+- `presentation/`：列表页、详情预览、应用级会话控制器和命名路由 Binding。
 
-当前目录仅完成分层骨架。领域课程模型与运行规则进入 `domain/`，课程 API、缓存和
-设备执行适配进入 `data/`，相关页面与控制状态进入 `presentation/`。
-
-目录与文件：
-
-- `data/`：训练课程远端 Repository；当前有 `training_remote_repository.dart`。
-- `domain/`：课程、阶段、进度和运行规则的领域边界；下含 `entities/`、`repositories/`。
-- `presentation/`：课程列表、详情和运行页的预留展示层，当前无 Dart 文件。
-- 当前 Feature 根目录无 Dart 文件。
+页面只渲染状态，课程通过唯一 DeviceProgramPlayback 与 rhythm 互斥。短预览与完整文件分离，不保留旧 stages 兼容。布局和手工验收约定见 `docs/ui/pages/training.md`。

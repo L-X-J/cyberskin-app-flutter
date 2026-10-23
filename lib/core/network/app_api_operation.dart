@@ -17,6 +17,9 @@ enum ApiHttpMethod {
 
 /// OpenAPI `docs/openapi/app-openapi.json` 中的全部 App 操作标识。
 enum AppApiOperation {
+  /// 获取首页聚合内容。
+  home,
+
   /// 获取节奏详情。
   rhythmDetail,
 
@@ -137,9 +140,15 @@ abstract final class AppApiOperations {
   static AppApiOperationSpec spec(AppApiOperation operation) =>
       _specs[operation]!;
 
-  /// OpenAPI 29 个操作到稳定传输契约的私有映射。
+  /// OpenAPI 30 个操作到稳定传输契约的私有映射。
   static const Map<AppApiOperation, AppApiOperationSpec> _specs =
       <AppApiOperation, AppApiOperationSpec>{
+        AppApiOperation.home: AppApiOperationSpec(
+          method: ApiHttpMethod.get,
+          path: '/app/v1/home',
+          requiresAuthentication: false,
+        ),
+
         /// 查询当前用户某条自定义节奏的详情。
         AppApiOperation.rhythmDetail: AppApiOperationSpec(
           method: ApiHttpMethod.get,

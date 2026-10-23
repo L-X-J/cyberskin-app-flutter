@@ -9,8 +9,10 @@ import '../../../../app/widgets/app_glass_surfaces.dart';
 import '../../../../app/widgets/app_scaffold.dart';
 import '../../../../core/theme/app_layered_gradient_style.dart';
 import '../../../../core/widgets/app_layered_gradient_card.dart';
+import '../../../content/domain/entities/app_content.dart';
 import '../../../device/domain/repositories/device_catalog_repository.dart';
 import '../../../device/presentation/device_model_card.dart';
+import '../home_connected/home_advertisement_card.dart';
 import '../home_controller.dart';
 import '../home_dashboard.dart';
 import '../states/home_ble_card_state.dart';
@@ -41,6 +43,8 @@ final class HomeDisconnectedView extends StatelessWidget {
     this.topHeaderPadding,
     this.exitAnimation,
     this.scrollController,
+    this.onAdvertisement,
+    this.contentActive = true,
   });
 
   /// 主页冻结可渲染数据（含设备型号列表与推荐内容）。
@@ -105,6 +109,12 @@ final class HomeDisconnectedView extends StatelessWidget {
   /// 外部传入的滚动控制器，用于联动主页 Header 高斯模糊等动态效果。
   final ScrollController? scrollController;
 
+  /// 广告点击跳转回调。
+  final ValueChanged<AppAdvertisement>? onAdvertisement;
+
+  /// 首页内容标签当前是否可见。
+  final bool contentActive;
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = AppScaffold.contentBottomPaddingOf(
@@ -142,6 +152,8 @@ final class HomeDisconnectedView extends StatelessWidget {
             const SizedBox(height: 10),
             _buildEmptyModelHint(),
           ],
+          const SizedBox(height: 16),
+          _buildAdvertisementCard(),
           if (failureMessage != null) ...[
             const SizedBox(height: 12),
             _buildFailureBanner(),
@@ -152,6 +164,20 @@ final class HomeDisconnectedView extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  /// 构建运营广告位卡片。
+  Widget _buildAdvertisementCard() {
+    final card = HomeAdvertisementCard(
+      advertisements: dashboard.advertisements,
+      active: contentActive,
+      onAdvertisement: onAdvertisement,
+    );
+    if (exitAnimation == null) return card;
+    return FadeTransition(
+      opacity: ReverseAnimation(exitAnimation!),
+      child: card,
     );
   }
 
@@ -391,8 +417,9 @@ final class _DeviceModelGrid extends StatelessWidget {
                   exitAnimation != null && exitAnimation!.value > 0;
               final rawTag =
                   'device-model-${entries[i].model.id ?? entries[i].title}';
-              final heroTag =
-                  (!isExiting && usedHeroTags.add(rawTag)) ? rawTag : null;
+              final heroTag = (!isExiting && usedHeroTags.add(rawTag))
+                  ? rawTag
+                  : null;
 
               final cardWidget = _ModelCard(
                 preview: entries[i],
@@ -414,8 +441,10 @@ final class _DeviceModelGrid extends StatelessWidget {
                                 (i == 0 ? -1 : 1),
                             0,
                           ),
-                          child:
-                              FadeTransition(opacity: fadeOut!, child: child),
+                          child: FadeTransition(
+                            opacity: fadeOut!,
+                            child: child,
+                          ),
                         ),
                         child: cardWidget,
                       ),
@@ -484,11 +513,7 @@ final class _ModelPreview {
 /// 型号入口展示卡片。
 final class _ModelCard extends StatelessWidget {
   /// 创建型号入口卡片组件。
-  const _ModelCard({
-    required this.preview,
-    required this.onTap,
-    this.heroTag,
-  });
+  const _ModelCard({required this.preview, required this.onTap, this.heroTag});
 
   /// 卡片渲染用的预览模型数据。
   final _ModelPreview preview;

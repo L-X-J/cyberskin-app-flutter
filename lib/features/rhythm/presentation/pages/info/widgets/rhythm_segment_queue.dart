@@ -25,6 +25,10 @@ final class RhythmSegmentQueue extends StatefulWidget {
   /// 同一运行快照引用用于识别真实片段推进。
   final Rhythm rhythm;
 
+  /// 详情短预览独立于完整执行输入，不能回写到 rhythm.segments。
+  List<RhythmSegment> get visibleSegments =>
+      rhythm.hasCompleteProgram ? rhythm.segments : rhythm.previewSegments;
+
   /// 片段位置与当前剩余秒数。
   final int index, remaining;
 
@@ -89,11 +93,11 @@ final class _RhythmSegmentQueueState extends State<RhythmSegmentQueue>
   Widget _card(RhythmSegmentQueue source, int index, {bool preview = false}) =>
       RhythmSegmentCard(
         key: ValueKey(('segment', source.rhythm, index)),
-        segment: source.rhythm.segments[index],
+        segment: source.visibleSegments[index],
         capabilities: source.capabilities,
         remainingSeconds: preview ? null : source.remaining,
         running: true,
-        nextIn: !preview && index + 1 < source.rhythm.segments.length
+        nextIn: !preview && index + 1 < source.visibleSegments.length
             ? source.remaining
             : null,
       );
@@ -104,7 +108,7 @@ final class _RhythmSegmentQueueState extends State<RhythmSegmentQueue>
     builder: (context, _) {
       final t = Curves.easeInOutCubic.transform(_motion.value);
       final old = t < 1 ? _outgoing : null;
-      final hasNext = widget.index + 1 < widget.rhythm.segments.length;
+      final hasNext = widget.index + 1 < widget.visibleSegments.length;
       // 顺序是绘制顺序：预览在底层，当前在中层，退出卡在顶层。
       return _DeckLayout(
         progress: old == null ? 1 : t,

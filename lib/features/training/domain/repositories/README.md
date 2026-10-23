@@ -1,10 +1,3 @@
 # training/domain/repositories 目录
 
-包含已发布训练课程列表和详情的 Repository 抽象。
-
-后续进度和运行状态可在保持该边界的前提下扩展；接口不暴露 API 响应、数据库记录或设备
-命令结构，实现由 `training/data` 提供。
-
-文件职责：
-
-- `training_repository.dart`：定义已发布课程列表和课程详情查询接口。
+- `training_repository.dart`：定义按型号筛选的摘要列表、详情元数据读取及明确 Start 后加载完整文件的接口。调用方不接触签名、磁盘和 HTTP 实现。

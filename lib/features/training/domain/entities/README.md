@@ -1,12 +1,3 @@
 # training/domain/entities 目录
 
-包含训练课程摘要、详情、开放 stages 协议和稳定 customMode 打点模型。
-
-`stages` 的协议结构尚未在 OpenAPI 细化，保持不可变原始 JSON；`customMode` 的
-`start-end`、`des`、`command_data` 已显式建模，命令文本可由协议层验证。
-
-文件职责：
-
-- `training.dart`：定义课程摘要、课程详情、开放阶段协议和 `customMode` 打点模型。
-
-`TrainingCustomMode.toProgramSegment()` 对接公共标准打点与 `CommonProgramCompiler`，复用节奏播放；Training 后端持久化本次未迁移。
+- `training.dart`：不可变课程摘要、文件身份、详情短预览及完整 JSON 打点。`previewSegments` 至多三段且与下载后的 `customModes` 分离，不能用于完整播放；`TrainingCustomMode.toProgramSegment()` 对接公共协议与编译器。不再读取 stages 旧格式。

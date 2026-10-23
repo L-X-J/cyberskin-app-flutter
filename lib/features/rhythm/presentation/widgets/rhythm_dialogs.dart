@@ -109,6 +109,20 @@ Future<bool> openRhythmEditor({Rhythm? rhythm}) async {
     return false;
   }
   try {
+    var selected = rhythm;
+    if (selected != null && !selected.hasCompleteProgram) {
+      final loaded = await session.repository.getById(selected.id!);
+      if (session.isClosed) return false;
+      if (loaded.isFailure || loaded.valueOrNull?.hasCompleteProgram != true) {
+        Get.snackbar(
+          'Unable to edit',
+          loaded.failureOrNull?.message ??
+              'Unable to load the complete rhythm.',
+        );
+        return false;
+      }
+      selected = loaded.valueOrNull!;
+    }
     // Get 的全局路由树用 `List<GetPage>` 保存页面，匹配时由 `copy()` 重新包装为
     // `GetPage<dynamic>`，所以命名路由实际总是派发出 `Route<dynamic>`。这里不能用
     // `Get.toNamed<bool>`：`Navigator.pushNamed<bool>` 会把结果强转为
@@ -116,7 +130,7 @@ Future<bool> openRhythmEditor({Rhythm? rhythm}) async {
     // 因此改为接收 dynamic 后再做运行时校验，同时兼容结果缺失。
     final result = await Get.toNamed<dynamic>(
       AppRoutes.rhythmEdit,
-      arguments: rhythm,
+      arguments: selected,
     );
     return result == true;
   } finally {

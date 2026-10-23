@@ -199,7 +199,7 @@ final class _RhythmHomePageState extends State<RhythmHomePage> {
     if (_openingInfo || controller.acting.value) return;
     _openingInfo = true;
     try {
-      // 立即跳转，完整 JSON 和能力由详情状态异步准备并显示 loading。
+      // 立即跳转，详情异步准备短预览和能力；完整 JSON 等 Start 才下载。
       unawaited(session.select(item));
       await Get.toNamed<void>(AppRoutes.rhythmInfo);
     } finally {

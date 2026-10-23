@@ -10,10 +10,13 @@ import 'package:cyberskin_app/features/auth/domain/auth_repository.dart';
 import 'package:cyberskin_app/features/content/data/content_configuration_cache.dart';
 import 'package:cyberskin_app/features/content/data/content_remote_repository.dart';
 import 'package:cyberskin_app/features/content/domain/entities/app_content.dart';
+import 'package:cyberskin_app/features/control/data/common_program_file_cache.dart';
+import 'package:cyberskin_app/features/control/domain/entities/common_program_segment.dart';
 import 'package:cyberskin_app/features/device/data/device_api_repositories.dart';
 import 'package:cyberskin_app/features/device/domain/repositories/user_device_repository.dart';
 import 'package:cyberskin_app/features/feedback/data/feedback_remote_repository.dart';
 import 'package:cyberskin_app/features/feedback/domain/entities/feedback.dart';
+import 'package:cyberskin_app/features/home/data/home_remote_repository.dart';
 import 'package:cyberskin_app/features/profile/data/profile_remote_repository.dart';
 import 'package:cyberskin_app/features/profile/domain/repositories/profile_repository.dart';
 import 'package:cyberskin_app/features/rhythm/data/rhythm_remote_repository.dart';
@@ -68,6 +71,7 @@ final class _RecordedRequest {
 final class _RecordingTransport implements ApiTransport {
   final List<_RecordedRequest> requests = <_RecordedRequest>[];
   final List<Uri> textRequests = <Uri>[];
+  final overrides = <AppApiOperation, Object>{};
 
   @override
   Future<String> fetchText(Uri uri) async {
@@ -90,7 +94,10 @@ final class _RecordingTransport implements ApiTransport {
         body: body,
       ),
     );
-    return ApiRawResponse(statusCode: 200, body: _success(_dataFor(operation)));
+    return ApiRawResponse(
+      statusCode: 200,
+      body: _success(overrides[operation] ?? _dataFor(operation)),
+    );
   }
 }
 
@@ -130,6 +137,10 @@ Map<String, dynamic> _success(Object? data) => <String, dynamic>{
 };
 
 Object? _dataFor(AppApiOperation operation) => switch (operation) {
+  AppApiOperation.home => <String, dynamic>{
+    'trainings': <Object>[],
+    'advertisements': <Object>[],
+  },
   AppApiOperation.rhythmDetail ||
   AppApiOperation.updateRhythm ||
   AppApiOperation.createRhythm => <String, dynamic>{
@@ -176,6 +187,7 @@ Object? _dataFor(AppApiOperation operation) => switch (operation) {
       <String, dynamic>{
         'tab': 'intro',
         'contentUrl': 'https://cdn.example.test/manual/intro.html',
+        'contentHtml': '<h2>Remote manual</h2>',
       },
     ],
   },
@@ -203,12 +215,12 @@ Object? _dataFor(AppApiOperation operation) => switch (operation) {
   ],
   AppApiOperation.trainingDetail => <String, dynamic>{
     'id': 1,
-    'stages': <Map<String, dynamic>>[
-      <String, dynamic>{'duration': 10},
-    ],
-    'customMode': <Map<String, dynamic>>[
+    'programUrl': 'https://store.example.test/training.json',
+    'programDownloadUrl':
+        'https://store.example.test/training.json?signature=1',
+    'previewSegments': <Map<String, dynamic>>[
       <String, dynamic>{
-        'start-end': '0-10',
+        'start-end': '00:00-00:10',
         'des': 'Warmup',
         'command_data': 'v:1',
       },
@@ -238,6 +250,48 @@ Object? _dataFor(AppApiOperation operation) => switch (operation) {
 };
 
 void main() {
+  test('training metadata never downloads; Start hydrates all four segments rather than the three previews', () async {
+    final transport = _RecordingTransport();
+    final rows = List.generate(
+      4,
+      (i) => {
+        'start-end': '00:0$i-00:0${i + 1}',
+        'des': 'Step $i',
+        'command_data': 't:40',
+      },
+    );
+    transport.overrides[AppApiOperation.trainingDetail] = {
+      'id': 1,
+      'deviceModelId': 1,
+      'intensity': '6',
+      'stageCount': 4,
+      'totalSeconds': 4,
+      'programUrl': 'https://store.test/program.json',
+      'programDownloadUrl': 'https://store.test/program.json?signed=1',
+      'previewSegments': rows.take(3).toList(),
+    };
+    final files = _ProgramFiles(
+      rows.map(CommonProgramSegment.fromJson).toList(),
+    );
+    final repository = TrainingRemoteRepository(
+      transport: transport,
+      sessionStore: _MemorySessionStore(_session()),
+      programFiles: files,
+    );
+    final metadata = (await repository.getTraining(1)).valueOrNull!;
+    expect(metadata.previewSegments, hasLength(3));
+    expect(metadata.customModes, isEmpty);
+    expect(files.reads, 0);
+    expect(files.downloads, 0);
+    final loaded = await repository.loadProgram(metadata);
+    expect(loaded.valueOrNull!.customModes, hasLength(4));
+    expect(files.downloads, 1);
+    expect(files.downloadUrl, contains('signed=1'));
+    files.values = files.values.take(3).toList();
+    expect((await repository.loadProgram(metadata)).isFailure, isTrue);
+    expect(files.removals, 1);
+  });
+
   test(
     'rhythm metadata contains preview and statistics without playable segments',
     () async {
@@ -284,6 +338,7 @@ void main() {
       final training = TrainingRemoteRepository(
         transport: transport,
         sessionStore: store,
+        programFiles: _UnusedProgramFiles(),
       );
       final video = VideoRemoteRepository(
         transport: transport,
@@ -360,8 +415,21 @@ void main() {
       );
       await video.listOfficialVideos(pageNumber: 2, pageSize: 3);
       await version.check(platform: 'ios', versionCode: 1);
-      await training.listTrainings();
-      await training.getTraining(1);
+      final home = await HomeRemoteRepository(
+        transport: transport,
+        sessionStore: store,
+      ).getHome(deviceModelId: 2);
+      expect(home.isSuccess, isTrue);
+      expect(transport.requests.last.queryParameters, {'deviceModelId': 2});
+      await training.listTrainings(deviceModelId: 2);
+      expect(transport.requests.last.queryParameters, {'deviceModelId': 2});
+      final trainingMetadata = (await training.getTraining(1)).valueOrNull!;
+      expect(trainingMetadata.customModes, isEmpty);
+      expect(trainingMetadata.previewSegments, hasLength(1));
+      expect(
+        trainingMetadata.programUrl,
+        'https://store.example.test/training.json',
+      );
       await catalog.listDeviceModels();
       await catalog.getDeviceModelDetail(2);
       final manual = await catalog.getManual(2);
@@ -380,10 +448,8 @@ void main() {
         transport.requests.map((item) => item.operation).toSet(),
         AppApiOperation.values.toSet(),
       );
-      expect(transport.requests, hasLength(29));
-      expect(transport.textRequests, <Uri>[
-        Uri.parse('https://cdn.example.test/manual/intro.html'),
-      ]);
+      expect(transport.requests, hasLength(30));
+      expect(transport.textRequests, isEmpty);
       final videoRequest = transport.requests.singleWhere(
         (item) => item.operation == AppApiOperation.officialVideos,
       );
@@ -407,4 +473,33 @@ void main() {
       });
     },
   );
+}
+
+class _UnusedProgramFiles extends Fake implements CommonProgramFileCache {}
+
+class _ProgramFiles extends Fake implements CommonProgramFileCache {
+  _ProgramFiles(this.values);
+  List<CommonProgramSegment> values;
+  int reads = 0, downloads = 0, removals = 0;
+  String? downloadUrl;
+  @override
+  Future<List<CommonProgramSegment>?> readCached(String url) async {
+    reads++;
+    return null;
+  }
+
+  @override
+  Future<List<CommonProgramSegment>> load({
+    required String url,
+    required String downloadUrl,
+  }) async {
+    downloads++;
+    this.downloadUrl = downloadUrl;
+    return values;
+  }
+
+  @override
+  Future<void> remove(String url) async {
+    removals++;
+  }
 }

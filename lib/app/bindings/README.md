@@ -8,3 +8,5 @@ GetX 依赖注入装配目录。
 
 绑定只负责组装依赖，不实现业务规则。需要替换实现时，应通过构造函数或绑定层注入，
 避免页面自行查找或创建底层服务。
+
+AppBinding 同时注册 HomeRepository 和 TrainingSessionController；训练会话与 RhythmPlayback 共用同一个 DeviceProgramPlayback，不在页面创建第二个引擎。

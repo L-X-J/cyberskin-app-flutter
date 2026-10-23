@@ -17,6 +17,7 @@ final class CompactGlassButton extends StatelessWidget {
     this.icon,
     this.iconWidget,
     this.width,
+    this.height,
     this.iconOnly = false,
   });
 
@@ -34,6 +35,7 @@ final class CompactGlassButton extends StatelessWidget {
 
   /// 按钮固定宽度；为空时根据内容自适应。
   final double? width;
+  final double? height;
 
   /// 是否仅展示图标内容。
   final bool iconOnly;
@@ -48,9 +50,9 @@ final class CompactGlassButton extends StatelessWidget {
       onPressed: onPressed,
       variant: AppLiquidGlassButtonVariant.translucent,
       width: width,
-      height: 32,
-      borderRadius: 12,
-      iconSize: 18,
+      height: height ?? 32,
+      borderRadius: 90,
+      iconSize: 12,
       contentPadding: const EdgeInsets.symmetric(horizontal: 10),
       textStyle: const TextStyle(
         fontSize: AppTypography.size12,

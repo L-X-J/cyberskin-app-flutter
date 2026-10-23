@@ -224,10 +224,11 @@ final class ControlSessionController extends GetxController {
     final playback = _programPlayback;
     if (playback?.editing == true) return;
     if (playback?.active == true) {
-      if (playback!.snapshot.phase == DeviceProgramPlaybackPhase.running) {
-        await playback.pause();
+      final expected = playback!.snapshot.program;
+      if (playback.snapshot.phase == DeviceProgramPlaybackPhase.running) {
+        await playback.pause(expectedProgram: expected);
       } else {
-        await playback.resume();
+        await playback.resume(expectedProgram: expected);
       }
       return;
     }

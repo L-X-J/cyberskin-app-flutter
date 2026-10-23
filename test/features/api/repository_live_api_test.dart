@@ -13,6 +13,7 @@ import 'package:cyberskin_app/features/auth/domain/auth_repository.dart';
 import 'package:cyberskin_app/features/content/data/content_configuration_cache.dart';
 import 'package:cyberskin_app/features/content/data/content_remote_repository.dart';
 import 'package:cyberskin_app/features/content/domain/entities/app_content.dart';
+import 'package:cyberskin_app/features/control/data/common_program_file_cache.dart';
 import 'package:cyberskin_app/features/device/data/device_api_repositories.dart';
 import 'package:cyberskin_app/features/device/domain/repositories/user_device_repository.dart';
 import 'package:cyberskin_app/features/feedback/data/feedback_remote_repository.dart';
@@ -122,6 +123,7 @@ void main() {
     final training = TrainingRemoteRepository(
       transport: transport,
       sessionStore: sessionStore,
+      programFiles: CommonProgramFileCache(),
     );
     final video = VideoRemoteRepository(
       transport: transport,

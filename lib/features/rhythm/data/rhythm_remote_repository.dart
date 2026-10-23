@@ -25,11 +25,12 @@ final class RhythmRemoteRepository extends BaseRemoteRepository
       );
 
   @override
-  Future<Result<Rhythm>> getById(int id) => request<Rhythm>(
-    AppApiOperation.rhythmDetail,
-    pathParameters: <String, Object?>{'id': id},
-    decode: _decodeRhythmObject,
-  );
+  Future<Result<Rhythm>> getById(int id, {bool loadProgram = true}) =>
+      request<Rhythm>(
+        AppApiOperation.rhythmDetail,
+        pathParameters: <String, Object?>{'id': id},
+        decode: _decodeRhythmObject,
+      );
 
   @override
   Future<Result<Rhythm>> create(RhythmCreateRequest request) =>

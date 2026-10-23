@@ -40,3 +40,6 @@ Feature 的组件留在对应 `presentation` 目录；不得为减少少量重�
 只从模糊后的边缘透出。未指定高度时由内容定高，支持 ListView 的无界高度约束。
 `AppLayeredGradientCard.scan` 使用扫描卡主题预设；`innerShadowSpread` 为非负内扩散量，
 通过收缩阴影遮罩的透明孔洞实现，默认零以保持其他卡片效果。
+
+- `app_html_content.dart`：通用 HTML 内容加载与渲染组件。
+- `app_list_entrance.dart`：业务无关的列表条目首次出现时淡入上移；完成后保持终态，不响应刷新重播。

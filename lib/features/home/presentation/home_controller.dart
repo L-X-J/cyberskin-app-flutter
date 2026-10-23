@@ -1,4 +1,5 @@
 // 主页状态、BLE 自动发现与多 Repository 数据聚合编排。
+// ignore_for_file: prefer_initializing_formals
 import 'dart:async';
 
 import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
@@ -9,17 +10,20 @@ import '../../../app/app_routes.dart';
 import '../../../app/session_controller.dart';
 import '../../../app/widgets/app_scaffold.dart';
 import '../../../core/error/app_failure.dart';
+import '../../content/domain/entities/app_content.dart';
 import '../../control/domain/device_command_repository.dart';
-import '../../content/domain/repositories/content_repository.dart';
 import '../../device/data/cyberskin_ble_runtime_coordinator.dart';
 import '../../device/domain/device.dart';
 import '../../device/domain/device_repository.dart';
 import '../../device/domain/repositories/device_catalog_repository.dart';
 import '../../device/domain/repositories/user_device_repository.dart';
 import '../../device/presentation/device_manual_route_arguments.dart';
-import '../../training/domain/repositories/training_repository.dart';
+import '../../training/domain/entities/training.dart';
+import '../../training/presentation/training_route_arguments.dart';
+import '../domain/repositories/home_repository.dart';
 import 'home_dashboard.dart';
 import 'states/home_ble_card_state.dart';
+import 'widgets/home_advertisement_helper.dart';
 
 export 'states/home_ble_card_state.dart';
 
@@ -31,15 +35,13 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     DeviceRepository? deviceRepository,
     UserDeviceRepository? userDeviceRepository,
     DeviceCatalogRepository? deviceCatalogRepository,
-    TrainingRepository? trainingRepository,
-    ContentRepository? contentRepository,
+    HomeRepository? homeRepository,
     CyberskinBleRuntimeCoordinator? bleCoordinator,
     DeviceCommandRepository? deviceCommandRepository,
   }) : _deviceRepository = deviceRepository,
        _userDeviceRepository = userDeviceRepository,
        _deviceCatalogRepository = deviceCatalogRepository,
-       _trainingRepository = trainingRepository,
-       _contentRepository = contentRepository,
+       _homeRepository = homeRepository,
        _bleCoordinator = bleCoordinator,
        _deviceCommandRepository = deviceCommandRepository;
 
@@ -47,8 +49,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   final DeviceRepository? _deviceRepository;
   final UserDeviceRepository? _userDeviceRepository;
   final DeviceCatalogRepository? _deviceCatalogRepository;
-  final TrainingRepository? _trainingRepository;
-  final ContentRepository? _contentRepository;
+  final HomeRepository? _homeRepository;
   final CyberskinBleRuntimeCoordinator? _bleCoordinator;
   final DeviceCommandRepository? _deviceCommandRepository;
   final List<Worker> _bleWorkers = <Worker>[];
@@ -69,7 +70,17 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   final Rx<AppTab> selectedTab = AppTab.home.obs;
 
   /// 顶部 BLE 扫描卡的完整展示状态，文案和操作由 Controller 统一决定。
-  final Rx<HomeBleCardState> bleCardState = HomeBleCardState.checking().obs;
+  final Rx<HomeBleCardState> bleCardState =
+      const HomeBleCardState.checking().obs;
+
+  /// 首页内容独立加载，不阻塞 BLE 初始化和绑定刷新。
+  final contentLoading = false.obs;
+
+  /// 内容刷新失败时保留旧内容并提供重试。
+  final contentFailure = Rxn<AppFailure>();
+  int _loadGeneration = 0, _contentGeneration = 0;
+  int? _contentModel;
+  bool _contentRequested = false;
 
   bool _hadConnectedDevice = false;
   bool _powerOffInProgress = false;
@@ -106,6 +117,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   Future<void> _loadHomeAndStartBle() async {
     // 蓝牙适配器状态与账号权限无关，匿名主页也必须先完成初始化，
     // 否则卡片会一直停留在初始的 Checking Bluetooth。
+    final content = load();
     final coordinator = _bleCoordinator;
     Future<void>? discovery;
     if (coordinator != null) {
@@ -117,65 +129,161 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     }
     // 未配置 API 地址的开发壳层跳过网络请求，但仍保留真实蓝牙状态和扫描能力。
     if (const String.fromEnvironment('CYBERSKIN_API_BASE_URL').isNotEmpty) {
-      await load();
+      await content;
     }
     await discovery;
   }
 
-  /// 依次读取各 Repository，单项失败不丢弃其余可用主页内容。
+  /// 设备查询并行进行，内容拥有独立世代，型号切换不会写回旧响应。
   Future<void> load() async {
-    if (isLoading.value) return;
+    final generation = ++_loadGeneration;
     isLoading.value = true;
     failure.value = null;
-
-    final errors = <AppFailure>[];
-    final deviceResult = _deviceRepository == null
-        ? null
-        : await _deviceRepository.loadDevices();
-    final boundResult = _userDeviceRepository == null || !isAuthenticated
-        ? null
-        : await _userDeviceRepository.listUserDevices();
-    final modelsResult = _deviceCatalogRepository == null
-        ? null
-        : await _deviceCatalogRepository.listDeviceModels();
-    final trainingsResult = _trainingRepository == null
-        ? null
-        : await _trainingRepository.listTrainings();
-    final adsResult = _contentRepository == null
-        ? null
-        : await _contentRepository.listAdvertisements();
-
-    for (final result in [
-      deviceResult,
-      boundResult,
-      modelsResult,
-      trainingsResult,
-      adsResult,
-    ]) {
-      final error = result?.failureOrNull;
-      if (error != null && error.code != FailureCode.unauthorized) {
-        errors.add(error);
+    try {
+      final deviceFuture = _deviceRepository?.loadDevices();
+      final boundFuture = isAuthenticated
+          ? _userDeviceRepository?.listUserDevices()
+          : null;
+      final modelsFuture = _deviceCatalogRepository?.listDeviceModels();
+      final boundResult = await boundFuture;
+      if (isClosed || generation != _loadGeneration) return;
+      final previous = dashboard.value;
+      dashboard.value = HomeDashboard(
+        connectedDevices: previous.connectedDevices,
+        boundDevices: isAuthenticated
+            ? boundResult?.valueOrNull ?? previous.boundDevices
+            : const [],
+        deviceModels: previous.deviceModels,
+        trainings: previous.trainings,
+        advertisements: previous.advertisements,
+      );
+      final content = refreshContent(force: true);
+      final deviceResult = await deviceFuture;
+      final modelsResult = await modelsFuture;
+      if (isClosed || generation != _loadGeneration) return;
+      final old = dashboard.value;
+      final boundDevices = isAuthenticated
+          ? boundResult?.valueOrNull ?? old.boundDevices
+          : <UserDevice>[];
+      final errors = [
+        for (final result in [deviceResult, boundResult, modelsResult])
+          if (result?.failureOrNull case final AppFailure error
+              when error.code != FailureCode.unauthorized)
+            error,
+      ];
+      if (boundDevices.length > 1) {
+        errors.add(
+          const AppFailure(
+            code: FailureCode.invalidData,
+            message: 'Only one device can be bound at a time.',
+          ),
+        );
       }
+      dashboard.value = HomeDashboard(
+        connectedDevices: deviceResult?.valueOrNull ?? old.connectedDevices,
+        boundDevices: boundDevices,
+        deviceModels: modelsResult?.valueOrNull ?? old.deviceModels,
+        trainings: old.trainings,
+        advertisements: old.advertisements,
+      );
+      failure.value = errors.isEmpty ? null : errors.first;
+      await content;
+    } on Object {
+      if (!isClosed && generation == _loadGeneration) {
+        failure.value = const AppFailure(
+          code: FailureCode.network,
+          message: 'Unable to refresh home. Please try again.',
+        );
+      }
+    } finally {
+      if (!isClosed && generation == _loadGeneration) isLoading.value = false;
     }
+  }
 
-    final boundDevices = boundResult?.valueOrNull ?? const [];
-    if (boundDevices.length > 1) {
-      errors.add(
-        const AppFailure(
-          code: FailureCode.invalidData,
-          message: 'Only one device can be bound at a time.',
-        ),
+  int? get _preferredModel =>
+      (_bleCoordinator?.hasConnectedDevice == true
+          ? _bleCoordinator?.connectedModelId
+          : null) ??
+      dashboard.value.boundDevice?.deviceModelId;
+
+  /// 请求以当前连接型号优先；刷新失败保留之前的真实内容，空数据不制造示例。
+  Future<void> refreshContent({bool force = false}) async {
+    final repository = _homeRepository;
+    if (repository == null) return;
+    final model = _preferredModel;
+    if (!force && _contentRequested && _contentModel == model) return;
+    if (_contentRequested && _contentModel != model) {
+      final old = dashboard.value;
+      dashboard.value = HomeDashboard(
+        connectedDevices: old.connectedDevices,
+        boundDevices: old.boundDevices,
+        deviceModels: old.deviceModels,
+        advertisements: old.advertisements,
       );
     }
-    dashboard.value = HomeDashboard(
-      connectedDevices: deviceResult?.valueOrNull ?? const [],
-      boundDevices: boundDevices,
-      deviceModels: modelsResult?.valueOrNull ?? const [],
-      trainings: trainingsResult?.valueOrNull ?? const [],
-      advertisements: adsResult?.valueOrNull ?? const [],
+    _contentRequested = true;
+    _contentModel = model;
+    final generation = ++_contentGeneration;
+    contentLoading.value = true;
+    contentFailure.value = null;
+    try {
+      final result = await repository.getHome(deviceModelId: model);
+      if (isClosed ||
+          generation != _contentGeneration ||
+          model != _preferredModel) {
+        return;
+      }
+      if (result.isFailure) {
+        contentFailure.value = result.failureOrNull;
+        return;
+      }
+      final old = dashboard.value;
+      final content = result.valueOrNull!;
+      dashboard.value = HomeDashboard(
+        connectedDevices: old.connectedDevices,
+        boundDevices: old.boundDevices,
+        deviceModels: old.deviceModels,
+        trainings: content.trainings,
+        advertisements: content.advertisements,
+      );
+    } on Object {
+      if (!isClosed && generation == _contentGeneration) {
+        contentFailure.value = const AppFailure(
+          code: FailureCode.network,
+          message: 'Unable to refresh home content. Please try again.',
+        );
+      }
+    } finally {
+      if (!isClosed && generation == _contentGeneration) {
+        contentLoading.value = false;
+      }
+    }
+  }
+
+  /// 打开受保护的训练目录。
+  void openTrainingList() =>
+      unawaited(Get.toNamed<void>(AppRoutes.trainingHome));
+
+  /// 携带首条摘要打开课程预览。
+  void openTraining(TrainingSummary training, {String entry = 'home'}) {
+    if (training.id == null) return;
+    unawaited(
+      Get.toNamed<void>(
+        AppRoutes.trainingInfoPath(training.id!),
+        arguments: TrainingRouteArguments(
+          summary: training,
+          titleHeroTag: TrainingRouteArguments.titleTag(entry, training.id),
+        ),
+      ),
     );
-    failure.value = errors.isEmpty ? null : errors.first;
-    isLoading.value = false;
+  }
+
+  /// 运营跳转仅接受已约定类型；外链必须具有有效 HTTP(S) 主机。
+  Future<void> openAdvertisement(AppAdvertisement ad) {
+    return AppAdvertisementHelper.openAdvertisement(
+      ad,
+      onOpenProductDetail: openDeviceManual,
+    );
   }
 
   /// 响应用户刷新操作。
@@ -380,7 +488,9 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
 
       final responded = await _waitForPowerOffResponse(coordinator, remoteId);
       if (!responded) {
-        _showPowerOffError('The device did not confirm that it is powering off.');
+        _showPowerOffError(
+          'The device did not confirm that it is powering off.',
+        );
         return;
       }
 
@@ -412,13 +522,20 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   }
 
   void _showPowerOffError(String message) {
-    Get.snackbar('Device action failed', message, snackPosition: SnackPosition.BOTTOM);
+    Get.snackbar(
+      'Device action failed',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+    );
   }
 
   /// 监听 BLE 连接与运行态 Rx，确保主页状态和全局浮动控制条同步。
   void _bindBleObservers() {
     final coordinator = _bleCoordinator;
     if (coordinator == null) return;
+    _bleWorkers.add(
+      ever(coordinator.connectedDevice, (_) => unawaited(refreshContent())),
+    );
     _bleWorkers.add(
       ever<Map<String, BleConnectionState>>(
         coordinator.connectionStates,
@@ -443,6 +560,14 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     _bleWorkers.add(
       ever<SessionState>(_session.state, (state) {
         _syncBleCardState();
+        _loadGeneration++;
+        _contentGeneration++;
+        _contentRequested = false;
+        if (state != SessionState.authenticated) {
+          final old = dashboard.value;
+          dashboard.value = HomeDashboard(deviceModels: old.deviceModels);
+        }
+        unawaited(load());
         if (state == SessionState.authenticated) {
           // 登录返回主页后自动恢复 BLE 流程；协调器内部会再次检查权限和开关。
           unawaited(startDiscovery());
@@ -576,6 +701,8 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
 
   @override
   void onClose() {
+    _loadGeneration++;
+    _contentGeneration++;
     WidgetsBinding.instance.removeObserver(this);
     for (final worker in _bleWorkers) {
       worker.dispose();

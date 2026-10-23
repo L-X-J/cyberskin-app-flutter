@@ -12,4 +12,4 @@
 
 保存格式严格为 `start-end/des/command_data`；后端保存 JSON 文件地址，App 不提交自定义文件 URL。时长/通道只属于编辑草稿。文件写入/读取失败作为保存/加载失败处理。
 
-列表从数据库快照读取前3段及总时长/段数；详情由 Repository 下载完整 JSON 后才进入编辑/播放。公共 `control/data/CommonProgramFileCache` 以稳定URL缓存原文件最长30天，读取不续期，过期不离线降级。
+列表只读取摘要和总时长/段数；详情读取最多3段快照，点击Start或主动编辑时才由Repository下载完整JSON。公共 `control/data/CommonProgramFileCache` 以稳定URL缓存原文件最长30天，读取不续期，过期不离线降级。

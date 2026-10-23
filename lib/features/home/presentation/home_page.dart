@@ -7,8 +7,8 @@ import 'package:get/get.dart';
 import '../../../app/widgets/app_scaffold.dart';
 import '../../device/domain/device.dart';
 import '../../device/presentation/device_home_controller.dart';
-import '../../video/domain/repositories/video_repository.dart';
 import '../../video/domain/repositories/local_video_repository.dart';
+import '../../video/domain/repositories/video_repository.dart';
 import '../../video/presentation/video_controller.dart';
 import '../../video/presentation/video_page.dart';
 import 'home_connected/home_connected_view.dart';
@@ -238,6 +238,9 @@ final class _HomePageState extends State<HomePage>
                         topHeaderPadding: _headerHeight,
                         exitAnimation: _disconnectedExit,
                         scrollController: _disconnectedScrollController,
+                        onAdvertisement: (ad) =>
+                            unawaited(_controller.openAdvertisement(ad)),
+                        contentActive: selectedTab != AppTab.video,
                       ),
               ),
               // 共享顶部 Header：切换到 Video 时从顶部折叠上滑隐藏，回到 Device 时展开下滑显示。
@@ -352,6 +355,8 @@ final class _ConnectedBody extends StatelessWidget {
               : null,
           topInset: topInset,
           bottomInset: bottomInset,
+          homeController: homeController,
+          contentActive: selectedTab != AppTab.video,
           topPaddingOverride: headerHeight,
           scrollController: scrollController,
           onPowerOff: () =>

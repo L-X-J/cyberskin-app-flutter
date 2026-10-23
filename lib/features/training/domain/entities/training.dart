@@ -1,4 +1,4 @@
-// 训练课程领域模型与开放阶段协议值对象。
+// 训练课程摘要、文件身份、短预览和完整程序的不可变领域模型。
 import '../../../control/domain/entities/common_program_segment.dart';
 
 /// 已发布训练课程摘要。
@@ -30,24 +30,23 @@ final class TrainingSummary {
   /// 阶段数量。
   final int? stageCount;
 
-  /// 开放的强度字符串。
+  /// 后台发布的强度字符串，范围 1–10。
   final String? intensity;
 
   /// 服务端排序值。
   final int? sort;
 
+  /// 总时长的分钟展示值，保留非整分钟，不使用示例中的固定时长。
+  String get minutesLabel {
+    final seconds = totalSeconds;
+    if (seconds == null) return '—';
+    return seconds % 60 == 0
+        ? '${seconds ~/ 60}'
+        : (seconds / 60).toStringAsFixed(2).replaceFirst(RegExp(r'0$'), '');
+  }
+
   /// 适用设备型号主键。
   final int? deviceModelId;
-}
-
-/// 一条可前向兼容的训练阶段协议。
-final class TrainingStage {
-  /// 创建训练阶段并冻结开放协议内容。
-  TrainingStage(Map<String, dynamic> payload)
-    : payload = Map<String, dynamic>.unmodifiable(payload);
-
-  /// 原始阶段协议 JSON。
-  final Map<String, dynamic> payload;
 }
 
 /// 一条训练 customMode 的稳定打点数据。
@@ -87,21 +86,44 @@ final class TrainingDetail {
   /// 创建训练详情。
   TrainingDetail({
     required this.summary,
-    this.purposeHtml,
-    List<TrainingStage> stages = const <TrainingStage>[],
+    this.purposeSummary,
+    this.purposeUrl,
+    this.programUrl,
+    this.programDownloadUrl,
+    List<TrainingCustomMode> previewSegments = const [],
     List<TrainingCustomMode> customModes = const <TrainingCustomMode>[],
-  }) : stages = List<TrainingStage>.unmodifiable(stages),
+  }) : previewSegments = List.unmodifiable(previewSegments),
        customModes = List<TrainingCustomMode>.unmodifiable(customModes);
 
   /// 共享的课程摘要。
   final TrainingSummary summary;
 
-  /// 已发布课程说明 HTML。
-  final String? purposeHtml;
+  /// 已发布课程目的纯文本快照，最多 150 字。
+  final String? purposeSummary;
 
-  /// 开放的阶段协议列表。
-  final List<TrainingStage> stages;
+  /// 已发布课程目的 HTML 的公开地址。
+  final String? purposeUrl;
 
-  /// 结构稳定的 customMode 打点列表。
+  /// 完整程序的稳定文件身份；签名地址刷新不改变缓存键。
+  final String? programUrl;
+
+  /// 详情签名地址，只在内存中使用。
+  final String? programDownloadUrl;
+
+  /// 至多前 3 段，只用于详情预览，绝不用于播放。
+  final List<TrainingCustomMode> previewSegments;
+
+  /// 下载完整 JSON 后装配，保留与文件对应的摘要版本。
+  TrainingDetail withProgram(List<TrainingCustomMode> values) => TrainingDetail(
+    summary: summary,
+    purposeSummary: purposeSummary,
+    purposeUrl: purposeUrl,
+    programUrl: programUrl,
+    programDownloadUrl: programDownloadUrl,
+    previewSegments: previewSegments,
+    customModes: values,
+  );
+
+  /// 仅从完整 JSON 读取的执行片段，详情预览时为空。
   final List<TrainingCustomMode> customModes;
 }

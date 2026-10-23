@@ -4,7 +4,10 @@
 
 ## 边界
 
-- `presentation` 通过 `HomeController` 聚合设备、绑定设备、训练和广告 Repository，Widget 只消费不可变展示快照。
+- `presentation` 通过 `HomeController` 聚合设备、绑定设备和 HomeRepository 首页内容，Widget 只消费不可变展示快照。
 - 未连接状态隐藏一级底部导航；已连接状态显示 Device / Video 导航，设备快捷 pill 继续由应用壳统一托管。
 - 设备彩色卡片由 Flutter 绘制多层渐变与内阴影，产品图和内容缩略图走正式素材流程。
 - 设备连接和设备详情路由受统一认证 Middleware 保护；未连接的匿名用户仍可浏览主页。
+
+- `data/`：远端内容访问实现。
+- `domain/`：领域模型和访问边界。

@@ -45,7 +45,7 @@ SpringDoc 不输出 Sa-Token 的鉴权信息，脚本会自行补齐，否则客
 - 受保护接口标注 `security: [{AppToken: []}, {ClientId: []}]`
 - 公开接口标注 `security: []`，覆盖全局鉴权要求
 
-区分依据是 SpringDoc 渲染进 `description` 的 Sa-Token 注解：带 `忽略权限检查`（源码 `@SaIgnore`）的判为公开接口，其余判为需登录。当前导出结果为公开 14 个、需鉴权 15 个。
+区分依据是 SpringDoc 渲染进 `description` 的 Sa-Token 注解：带 `忽略权限检查`（源码 `@SaIgnore`）的判为公开接口，其余判为需登录。当前导出结果为公开 15 个、需鉴权 15 个。
 
 调整 Controller 上的 `@SaIgnore` / `@SaCheckLogin` 后必须重新导出，`security` 字段才会同步。
 

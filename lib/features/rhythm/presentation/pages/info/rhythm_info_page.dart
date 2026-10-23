@@ -113,11 +113,14 @@ final class _RhythmInfoPageState extends State<RhythmInfoPage> {
                   final rhythm = session.infoRhythm.value;
 
                   final index = session.infoIndex.value;
-                  if (rhythm == null || index >= rhythm.segments.length) {
+                  final segments = rhythm?.hasCompleteProgram == true
+                      ? rhythm!.segments
+                      : rhythm?.previewSegments;
+                  if (segments == null || index >= segments.length) {
                     return const SizedBox.shrink();
                   }
                   return RhythmSegmentQueue(
-                    rhythm: rhythm,
+                    rhythm: rhythm!,
                     index: index,
                     remaining: session.infoRemaining.value,
                     phase: session.infoPhase.value,
