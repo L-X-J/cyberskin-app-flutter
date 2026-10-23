@@ -305,7 +305,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   void openLogin() => unawaited(Get.toNamed<void>(AppRoutes.login));
 
   /// 打开受保护的设备详情页。
-  void openDevice() => unawaited(Get.toNamed<void>(AppRoutes.device));
+  void openDevice() => unawaited(Get.toNamed<void>(AppRoutes.home));
 
   /// 打开产品说明书页；提供摘要时用于首帧和 Hero 动画，缺少型号 ID 时回退到设备主页。
   void openDeviceManual(int? modelId, {DeviceModelSummary? summary}) {

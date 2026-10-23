@@ -5,12 +5,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../../app/app_routes.dart';
 import '../../../../app/widgets/app_glass_surfaces.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_typography.dart';
-import '../../../../core/widgets/app_image.dart';
-import '../../../../core/widgets/app_liquid_glass_button.dart';
 import '../../../device/domain/connected_device_state.dart';
 import '../../../device/domain/device.dart';
 import '../../../device/presentation/device_home_controller.dart';
@@ -31,12 +27,10 @@ final class HomeConnectedView extends StatefulWidget {
     this.connectedState,
     this.isLoading = false,
     this.failureMessage,
-    this.topPadding,
+    required this.topPadding,
     required this.bottomInset,
-    this.showHeader = false,
     this.onPowerOff,
     this.onReload,
-    this.onProfile,
     this.onDeviceManual,
     this.onFreeControl,
     this.onCustomRhythm,
@@ -49,7 +43,7 @@ final class HomeConnectedView extends StatefulWidget {
   /// 外部传入的滚动控制器，用于联动主页 Header 高斯模糊等动态效果。
   final ScrollController? scrollController;
 
-  /// 首页真实内容控制器；独立设备页可不提供。
+  /// 首页真实内容控制器。
   final HomeController? homeController;
 
   /// 当前首页标签是否可见，用于轮播生命周期。
@@ -68,22 +62,16 @@ final class HomeConnectedView extends StatefulWidget {
   final String? failureMessage;
 
   /// 页面顶部内边距；由调用方结合共享 Header 或安全区高度传入。
-  final double? topPadding;
+  final double topPadding;
 
   /// 页面底部预留高度，确保内容不被底部导航或悬浮条遮挡。
   final double bottomInset;
-
-  /// 是否在列表顶部渲染自有的页面标题头；首页 Shell 已有共享 Header 时为 false。
-  final bool showHeader;
 
   /// 请求关闭设备并解除绑定的回调。
   final VoidCallback? onPowerOff;
 
   /// 失败重试或重新拉取设备状态的回调。
   final VoidCallback? onReload;
-
-  /// 打开个人中心回调。
-  final VoidCallback? onProfile;
 
   /// 打开设备说明书回调；为空时采用默认路由导航。
   final VoidCallback? onDeviceManual;
@@ -151,28 +139,17 @@ final class _HomeConnectedViewState extends State<HomeConnectedView>
 
   @override
   Widget build(BuildContext context) {
-    final effectiveTopPadding =
-        widget.topPadding ?? (MediaQuery.viewPaddingOf(context).top + 34);
-
     return HomeBackground(
       child: ListView(
         controller: widget.scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
           24,
-          effectiveTopPadding,
+          widget.topPadding,
           24,
           widget.bottomInset,
         ),
         children: [
-          if (widget.showHeader) ...[
-            _DeviceHeader(
-              onProfile:
-                  widget.onProfile ??
-                  () => unawaited(Get.toNamed(AppRoutes.profile)),
-            ),
-            const SizedBox(height: 28),
-          ],
           ConnectedDeviceHeroCard(
             device: widget.device,
             connectedState: widget.connectedState,
@@ -258,63 +235,16 @@ final class _HomeConnectedViewState extends State<HomeConnectedView>
   }
 }
 
-/// 独立设备页自有标题区；展示标题、问候文案与个人中心入口。
-final class _DeviceHeader extends StatelessWidget {
-  const _DeviceHeader({required this.onProfile});
-
-  final VoidCallback onProfile;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('My device', style: AppTypography.pageTitle),
-              SizedBox(height: 4),
-              Text(
-                'Good evening, stay relaxed',
-                style: TextStyle(
-                  fontSize: AppTypography.size16,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        AppLiquidGlassButton(
-          label: 'Profile',
-          variant: AppLiquidGlassButtonVariant.translucent,
-          width: 50,
-          height: 50,
-          borderRadius: 25,
-          onPressed: onProfile,
-          child: AppImage.load(
-            'assets/images/home/go_user_profile.png',
-            width: 50,
-            height: 50,
-            radius: 25,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// 设备标签页的可嵌入内容体，可在独立路由或首页 Shell 中复用。
+/// 首页设备标签页的内容体。
 ///
-/// 订阅设备主页控制器状态，在已连接、加载中、异常与空设备状态间分发。
+/// 订阅设备控制器状态，在已连接、加载中、异常与空设备状态间分发。
 final class DeviceBodyContent extends StatelessWidget {
   /// 创建设备内容体。
   const DeviceBodyContent({
     super.key,
     this.controller,
-    required this.topInset,
+    required this.topPadding,
     required this.bottomInset,
-    this.topPaddingOverride,
     this.onPowerOff,
     this.scrollController,
     this.homeController,
@@ -324,14 +254,11 @@ final class DeviceBodyContent extends StatelessWidget {
   /// 设备主页控制器，持有设备列表和 BLE 发现状态；为空时从 Get 容器自动解析。
   final DeviceHomeController? controller;
 
-  /// 页面顶部安全区高度。
-  final double topInset;
+  /// 首页共享标题区下方的顶部留白。
+  final double topPadding;
 
   /// 页面底部预留高度。
   final double bottomInset;
-
-  /// 覆盖默认顶部内边距（topInset + 34）。
-  final double? topPaddingOverride;
 
   /// 请求关闭设备并解除绑定。
   final VoidCallback? onPowerOff;
@@ -339,7 +266,7 @@ final class DeviceBodyContent extends StatelessWidget {
   /// 外部传入的滚动控制器，用于联动主页 Header 高斯模糊等动态效果。
   final ScrollController? scrollController;
 
-  /// 首页真实内容控制器；独立设备页可不提供。
+  /// 首页真实内容控制器。
   final HomeController? homeController;
 
   /// 当前首页标签是否可见，用于轮播生命周期。
@@ -391,9 +318,8 @@ final class DeviceBodyContent extends StatelessWidget {
           device: devices.first,
           isLoading: isLoading,
           failureMessage: failure?.message,
-          topPadding: topPaddingOverride ?? topInset + 34,
+          topPadding: topPadding,
           bottomInset: bottomInset,
-          showHeader: topPaddingOverride == null,
           onPowerOff: onPowerOff,
           onReload: () => unawaited(activeController.reload()),
           scrollController: scrollController,

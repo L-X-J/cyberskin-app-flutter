@@ -231,7 +231,6 @@ final class _HomePageState extends State<HomePage>
                         homeController: _controller,
                         videoController: videoController,
                         transition: _bodyTransition,
-                        topInset: topInset,
                         headerHeight: _headerHeight,
                         scrollController: _connectedScrollController,
                       )
@@ -363,7 +362,6 @@ final class _ConnectedBody extends StatelessWidget {
     required this.homeController,
     required this.videoController,
     required this.transition,
-    required this.topInset,
     required this.headerHeight,
     this.scrollController,
   });
@@ -372,7 +370,6 @@ final class _ConnectedBody extends StatelessWidget {
   final VideoController videoController;
   final HomeController homeController;
   final Animation<double> transition;
-  final double topInset;
 
   // 首页共享 HomeHeader 覆层测量高度；首帧为 0，内容会暂时上移再回填。
   final double headerHeight;
@@ -397,11 +394,10 @@ final class _ConnectedBody extends StatelessWidget {
               controller: Get.isRegistered<DeviceHomeController>()
                   ? Get.find<DeviceHomeController>()
                   : null,
-              topInset: topInset,
               bottomInset: bottomInset,
               homeController: homeController,
               contentActive: selectedTab != AppTab.video,
-              topPaddingOverride: headerHeight,
+              topPadding: headerHeight,
               scrollController: scrollController,
               onPowerOff: () =>
                   unawaited(homeController.confirmPowerOffAndUnbind()),

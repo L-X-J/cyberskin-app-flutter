@@ -48,7 +48,7 @@
 - 大字体：标题和卡片文本自然增高，底部 pill 由 AppScaffold 重新测量位置。
 - 已连接 Dock 在常规宽度下与快捷 pill 并排；宽度/字号造成水平冲突时导航上移至 pill 上方。滚动内容由 AppScaffold 根据相同尺寸和系统底部安全区计算可达余量，背景始终延伸到视口边缘。
 - 截图目标：`build/ui/home_disconnected_402x874_text1.0.png`、`build/ui/home_connected_402x949_text1.0.png`。
-- 已连接设备独立路由的同构视觉入口见 [设备主页](device.md)；其说明书动作进入 [设备介绍页](device-manual.md)，不在主页层直接读取说明书 Repository。
+- 设备首页统一使用 `/home` 的连接/未连接视图；悬浮快捷控件在未连接时返回主页。说明书动作进入 [设备介绍页](device-manual.md)，不在主页层直接读取说明书 Repository。
 - 公共卡片像素回归：`test/core/widgets/app_layered_gradient_card_test.dart`；运行后生成 `build/ui/layered_gradient_card_red_170x170_text1.0.png`，验证渐变方向、前景清晰度、裁切、内阴影偏移与图层覆盖。该截图不是经设计确认的 Golden 基线。
 - 未验证项：默认字体与 MiSans 差异、内阴影与模糊的实机光学效果、真实 BLE 连接数据。
 

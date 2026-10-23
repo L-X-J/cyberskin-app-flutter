@@ -4,7 +4,7 @@
 
 文件职责：
 
-- `home_connected_view.dart`：已连接状态页面主视图（`HomeConnectedView`）、独立设备页标题（`_DeviceHeader`）与控制器容器（`DeviceBodyContent`）。
+- `home_connected_view.dart`：已连接状态页面主视图（`HomeConnectedView`）与首页设备控制器容器（`DeviceBodyContent`），共享标题由 HomePage 渲染。
 - `connected_device_hero_card.dart`：已连接设备主英雄卡片（`ConnectedDeviceHeroCard`）及图片占位（`DeviceImagePlaceholder`）。
 - `home_feature_cards.dart`：双列功能模式入口网格（`HomeFeatureGrid`）与功能模式原子卡片（`HomeFeatureCard`）。
 - `home_training_card.dart`：训练模式推荐卡片（`HomeTrainingCard`）。
@@ -13,4 +13,4 @@
 - `home_device_states.dart`：设备列表边界状态组件（`HomeDeviceLoadingState`、`HomeEmptyDeviceState`、`HomeNearbyDeviceCard`、`HomeDeviceErrorState`）。
 - `compact_glass_button.dart`：设备页各卡片中复用的紧凑型液态玻璃按钮（`CompactGlassButton`）。
 
-训练与广告组件现在消费 HomeController 的真实聚合内容。HomeTrainingCard 只展示第一条并提供 More；HomeAdvertisementCard 通过壳层提供的 RouteObserver 与应用／标签生命周期控制五秒轮播。独立设备页未提供首页控制器时显示训练空态。
+训练与广告组件现在消费 HomeController 的真实聚合内容。HomeTrainingCard 只展示第一条并提供 More；HomeAdvertisementCard 通过壳层提供的 RouteObserver 与应用／标签生命周期控制五秒轮播。

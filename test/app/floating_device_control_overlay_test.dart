@@ -74,7 +74,6 @@ void main() {
         ],
         getPages: [
           GetPage(name: AppRoutes.home, page: () => page('Home')),
-          GetPage(name: AppRoutes.device, page: () => page('Devices')),
           GetPage(name: AppRoutes.video, page: () => page('Video')),
           GetPage(name: AppRoutes.profile, page: () => page('Profile')),
           GetPage(name: extraDetail, page: () => page('Detail')),
@@ -160,14 +159,12 @@ void main() {
       await tester.drag(pill, const Offset(-120, -200));
       await tester.pump(const Duration(milliseconds: 300));
       expect(tester.getRect(pill), rect);
-      for (final route in [AppRoutes.device, AppRoutes.video]) {
-        await open(tester, route);
-        final before = tester.getRect(pill);
-        await tester.drag(pill, const Offset(-100, -100));
-        await tester.pump(const Duration(milliseconds: 300));
-        expect(tester.getRect(pill), before);
-        expect(pill, findsOneWidget);
-      }
+      await open(tester, AppRoutes.video);
+      final before = tester.getRect(pill);
+      await tester.drag(pill, const Offset(-100, -100));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.getRect(pill), before);
+      expect(pill, findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -257,9 +254,13 @@ void main() {
       await render(tester);
       await tester.tap(find.byType(DeviceControlPill));
       await tester.pumpAndSettle();
-      expect(Get.currentRoute, AppRoutes.device);
-      Get.back<void>();
+      expect(Get.currentRoute, AppRoutes.home);
+      expect(Get.key.currentState!.canPop(), isFalse);
+      await open(tester, AppRoutes.profile);
+      await tester.tap(find.byType(DeviceControlPill));
       await tester.pumpAndSettle();
+      expect(Get.currentRoute, AppRoutes.home);
+      expect(Get.key.currentState!.canPop(), isFalse);
       session.setDeviceConnectionStatus(DeviceConnectionStatus.connecting);
       await tester.pump();
       await tester.tap(find.byType(DeviceControlPill));

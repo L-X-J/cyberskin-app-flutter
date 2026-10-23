@@ -13,12 +13,6 @@ void main() {
     expect(initPage.customTransition, isNotNull);
     expect(initPage.transitionDuration, const Duration(milliseconds: 420));
 
-    final devicePage = AppRoutes.pages.firstWhere(
-      (page) => page.name == AppRoutes.device,
-    );
-    expect(devicePage.customTransition, isNotNull);
-    expect(devicePage.transitionDuration, const Duration(milliseconds: 1200));
-
     final deviceManualPage = AppRoutes.pages.firstWhere(
       (page) => page.name == AppRoutes.deviceManual,
     );
@@ -27,6 +21,15 @@ void main() {
       deviceManualPage.transitionDuration,
       const Duration(milliseconds: 520),
     );
+  });
+
+  test('removes the standalone device home route', () {
+    expect(
+      AppRoutes.pages.map((page) => page.name),
+      isNot(contains('/device')),
+    );
+    expect(AppRoutes.floatingControlPolicies, isNot(contains('/device')));
+    expect(AppRoutes.requiresConnectedDevice('/device'), isFalse);
   });
 
   test('keeps email login in the login route', () {
@@ -50,7 +53,6 @@ void main() {
 
   test('identifies routes requiring connected device', () {
     expect(AppRoutes.requiresConnectedDevice(AppRoutes.freeControl), isTrue);
-    expect(AppRoutes.requiresConnectedDevice(AppRoutes.device), isTrue);
     expect(AppRoutes.requiresConnectedDevice('/control/custom_rhythm'), isTrue);
 
     expect(AppRoutes.requiresConnectedDevice(AppRoutes.home), isFalse);

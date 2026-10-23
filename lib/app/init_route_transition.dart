@@ -30,36 +30,6 @@ final class InitRouteTransition extends CustomTransition {
   }
 }
 
-/// 设备主页的进入动画，替代 GetX 默认的侧滑转场。
-final class DeviceRouteTransition extends CustomTransition {
-  /// 创建设备主页进入转场。
-  DeviceRouteTransition();
-
-  @override
-  Widget buildTransition(
-    BuildContext context,
-    Curve? curve,
-    Alignment? alignment,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    final enterAnimation = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOutCubic,
-    );
-
-    return FadeTransition(
-      opacity: enterAnimation,
-      child: ScaleTransition(
-        scale: Tween<double>(begin: 0.98, end: 1).animate(enterAnimation),
-        alignment: alignment ?? Alignment.center,
-        child: child,
-      ),
-    );
-  }
-}
-
 /// 设备说明书页转场；Hero 负责设备图标从入口卡片放大到说明书头图。
 final class DeviceManualRouteTransition extends CustomTransition {
   /// 创建设备说明书页进入转场。

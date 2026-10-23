@@ -5,7 +5,6 @@ import '../features/auth/presentation/login_binding.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/control/free_control/presentation/free_control_binding.dart';
 import '../features/control/free_control/presentation/free_control_page.dart';
-import '../features/device/presentation/device_home_page.dart';
 import '../features/device/presentation/device_manual_binding.dart';
 import '../features/device/presentation/device_manual_page.dart';
 import '../features/home/presentation/home_binding.dart';
@@ -29,7 +28,6 @@ import '../features/training/presentation/training_binding.dart';
 import '../features/video/presentation/video_binding.dart';
 import '../features/video/presentation/video_browser_page.dart';
 import '../features/video/presentation/video_page.dart';
-import 'bindings/device_binding.dart';
 import 'bindings/init_binding.dart';
 import 'floating_control_controller.dart';
 import 'init_route_transition.dart';
@@ -45,9 +43,6 @@ abstract final class AppRoutes {
 
   /// 登录页面。
   static const String login = '/login';
-
-  /// 设备主页路由。
-  static const String device = '/device';
 
   /// 设备产品说明书路由，型号 ID 通过 `:modelId` 传入。
   static const String deviceManual = '/device/manual/:modelId';
@@ -85,7 +80,6 @@ abstract final class AppRoutes {
   /// 显式页面策略；新增二级页必须登记，登录和未声明页面默认隐藏。
   static const Map<String, FloatingControlPolicy> floatingControlPolicies = {
     home: FloatingControlPolicy.fixed,
-    device: FloatingControlPolicy.fixed,
     deviceManual: FloatingControlPolicy.hidden,
     video: FloatingControlPolicy.fixed,
     videoBrowser: FloatingControlPolicy.draggable,
@@ -101,10 +95,7 @@ abstract final class AppRoutes {
   };
 
   /// 依赖设备已连接的二级路由集合；当设备断开连接时，若当前处于这些页面，会自动退回到主页未连接状态。
-  static const Set<String> requiresConnectedDeviceRoutes = {
-    freeControl,
-    device,
-  };
+  static const Set<String> requiresConnectedDeviceRoutes = {freeControl};
 
   /// 检查指定路由名称是否强依赖设备连接。
   static bool requiresConnectedDevice(String? routeName) {
@@ -185,14 +176,6 @@ abstract final class AppRoutes {
       name: home,
       page: () => const HomePage(),
       binding: HomeBinding(),
-    ),
-    GetPage<void>(
-      name: device,
-      page: () => const DeviceHomePage(),
-      binding: DeviceBinding(),
-      customTransition: DeviceRouteTransition(),
-      transitionDuration: const Duration(milliseconds: 1200),
-      middlewares: <GetMiddleware>[RouteAuthMiddleware()],
     ),
     GetPage<void>(
       name: deviceManual,
