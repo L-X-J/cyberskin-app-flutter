@@ -1,6 +1,6 @@
 // 广告公共逻辑助手单元测试：校验缓存过滤、网络图片预下载及约定跳转分支。
 import 'package:cyberskin_app/features/content/domain/entities/app_content.dart';
-import 'package:cyberskin_app/features/home/domain/entities/home_content.dart';
+import 'package:cyberskin_app/features/home/presentation/home_dashboard.dart';
 import 'package:cyberskin_app/features/home/presentation/home_disconnected/home_disconnected_view.dart';
 import 'package:cyberskin_app/features/home/presentation/states/home_ble_card_state.dart';
 import 'package:cyberskin_app/features/home/presentation/widgets/home_advertisement_helper.dart';
@@ -45,7 +45,11 @@ void main() {
 
         final filtered =
             await AppAdvertisementHelper.filterCachedAdvertisements(ads);
-        expect(filtered.map((a) => a.id), equals([1, 3]));
+        expect(filtered.map((item) => item.ad.id), equals([1, 3]));
+        expect(
+          filtered.every((item) => item.imagePath.startsWith('assets/')),
+          isTrue,
+        );
       },
     );
 
@@ -68,8 +72,8 @@ void main() {
       },
     );
 
-    test('openAdvertisement handles external_url schema validation', () async {
-      var errorTitle = '';
+    test('openAdvertisement ignores invalid external_url targets', () async {
+      var errorCalled = false;
       const invalidAd = AppAdvertisement(
         id: 2,
         jumpType: 'external_url',
@@ -78,10 +82,10 @@ void main() {
 
       await AppAdvertisementHelper.openAdvertisement(
         invalidAd,
-        onError: (title, message) => errorTitle = title,
+        onError: (_, _) => errorCalled = true,
       );
 
-      expect(errorTitle, 'Unable to open link');
+      expect(errorCalled, isFalse);
     });
   });
 
@@ -105,27 +109,32 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: HomeDisconnectedView(
-              dashboard: dashboard,
-              isLoading: false,
-              isAuthenticated: true,
-              bleCardState: const HomeBleCardState.checking(),
-              onPrimaryAction: () {},
-              onStopDiscovery: () {},
-              pendingDiscovery: null,
-              onConfirmDiscovery: () {},
-              onDismissDiscovery: () {},
-              isScanning: false,
-              onDeviceModelDetails: (_) {},
-              onLogin: () {},
-              onProfile: () {},
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(390, 844)),
+            child: Scaffold(
+              body: HomeDisconnectedView(
+                dashboard: dashboard,
+                isLoading: false,
+                isAuthenticated: true,
+                topHeaderPadding: 0,
+                bleCardState: const HomeBleCardState.checking(),
+                onPrimaryAction: () {},
+                onStopDiscovery: () {},
+                pendingDiscovery: null,
+                onConfirmDiscovery: () {},
+                onDismissDiscovery: () {},
+                isScanning: false,
+                onDeviceModelDetails: (_) {},
+                onLogin: () {},
+                onProfile: () {},
+              ),
             ),
           ),
         ),
       );
 
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump();
 
       expect(find.byType(PageView), findsOneWidget);
     },

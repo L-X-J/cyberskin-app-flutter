@@ -152,8 +152,10 @@ final class HomeDisconnectedView extends StatelessWidget {
             const SizedBox(height: 10),
             _buildEmptyModelHint(),
           ],
-          const SizedBox(height: 16),
-          _buildAdvertisementCard(),
+          if (dashboard.advertisements.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildAdvertisementCard(),
+          ],
           if (failureMessage != null) ...[
             const SizedBox(height: 12),
             _buildFailureBanner(),

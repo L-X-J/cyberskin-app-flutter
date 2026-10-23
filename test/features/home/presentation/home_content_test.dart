@@ -175,7 +175,9 @@ void main() {
                     (i) => AppAdvertisement(
                       id: i,
                       titleEn: 'Ad $i',
-                      imageUrl: 'assets/images/home/ad_$i.png',
+                      imageUrl: i == 0
+                          ? 'assets/images/home/device_air_banner.png'
+                          : 'assets/images/home/device_pro_banner.png',
                     ),
                   ),
                 ),
@@ -187,6 +189,7 @@ void main() {
           .controller!
           .page!;
       await tester.pumpWidget(app());
+      await tester.pump();
       await tester.pump(const Duration(seconds: 5));
       await tester.pump(const Duration(milliseconds: 400));
       expect(page(), 1);

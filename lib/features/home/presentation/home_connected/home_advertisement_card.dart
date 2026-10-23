@@ -39,8 +39,10 @@ final class _HomeAdvertisementCardState extends State<HomeAdvertisementCard>
     with WidgetsBindingObserver, RouteAware {
   final _pages = PageController();
   Timer? _timer;
-  StreamSubscription<List<AppAdvertisement>>? _cacheSubscription;
-  List<AppAdvertisement> _displayAdvertisements = const [];
+  StreamSubscription<List<({AppAdvertisement ad, String imagePath})>>?
+  _cacheSubscription;
+  List<({AppAdvertisement ad, String imagePath})> _displayAdvertisements =
+      const [];
   int _index = 0;
   bool _visible = true, _dragging = false, _resumed = true, _reduced = false;
   PageRoute<dynamic>? _route;
@@ -76,15 +78,36 @@ final class _HomeAdvertisementCardState extends State<HomeAdvertisementCard>
   @override
   void didUpdateWidget(HomeAdvertisementCard old) {
     super.didUpdateWidget(old);
-    if (widget.advertisements != old.advertisements) {
+    if (!_sameAdvertisements(old.advertisements, widget.advertisements)) {
       _syncAdvertisements();
     } else {
       _schedule();
     }
   }
 
+  bool _sameAdvertisements(
+    List<AppAdvertisement> previous,
+    List<AppAdvertisement> current,
+  ) {
+    if (previous.length != current.length) return false;
+    for (var i = 0; i < current.length; i++) {
+      final a = previous[i];
+      final b = current[i];
+      if (a.id != b.id ||
+          a.imageUrl != b.imageUrl ||
+          a.jumpType != b.jumpType ||
+          a.jumpTarget != b.jumpTarget) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   void _syncAdvertisements() {
     _cacheSubscription?.cancel();
+    _timer?.cancel();
+    _displayAdvertisements = const [];
+    _index = 0;
     _cacheSubscription =
         AppAdvertisementHelper.syncCachedAdvertisements(widget.advertisements)
             .listen((cachedList) {
@@ -194,7 +217,7 @@ final class _HomeAdvertisementCardState extends State<HomeAdvertisementCard>
                   setState(() => _index = page);
                 },
                 itemBuilder: (context, index) {
-                  final ad = _displayAdvertisements[index];
+                  final item = _displayAdvertisements[index];
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 2),
                     child: ClipRRect(
@@ -202,9 +225,9 @@ final class _HomeAdvertisementCardState extends State<HomeAdvertisementCard>
                       child: Material(
                         color: const Color(0xFF292535),
                         child: InkWell(
-                          onTap: () => widget.onAdvertisement?.call(ad),
+                          onTap: () => widget.onAdvertisement?.call(item.ad),
                           child: AppImage.load(
-                            ad.imageUrl,
+                            item.imagePath,
                             width: double.infinity,
                             height: double.infinity,
                             fit: BoxFit.cover,

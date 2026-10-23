@@ -10,107 +10,90 @@ import '../../../content/domain/entities/app_content.dart';
 
 /// 广告公共功能助手：承载广告图片本地缓存判断、预下载及跳转路由处理。
 abstract final class AppAdvertisementHelper {
-  /// 判断指定广告图片的本地缓存状态。
-  ///
-  /// 本地资源与有效本地文件直接返回 `true`；网络图片检查 `extended_image` 缓存文件是否存在。
-  static Future<bool> isImageCached(String? url) async {
+  /// 返回可直接渲染的本地路径；网络图片只有下载完成并落盘后才返回缓存文件。
+  static Future<String?> cachedImagePath(String? url) async {
     final clean = url?.trim();
-    if (clean == null || clean.isEmpty) return false;
-    if (clean.startsWith('assets/') || clean.startsWith('asset:')) return true;
-    if (clean.startsWith('http://') || clean.startsWith('https://')) {
-      try {
-        final file = await getCachedImageFile(clean);
-        return file != null && file.existsSync();
-      } on Object {
-        return false;
-      }
-    }
+    if (clean == null || clean.isEmpty) return null;
+    if (clean.startsWith('assets/') || clean.startsWith('asset:')) return clean;
     try {
-      return File(clean).existsSync();
+      if (clean.startsWith('http://') || clean.startsWith('https://')) {
+        final file = await getCachedImageFile(clean);
+        return file != null && await file.exists() && await file.length() > 0
+            ? file.path
+            : null;
+      }
+      final file = File(clean);
+      return await file.exists() && await file.length() > 0 ? clean : null;
     } on Object {
-      return false;
+      return null;
     }
   }
 
-  /// 将指定的广告网络图片预加载并保存到本地缓存。
-  ///
-  /// 若已缓存则直接返回 `true`；网络图片通过 `extended_image` 预加载下载。
-  static Future<bool> cacheImage(String? url) async {
+  /// 判断图片是否已完整保存在设备本地。
+  static Future<bool> isImageCached(String? url) async =>
+      await cachedImagePath(url) != null;
+
+  /// 下载网络图片并核验磁盘缓存，而不将未落盘的内存数据用于展示。
+  static Future<String?> cacheImage(String? url) async {
     final clean = url?.trim();
-    if (clean == null || clean.isEmpty) return false;
-    if (await isImageCached(clean)) return true;
-    if (clean.startsWith('http://') || clean.startsWith('https://')) {
-      try {
-        final data = await getNetworkImageData(clean, useCache: true);
-        return data != null && data.isNotEmpty;
-      } on Object {
-        return false;
-      }
+    if (clean == null || clean.isEmpty) return null;
+    final existing = await cachedImagePath(clean);
+    if (existing != null) return existing;
+    final uri = Uri.tryParse(clean);
+    if (uri == null || !{'http', 'https'}.contains(uri.scheme)) return null;
+    try {
+      await getNetworkImageData(clean, useCache: true);
+      return await cachedImagePath(clean);
+    } on Object {
+      return null;
     }
-    return isImageCached(clean);
   }
 
-  /// 从原始广告列表中筛选出图片已完整保存到本地的广告条目。
-  static Future<List<AppAdvertisement>> filterCachedAdvertisements(
-    List<AppAdvertisement> advertisements,
-  ) async {
-    final cached = <AppAdvertisement>[];
+  /// 在广告原始对象之外保存图片本地路径，避免修改服务端跳转数据。
+  static Future<List<({AppAdvertisement ad, String imagePath})>>
+  filterCachedAdvertisements(List<AppAdvertisement> advertisements) async {
+    final ready = <({AppAdvertisement ad, String imagePath})>[];
     for (final ad in advertisements) {
-      if (await isImageCached(ad.imageUrl)) {
-        cached.add(ad);
-      }
+      final path = await cachedImagePath(ad.imageUrl);
+      if (path != null) ready.add((ad: ad, imagePath: path));
     }
-    return List<AppAdvertisement>.unmodifiable(cached);
+    return List.unmodifiable(ready);
   }
 
-  /// 预加载列表中的所有广告图片，并通过 Stream 实时推送当前所有图片已完成本地缓存的广告。
-  static Stream<List<AppAdvertisement>> syncCachedAdvertisements(
-    List<AppAdvertisement> advertisements,
-  ) async* {
-    if (advertisements.isEmpty) {
-      yield const <AppAdvertisement>[];
-      return;
-    }
-
-    // 1. 优先推送当前已完成本地缓存的广告
+  /// 先发布已缓存的图片，再逐张发布新落盘的图片，保持服务端排序。
+  static Stream<List<({AppAdvertisement ad, String imagePath})>>
+  syncCachedAdvertisements(List<AppAdvertisement> advertisements) async* {
     final ready = await filterCachedAdvertisements(advertisements);
     yield ready;
-
-    final readySet = Set<AppAdvertisement>.from(ready);
-    final remaining = advertisements
-        .where((ad) => !readySet.contains(ad))
-        .toList();
-
+    final paths = <AppAdvertisement, String>{
+      for (final item in ready) item.ad: item.imagePath,
+    };
+    final remaining = advertisements.where((ad) => !paths.containsKey(ad));
     if (remaining.isEmpty) return;
-
-    // 2. 后台并行预加载剩余广告图片，每当有图片下载缓存成功，更新并推送
-    final controller = StreamController<List<AppAdvertisement>>();
-    var currentReadyList = List<AppAdvertisement>.from(ready);
-
-    var pendingCount = remaining.length;
+    final updates =
+        StreamController<List<({AppAdvertisement ad, String imagePath})>>();
+    var pending = 0;
     for (final ad in remaining) {
+      pending++;
       unawaited(
-        cacheImage(ad.imageUrl).then((success) {
-          if (success) {
-            // 保持原始广告的排序位置
-            currentReadyList = advertisements
-                .where((item) => currentReadyList.contains(item) || item == ad)
-                .toList();
-            if (!controller.isClosed) {
-              controller.add(
-                List<AppAdvertisement>.unmodifiable(currentReadyList),
+        cacheImage(ad.imageUrl).then((path) {
+          if (path != null) {
+            paths[ad] = path;
+            if (!updates.isClosed) {
+              updates.add(
+                List.unmodifiable([
+                  for (final item in advertisements)
+                    if (paths[item] case final imagePath?)
+                      (ad: item, imagePath: imagePath),
+                ]),
               );
             }
           }
-          pendingCount--;
-          if (pendingCount <= 0 && !controller.isClosed) {
-            controller.close();
-          }
+          if (--pending == 0 && !updates.isClosed) updates.close();
         }),
       );
     }
-
-    yield* controller.stream;
+    yield* updates.stream;
   }
 
   /// 统一处理广告点击跳转逻辑。
