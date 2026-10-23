@@ -20,6 +20,8 @@ void main() {
     double width = 402,
     double scale = 1,
     double? localWidth,
+    bool settle = true,
+    bool disableAnimations = false,
   }) async {
     if (!fontLoaded) {
       await tester.runAsync(() async {
@@ -50,6 +52,7 @@ void main() {
           data: MediaQueryData(
             size: Size(width, 200),
             textScaler: TextScaler.linear(scale),
+            disableAnimations: disableAnimations,
           ),
           child: Center(
             child: RepaintBoundary(
@@ -79,7 +82,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) await tester.pumpAndSettle();
   }
 
   Future<void> capture(WidgetTester tester, String name) async {
@@ -189,6 +192,79 @@ void main() {
     await tester.pumpAndSettle();
     expect(calls, [AppTab.home, AppTab.video]);
   });
+
+  testWidgets('black indicator slides between fixed button regions', (
+    tester,
+  ) async {
+    await render(tester);
+    final indicator = find.descendant(
+      of: find.byType(AppLGBottomBar),
+      matching: find.byType(FractionallySizedBox),
+    );
+    final start = tester.getRect(indicator);
+    final deviceButton = tester.getRect(find.text('Device'));
+    await render(tester, selected: AppTab.video, settle: false);
+    await tester.pump(const Duration(milliseconds: 160));
+    final middle = tester.getRect(indicator);
+    expect(middle.left, greaterThan(start.left));
+    expect(middle.left, lessThan(start.left + start.width));
+    expect(middle.size, start.size);
+    expect(tester.getRect(find.text('Device')), deviceButton);
+    await capture(tester, 'primary_navigation_sliding_402x200_text1.0');
+    await tester.pumpAndSettle();
+    expect(tester.getRect(indicator).left, closeTo(start.right, 0.1));
+
+    await render(tester, settle: false, disableAnimations: true);
+    await tester.pump();
+    expect(tester.getRect(indicator), start);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final width in [220.0, 402.0]) {
+    testWidgets('dock enters from below viewport at width $width', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = Size(width, 600);
+      addTearDown(tester.view.reset);
+      late StateSetter update;
+      var visible = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return AppScaffold(
+                currentTab: AppTab.home,
+                appBar: const PreferredSize(
+                  preferredSize: Size.zero,
+                  child: SizedBox.shrink(),
+                ),
+                showBottomNavigation: visible,
+                body: const SizedBox.expand(),
+              );
+            },
+          ),
+        ),
+      );
+      update(() => visible = true);
+      await tester.pump();
+      final navigation = find.byType(AppPrimaryTabNavigation);
+      final start = tester.getTopLeft(navigation).dy;
+      expect(start, closeTo(600, 0.1));
+      await tester.pump(const Duration(milliseconds: 190));
+      final middle = tester.getTopLeft(navigation).dy;
+      expect(middle, lessThan(start));
+      await tester.pumpAndSettle();
+      final end = tester.getTopLeft(navigation).dy;
+      expect(end, lessThan(middle));
+      expect(tester.getBottomRight(navigation).dy, lessThan(600));
+      update(() {});
+      await tester.pump();
+      expect(tester.getTopLeft(navigation).dy, end);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   for (final scenario in [
     (220.0, 1.0, null),

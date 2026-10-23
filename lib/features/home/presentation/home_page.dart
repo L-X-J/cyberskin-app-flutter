@@ -40,6 +40,19 @@ final class _HomePageState extends State<HomePage>
   late final ScrollController _connectedScrollController;
   late final ScrollController _disconnectedScrollController;
 
+  // 顶部栏先退出，再横移内容；同一时间轴支持快速反向点击，无需排队等待。
+  late final AnimationController _tabTransition = AnimationController(
+    vsync: this,
+    value: _controller.selectedTab.value == AppTab.video ? 1 : 0,
+    duration: const Duration(milliseconds: 440),
+  );
+  late final Animation<double> _headerExit = _tabTransition.drive(
+    CurveTween(curve: const Interval(0, 0.25, curve: Curves.easeInOutCubic)),
+  );
+  late final Animation<double> _bodyTransition = _tabTransition.drive(
+    CurveTween(curve: const Interval(0.25, 1, curve: Curves.easeInOutCubic)),
+  );
+
   // 连接成功时驱动 HomeDisconnectedView 退场的控制器（扫描卡淡出、型号卡飞出）。
   late final AnimationController _disconnectedExit = AnimationController(
     vsync: this,
@@ -71,11 +84,27 @@ final class _HomePageState extends State<HomePage>
         if (mounted) _syncScrollProgress();
       });
     });
-    _tabWorker = ever(_controller.selectedTab, (_) {
+    _tabWorker = ever(_controller.selectedTab, (tab) {
+      final target = tab == AppTab.video ? 1.0 : 0.0;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _tabTransition.value = target;
+      } else {
+        unawaited(_tabTransition.animateTo(target));
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _syncScrollProgress();
       });
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _tabTransition.value = _controller.selectedTab.value == AppTab.video
+          ? 1
+          : 0;
+    }
   }
 
   @override
@@ -88,6 +117,7 @@ final class _HomePageState extends State<HomePage>
   void dispose() {
     _statusWorker?.dispose();
     _tabWorker?.dispose();
+    _tabTransition.dispose();
     _disconnectedExit.dispose();
     _connectedScrollController.removeListener(_onScroll);
     _connectedScrollController.dispose();
@@ -145,7 +175,7 @@ final class _HomePageState extends State<HomePage>
       final pendingDiscovery = _controller.pendingDiscovery?.value;
       final isScanning = _controller.isScanning?.value ?? false;
       final bleCardState = _controller.bleCardState.value;
-      // Header 仅在 Device 标签（含已连接与未连接）显示，切到 Video 时折叠隐藏。
+      // Header 仅在 Device 标签（含已连接与未连接）显示。
       final showHeader = selectedTab != AppTab.video;
       final topInset = MediaQuery.viewPaddingOf(context).top;
       final animDuration = MediaQuery.disableAnimationsOf(context)
@@ -200,6 +230,7 @@ final class _HomePageState extends State<HomePage>
                         selectedTab: selectedTab,
                         homeController: _controller,
                         videoController: videoController,
+                        transition: _bodyTransition,
                         topInset: topInset,
                         headerHeight: _headerHeight,
                         scrollController: _connectedScrollController,
@@ -243,27 +274,35 @@ final class _HomePageState extends State<HomePage>
                         contentActive: selectedTab != AppTab.video,
                       ),
               ),
-              // 共享顶部 Header：切换到 Video 时从顶部折叠上滑隐藏，回到 Device 时展开下滑显示。
+              // Header 保持完整高度，从顶部整体飞出/飞入，不参与内容区尺寸变化。
               // 滚动时带有平滑高斯模糊与暗色遮罩背景，避免滑动内容与文字发生重叠。
               Positioned(
                 left: 0,
                 right: 0,
                 top: 0,
                 child: ClipRect(
-                  child: AnimatedAlign(
-                    heightFactor: showHeader ? 1.0 : 0.0,
-                    alignment: Alignment.topCenter,
-                    duration: animDuration,
-                    curve: showHeader
-                        ? Curves.easeOutCubic
-                        : Curves.easeInCubic,
-                    child: HomeHeader(
-                      key: _headerKey,
-                      title: headerTitle,
-                      subtitle: headerSubtitle,
-                      onProfile: onHeaderProfile,
-                      topInset: topInset,
-                      scrollProgress: _headerScrollProgress,
+                  child: IgnorePointer(
+                    ignoring: !showHeader,
+                    child: ExcludeFocus(
+                      excluding: !showHeader,
+                      child: ExcludeSemantics(
+                        excluding: !showHeader,
+                        child: AnimatedBuilder(
+                          animation: _headerExit,
+                          builder: (context, child) => FractionalTranslation(
+                            translation: Offset(0, -_headerExit.value),
+                            child: child,
+                          ),
+                          child: HomeHeader(
+                            key: _headerKey,
+                            title: headerTitle,
+                            subtitle: headerSubtitle,
+                            onProfile: onHeaderProfile,
+                            topInset: topInset,
+                            scrollProgress: _headerScrollProgress,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -316,13 +355,14 @@ String _resolveHeaderSubtitle({
   };
 }
 
-/// 已连接状态下的双标签体；IndexedStack 保持两个子树常驻，避免切换时重建。
+/// 已连接状态下的双标签体；两个子树保持常驻，仅平移可见内容。
 final class _ConnectedBody extends StatelessWidget {
   const _ConnectedBody({
     super.key,
     required this.selectedTab,
     required this.homeController,
     required this.videoController,
+    required this.transition,
     required this.topInset,
     required this.headerHeight,
     this.scrollController,
@@ -331,6 +371,7 @@ final class _ConnectedBody extends StatelessWidget {
   final AppTab selectedTab;
   final VideoController videoController;
   final HomeController homeController;
+  final Animation<double> transition;
   final double topInset;
 
   // 首页共享 HomeHeader 覆层测量高度；首帧为 0，内容会暂时上移再回填。
@@ -345,28 +386,68 @@ final class _ConnectedBody extends StatelessWidget {
       context,
       showBottomNavigation: true,
     );
-    return IndexedStack(
-      index: selectedTab == AppTab.video ? 1 : 0,
-      children: [
-        // 首页已通过覆层渲染共享 HomeHeader，内容体只需在覆层下方留出对应空间。
-        DeviceBodyContent(
-          controller: Get.isRegistered<DeviceHomeController>()
-              ? Get.find<DeviceHomeController>()
-              : null,
-          topInset: topInset,
-          bottomInset: bottomInset,
-          homeController: homeController,
-          contentActive: selectedTab != AppTab.video,
-          topPaddingOverride: headerHeight,
-          scrollController: scrollController,
-          onPowerOff: () =>
-              unawaited(homeController.confirmPowerOffAndUnbind()),
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 首页已通过覆层渲染共享 HomeHeader，内容体只需在覆层下方留出对应空间。
+          _slidingTab(
+            tab: AppTab.home,
+            child: DeviceBodyContent(
+              controller: Get.isRegistered<DeviceHomeController>()
+                  ? Get.find<DeviceHomeController>()
+                  : null,
+              topInset: topInset,
+              bottomInset: bottomInset,
+              homeController: homeController,
+              contentActive: selectedTab != AppTab.video,
+              topPaddingOverride: headerHeight,
+              scrollController: scrollController,
+              onPowerOff: () =>
+                  unawaited(homeController.confirmPowerOffAndUnbind()),
+            ),
+          ),
+          _slidingTab(
+            tab: AppTab.video,
+            child: VideoTabContent(
+              controller: videoController,
+              active: selectedTab == AppTab.video,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 隐藏页保留滚动与播放实例，退出后停止 ticker，并移除焦点和点击入口。
+  Widget _slidingTab({required AppTab tab, required Widget child}) {
+    final selected = selectedTab == tab;
+    return AnimatedBuilder(
+      animation: transition,
+      builder: (context, child) {
+        final progress = transition.value;
+        final offstage = tab == AppTab.home ? progress == 1 : progress == 0;
+        return Offstage(
+          offstage: offstage,
+          child: TickerMode(
+            enabled: !offstage,
+            child: FractionalTranslation(
+              translation: Offset(
+                tab == AppTab.home ? -progress : 1 - progress,
+                0,
+              ),
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: IgnorePointer(
+        ignoring: !selected,
+        child: ExcludeFocus(
+          excluding: !selected,
+          child: ExcludeSemantics(excluding: !selected, child: child),
         ),
-        VideoTabContent(
-          controller: videoController,
-          active: selectedTab == AppTab.video,
-        ),
-      ],
+      ),
     );
   }
 }

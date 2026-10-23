@@ -104,8 +104,11 @@ enum AppApiOperation {
   /// 获取当前用户。
   currentUser,
 
-  /// 获取广告列表。
+  /// 查询当前投放窗口内的广告列表。
   listAds,
+
+  /// 查询登录后弹窗广告。
+  popupAds,
 }
 
 /// 单项 App API 的静态传输契约。
@@ -351,6 +354,13 @@ abstract final class AppApiOperations {
           method: ApiHttpMethod.get,
           path: '/app/v1/ads',
           requiresAuthentication: false,
+        ),
+
+        /// 查询登录后弹窗广告（需要登录）。
+        AppApiOperation.popupAds: AppApiOperationSpec(
+          method: ApiHttpMethod.get,
+          path: '/app/v1/ads/popup',
+          requiresAuthentication: true,
         ),
       };
 }

@@ -15,8 +15,9 @@
   - `home_advertisement_card.dart`：运营位广告卡（`HomeAdvertisementCard`）。
   - `home_device_states.dart`：设备列表空状态、加载中与错误重试组件。
   - `compact_glass_button.dart`：跨卡片复用的紧凑液态玻璃按钮。
-- `widgets/`：主页共享 UI 组件目录。
+- `widgets/`：主页共享展示与广告辅助组件目录。
   - `home_shared_widgets.dart`：主页共享背景与头部标题组件。
+  - `home_advertisement_helper.dart`：广告图片本地缓存与统一跳转逻辑。
 - `states/`：主页 UI 状态目录。
   - `home_ble_card_state.dart`：主页顶部 BLE 蓝牙卡视图展示状态 (`HomeBleCardState`) 与阶段枚举 (`HomeBleCardPhase`)。
 - `app/widgets/app_glass_surfaces.dart`：跨一级页面复用的玻璃卡片、紧凑操作和提示表面；主页不再维护第二套实现。

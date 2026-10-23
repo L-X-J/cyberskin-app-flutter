@@ -1433,6 +1433,43 @@
         },
         "security": []
       }
+    },
+    "/app/v1/ads/popup": {
+      "get": {
+        "tags": [
+          "App-首页"
+        ],
+        "summary": "查询弹窗广告。",
+        "description": "查询弹窗广告。<br><h3>访问权限</h3><br>> **权限策略**：登录检查<br>",
+        "operationId": "popup",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "popup_after_login 广告位的 online 且处于 startAt/endAt 投放窗口内的广告，按 sort 升序",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RListAppAdVo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ]
+      }
     }
   },
   "components": {

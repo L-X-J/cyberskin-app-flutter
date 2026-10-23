@@ -31,6 +31,7 @@ final class HomeRemoteRepository extends BaseRemoteRepository
             jumpType: ApiJson.string(ad, 'jumpType'),
             jumpTarget: ApiJson.string(ad, 'jumpTarget'),
             sort: ApiJson.integer(ad, 'sort'),
+            position: ApiJson.string(ad, 'position'),
           ),
         ),
       );

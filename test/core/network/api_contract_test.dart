@@ -39,7 +39,7 @@ void main() {
       }).toSet();
 
       expect(actual, expected);
-      expect(actual, hasLength(30));
+      expect(actual, hasLength(31));
     },
   );
 

@@ -5,6 +5,7 @@ import 'package:cyberskin_app/core/network/api_transport.dart';
 import 'package:cyberskin_app/core/network/app_api_operation.dart';
 import 'package:cyberskin_app/core/network/network_request_monitor.dart';
 import 'package:cyberskin_app/core/storage/session_credential_store.dart';
+import 'package:cyberskin_app/features/ad/data/ad_remote_repository.dart';
 import 'package:cyberskin_app/features/auth/data/auth_remote_repository.dart';
 import 'package:cyberskin_app/features/auth/domain/auth_repository.dart';
 import 'package:cyberskin_app/features/content/data/content_configuration_cache.dart';
@@ -233,6 +234,9 @@ Object? _dataFor(AppApiOperation operation) => switch (operation) {
   AppApiOperation.listAds => <Map<String, dynamic>>[
     <String, dynamic>{'id': 1, 'jumpType': 'url'},
   ],
+  AppApiOperation.popupAds => <Map<String, dynamic>>[
+    <String, dynamic>{'id': 2, 'jumpType': 'external_url', 'position': 'popup_after_login'},
+  ],
   AppApiOperation.presignUpload => <String, dynamic>{
     'uploadUrl': 'https://upload.example.test/object',
     'objectKey': 'feedback/object.png',
@@ -443,12 +447,16 @@ void main() {
       await content.getCmsPage('tos');
       await auth.currentUser();
       await content.listAdvertisements();
+      await AdRemoteRepository(
+        transport: transport,
+        sessionStore: store,
+      ).fetchPopupAds();
 
       expect(
         transport.requests.map((item) => item.operation).toSet(),
         AppApiOperation.values.toSet(),
       );
-      expect(transport.requests, hasLength(30));
+      expect(transport.requests, hasLength(31));
       expect(transport.textRequests, isEmpty);
       final videoRequest = transport.requests.singleWhere(
         (item) => item.operation == AppApiOperation.officialVideos,

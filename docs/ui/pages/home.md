@@ -56,11 +56,15 @@
 
 - 参考首页 Figma `172:2774` 的 Device / Video 结构，以及现有悬浮设备快捷控件的玻璃表面；本次未重新获取设计节点，不宣称新增设计参数已获确认。
 - `AppLGBottomBar` / `AppLGBottomBarTab` 是从 `flutter_liquid_glass_plus 0.0.7` 导航源码裁剪适配的本地版本，保留来源和 MIT 许可；仅包含等宽分段导航，不复制搜索、额外按钮和拖动指示器。
-- 每个分段使用真实 Row，图标在左、标签在右；同一个 TextButton 负责触控、键盘焦点、Enter / Space 和辅助技术激活。选中样式保持黑底绿边，选中状态由 `selectedTab` / `onSelected` 外部控制。
+- 每个分段使用真实 Row，图标在左、标签在右；同一个 TextButton 负责触控、键盘焦点、Enter / Space 和辅助技术激活。黑色选中指示器在固定按钮区域下方横滑，选中状态由 `selectedTab` / `onSelected` 外部控制。
+- 导航每次显示时从屏幕底部整体滑入最终 Dock 位置（含窄屏堆叠和系统安全区），切换标签不重播入场动画。
+- 首页一级切换共用可反向的时间轴：点击 Video 后顶部栏立即保持原高向上飞出，随后 Video 从右侧进入、Device 向左退出；返回时 Device 从左侧进入，内容就位后顶部栏从顶部飞入，避免覆盖视频。两个内容子树保持挂载，隐藏页不接收点击、焦点或语义操作，退出后暂停 ticker。
+- 系统减少动态效果时直接呈现最终导航、指示器、页面和顶部栏状态。
 - 外框基准为 211 × 68，宽度继续由 `widthFor` 计算，并受父级局部宽度约束；实际宽度小于 176 或 16px 文案缩放后大于 20 时仅显示图标，仍保留完整 Device / Video 语义名称，不压缩文字。
 - 与悬浮控件共用 `AppDeviceControlStyle.glass`、`surface`，通过 LGContainer 的独立玻璃层与 `LGQuality.standard` 渲染；没有溢出图标、零字号标签或交互覆盖层。
 - 组件 Widget 验证入口：`test/app/app_primary_tab_navigation_test.dart`。真实 Flutter 渲染产物：`build/ui/primary_navigation_device_402x200_text1.0.png`、`primary_navigation_video_402x200_text1.0.png`、`primary_navigation_viewport_220x200_text1.0.png`、`primary_navigation_viewport_320x200_text3.0.png`、`primary_navigation_constrained_402x200_text1.0.png`（局部宽度 140）、`primary_navigation_viewport_1024x200_text1.0.png`；均相对于 `build/ui/`。测试背景为固定蓝紫渐变，字体为 SDK Roboto，组件截图不等于整页或真机截图，也未建立已获设计确认的 Golden。
 - 本次验证范围：横向几何、外部选择更新、两个按钮点击、键盘操作、选中语义、窄屏/局部窄约束、大字体和宽屏。未验证：首页完整组合截图、iOS/Android GPU 玻璃光学效果、读屏实机体验、MiSans 差异及设计叠图验收。既有应用测试在显示导航前的 Add Device 初始断言失败，独立记录，不据此宣称整页流程通过。
+- 2026-10-23 动画验证：相关 Widget 测试覆盖导航入场（220/402 宽度）、选中块中间帧、顶部栏先退场且高度保持、左右页面入场、快速反向、低高度下滚动位置保留及减少动态效果。整页 Flutter 截图位于 `build/ui/home_tabs_{device,header_exiting,to_video,video,to_device}_402x949_text1.0.png`；选中块中间帧为 `build/ui/primary_navigation_sliding_402x200_text1.0.png`。使用 fake 设备 Repository、空视频列表、Roboto 和 50/34 安全区；本轮以用户指定动效为依据，未重取设计节点，未进行真机帧率或 GPU 玻璃效果验收。
 
 ## 自由控制入口转场
 

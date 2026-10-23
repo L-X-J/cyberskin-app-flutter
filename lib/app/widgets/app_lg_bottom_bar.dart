@@ -82,18 +82,48 @@ final class AppLGBottomBar extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              for (var index = 0; index < tabs.length; index++)
-                Expanded(
-                  child: _AppBottomBarTab(
-                    tab: tabs[index],
-                    selected: index == selectedIndex,
-                    showLabel: showLabel,
-                    onTap: () => onTabSelected(index),
+              // 指示器独立于按钮，切换时连续移动，按钮命中区与语义保持固定。
+              IgnorePointer(
+                child: AnimatedAlign(
+                  alignment: Alignment(
+                    tabs.length == 1
+                        ? 0
+                        : -1 + 2 * selectedIndex / (tabs.length - 1),
+                    0,
+                  ),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 320),
+                  curve: Curves.easeInOutCubic,
+                  child: FractionallySizedBox(
+                    widthFactor: 1 / tabs.length,
+                    heightFactor: 1,
+                    child: const DecoratedBox(
+                      decoration: ShapeDecoration(
+                        color: Colors.black,
+                        shape: StadiumBorder(),
+                      ),
+                    ),
                   ),
                 ),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var index = 0; index < tabs.length; index++)
+                    Expanded(
+                      child: _AppBottomBarTab(
+                        tab: tabs[index],
+                        selected: index == selectedIndex,
+                        showLabel: showLabel,
+                        onTap: () => onTabSelected(index),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -124,7 +154,7 @@ final class _AppBottomBarTab extends StatelessWidget {
         onPressed: onTap,
         style: TextButton.styleFrom(
           foregroundColor: color,
-          backgroundColor: selected ? Colors.black : Colors.transparent,
+          backgroundColor: Colors.transparent,
           padding: EdgeInsets.zero,
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,

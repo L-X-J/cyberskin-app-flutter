@@ -103,6 +103,7 @@ final class AppAdvertisement {
     this.jumpType,
     this.jumpTarget,
     this.sort,
+    this.position,
   });
 
   /// 广告主键。
@@ -125,4 +126,7 @@ final class AppAdvertisement {
 
   /// 服务端排序值。
   final int? sort;
+
+  /// 广告位标识：home_banner / device_detail_banner / popup_after_login。
+  final String? position;
 }

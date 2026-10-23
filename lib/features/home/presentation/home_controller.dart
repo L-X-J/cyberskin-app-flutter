@@ -10,6 +10,9 @@ import '../../../app/app_routes.dart';
 import '../../../app/session_controller.dart';
 import '../../../app/widgets/app_scaffold.dart';
 import '../../../core/error/app_failure.dart';
+import '../../../core/storage/seen_ad_store.dart';
+import '../../ad/domain/repositories/ad_repository.dart';
+import '../../ad/presentation/popup_ad_dialog.dart';
 import '../../content/domain/entities/app_content.dart';
 import '../../control/domain/device_command_repository.dart';
 import '../../device/data/cyberskin_ble_runtime_coordinator.dart';
@@ -38,12 +41,16 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     HomeRepository? homeRepository,
     CyberskinBleRuntimeCoordinator? bleCoordinator,
     DeviceCommandRepository? deviceCommandRepository,
+    AdRepository? adRepository,
+    SeenAdStore? seenAdStore,
   }) : _deviceRepository = deviceRepository,
        _userDeviceRepository = userDeviceRepository,
        _deviceCatalogRepository = deviceCatalogRepository,
        _homeRepository = homeRepository,
        _bleCoordinator = bleCoordinator,
-       _deviceCommandRepository = deviceCommandRepository;
+       _deviceCommandRepository = deviceCommandRepository,
+       _adRepository = adRepository,
+       _seenAdStore = seenAdStore;
 
   final SessionController _session;
   final DeviceRepository? _deviceRepository;
@@ -52,6 +59,8 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   final HomeRepository? _homeRepository;
   final CyberskinBleRuntimeCoordinator? _bleCoordinator;
   final DeviceCommandRepository? _deviceCommandRepository;
+  final AdRepository? _adRepository;
+  final SeenAdStore? _seenAdStore;
   final List<Worker> _bleWorkers = <Worker>[];
 
   /// 聚合后的主页数据；替换快照而不是修改共享列表，避免部分更新闪烁。
@@ -571,6 +580,8 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
         if (state == SessionState.authenticated) {
           // 登录返回主页后自动恢复 BLE 流程；协调器内部会再次检查权限和开关。
           unawaited(startDiscovery());
+          // 登录成功后检查并展示弹窗广告（一次性，已看过的不再展示）。
+          unawaited(_maybeShowPopupAd());
         } else if (state == SessionState.anonymous) {
           // 注销后清理自动发现和用户 profile，避免匿名会话复用旧账号数据。
           unawaited(coordinator.clearUserSession());
@@ -697,6 +708,35 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
       _session.setDeviceConnectionStatus(DeviceConnectionStatus.disconnected);
     }
     _hadConnectedDevice = connected;
+  }
+
+  /// 登录成功后检查并展示未看过的弹窗广告；失败静默，不影响主页其他流程。
+  Future<void> _maybeShowPopupAd() async {
+    final adRepo = _adRepository;
+    final seenStore = _seenAdStore;
+    if (adRepo == null || seenStore == null) return;
+    if (!isAuthenticated) return;
+    try {
+      final result = await adRepo.fetchPopupAds();
+      if (!isAuthenticated || isClosed) return;
+      final ads = result.valueOrNull;
+      if (ads == null || ads.isEmpty) return;
+      for (final ad in ads) {
+        final id = ad.id;
+        if (id == null) continue;
+        if (await seenStore.isSeen(id)) continue;
+        await seenStore.markSeen(id);
+        await Get.dialog<void>(
+          PopupAdDialog(ad: ad),
+          barrierDismissible: true,
+          barrierColor: Colors.transparent,
+        );
+        // 每次登录只展示一条弹窗广告。
+        break;
+      }
+    } on Object {
+      // 弹窗广告失败不影响主页其他功能，静默处理。
+    }
   }
 
   @override

@@ -29,6 +29,9 @@ import '../../features/feedback/data/feedback_remote_repository.dart';
 import '../../features/feedback/domain/repositories/feedback_repository.dart';
 import '../../features/home/data/home_remote_repository.dart';
 import '../../features/home/domain/repositories/home_repository.dart';
+import '../../features/ad/data/ad_remote_repository.dart';
+import '../../features/ad/domain/repositories/ad_repository.dart';
+import '../../core/storage/seen_ad_store.dart';
 import '../../features/profile/data/profile_remote_repository.dart';
 import '../../features/profile/domain/repositories/profile_repository.dart';
 import '../../features/rhythm/data/cached_rhythm_repository.dart';
@@ -191,6 +194,11 @@ final class AppBinding extends Bindings {
       HomeRemoteRepository(transport: transport, sessionStore: sessionStore),
       permanent: true,
     );
+    Get.put<AdRepository>(
+      AdRemoteRepository(transport: transport, sessionStore: sessionStore),
+      permanent: true,
+    );
+    Get.put<SeenAdStore>(SeenAdStore(), permanent: true);
     Get.put<LocalVideoRepository>(LocalVideoRepositoryImpl(), permanent: true);
     Get.put<VideoRepository>(
       VideoRemoteRepository(transport: transport, sessionStore: sessionStore),

@@ -157,9 +157,27 @@ final class _AppScaffoldState extends State<AppScaffold> {
                   Positioned(
                     left: 24,
                     bottom: metrics.navigationBottom,
-                    child: AppPrimaryTabNavigation(
-                      selectedTab: widget.currentTab,
-                      onSelected: _selectTab,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 380),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, progress, child) =>
+                          Transform.translate(
+                            // 包含 Dock 底部余量，确保窄屏堆叠布局也从屏幕外进入。
+                            offset: Offset(
+                              0,
+                              (1 - progress) *
+                                  (AppPrimaryTabNavigation.height +
+                                      metrics.navigationBottom),
+                            ),
+                            child: child,
+                          ),
+                      child: AppPrimaryTabNavigation(
+                        selectedTab: widget.currentTab,
+                        onSelected: _selectTab,
+                      ),
                     ),
                   ),
               ],
