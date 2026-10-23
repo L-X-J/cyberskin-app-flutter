@@ -5,7 +5,10 @@ import '../../core/logging/app_log.dart';
 import '../../core/network/api_transport.dart';
 import '../../core/network/app_api_client.dart';
 import '../../core/network/network_request_monitor.dart';
+import '../../core/storage/seen_ad_store.dart';
 import '../../core/storage/session_credential_store.dart';
+import '../../features/ad/data/ad_remote_repository.dart';
+import '../../features/ad/domain/repositories/ad_repository.dart';
 import '../../features/auth/data/auth_remote_repository.dart';
 import '../../features/auth/domain/auth_repository.dart';
 import '../../features/content/data/content_configuration_cache.dart';
@@ -29,9 +32,6 @@ import '../../features/feedback/data/feedback_remote_repository.dart';
 import '../../features/feedback/domain/repositories/feedback_repository.dart';
 import '../../features/home/data/home_remote_repository.dart';
 import '../../features/home/domain/repositories/home_repository.dart';
-import '../../features/ad/data/ad_remote_repository.dart';
-import '../../features/ad/domain/repositories/ad_repository.dart';
-import '../../core/storage/seen_ad_store.dart';
 import '../../features/profile/data/profile_remote_repository.dart';
 import '../../features/profile/domain/repositories/profile_repository.dart';
 import '../../features/rhythm/data/cached_rhythm_repository.dart';
@@ -52,7 +52,9 @@ import '../../features/video/data/video_remote_repository.dart';
 import '../../features/video/domain/repositories/local_video_repository.dart';
 import '../../features/video/domain/repositories/video_repository.dart';
 import '../floating_control_controller.dart';
+import '../playback_session_notifier.dart';
 import '../session_controller.dart';
+
 
 /// 注册应用生命周期内共享的 Repository、API 客户端和控制器。
 final class AppBinding extends Bindings {
@@ -250,6 +252,11 @@ final class AppBinding extends Bindings {
     );
     Get.put<FloatingControlController>(
       FloatingControlController(),
+      permanent: true,
+    );
+    // 订阅公共播放引擎快照，驱动 iOS Live Activity 和 Android MediaStyle 通知。
+    Get.put(
+      PlaybackSessionNotifier(devicePlayback)..start(),
       permanent: true,
     );
   }

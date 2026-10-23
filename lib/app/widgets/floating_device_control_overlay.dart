@@ -43,10 +43,9 @@ final class _FloatingDeviceControlOverlayState
       children: [
         widget.child,
         Obx(() {
-          final policy = controller.policy.value;
+          final policy = controller.effectivePolicy;
           final bounds = controller.bodyBounds.value;
-          if (controller.mediaFullscreen.value ||
-              policy == FloatingControlPolicy.hidden ||
+          if (policy == FloatingControlPolicy.hidden ||
               bounds == null ||
               bounds.width <= 48) {
             return const SizedBox.shrink();

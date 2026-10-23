@@ -12,7 +12,7 @@ enum FloatingControlPolicy {
   /// 可在安全内容区域内拖动。
   draggable,
 
-  /// 登录、启动、全屏播放或模态弹窗不显示。
+  /// 登录、启动或模态弹窗不显示。
   hidden,
 }
 
@@ -24,14 +24,23 @@ final class FloatingControlController extends GetxController {
   /// Scaffold 布局后报告的真实全局内容区域，已排除栏位和键盘。
   final Rxn<Rect> bodyBounds = Rxn<Rect>();
 
-  /// 用户拖动的全局左上角；为空时使用右下停靠点。
+  /// 用户拖动的全局左上角；为空时按固定或可拖动策略计算默认停靠点。
   final Rxn<Offset> draggedPosition = Rxn<Offset>();
 
   /// 拖动期间关闭定位动画，避免手指与控件位置产生滞后。
   final RxBool isDragging = false.obs;
 
-  /// 媒体全屏临时覆盖路由策略，退出后继续使用观察者维护的原策略。
+  /// 媒体全屏时允许拖动，退出后继续使用观察者维护的原策略。
   final RxBool mediaFullscreen = false.obs;
+
+  /// 全屏只覆盖可见路由的拖动许可，不让控件出现在登录页或模态层上方。
+  FloatingControlPolicy get effectivePolicy {
+    final routePolicy = policy.value;
+    if (routePolicy == FloatingControlPolicy.hidden) return routePolicy;
+    return mediaFullscreen.value
+        ? FloatingControlPolicy.draggable
+        : routePolicy;
+  }
 
   final Map<Route<dynamic>, Rect> _pageBounds = {};
   Route<dynamic>? _activeRoute;
@@ -79,10 +88,12 @@ final class FloatingControlController extends GetxController {
     if (bounds == null) return Offset.zero;
     final dock = Offset(
       bounds.right - size.width - 24,
-      bounds.bottom - size.height - 12,
+      effectivePolicy == FloatingControlPolicy.draggable
+          ? bounds.center.dy - size.height / 2
+          : bounds.bottom - size.height - 12,
     );
     return _clamp(
-      policy.value == FloatingControlPolicy.draggable
+      effectivePolicy == FloatingControlPolicy.draggable
           ? draggedPosition.value ?? dock
           : dock,
       bounds,
@@ -92,7 +103,7 @@ final class FloatingControlController extends GetxController {
 
   /// 从当前实际绘制位置开始拖动，包括尚未结束的归位动画。
   void startDrag(Offset renderedPosition) {
-    if (policy.value != FloatingControlPolicy.draggable) return;
+    if (effectivePolicy != FloatingControlPolicy.draggable) return;
     isDragging.value = true;
     draggedPosition.value = renderedPosition;
     _constrainStoredPosition();
@@ -100,7 +111,8 @@ final class FloatingControlController extends GetxController {
 
   /// 手势偏移只改变位置，不触发点击或设备状态更新。
   void dragBy(Offset delta) {
-    if (!isDragging.value || policy.value != FloatingControlPolicy.draggable) {
+    if (!isDragging.value ||
+        effectivePolicy != FloatingControlPolicy.draggable) {
       return;
     }
     draggedPosition.value =

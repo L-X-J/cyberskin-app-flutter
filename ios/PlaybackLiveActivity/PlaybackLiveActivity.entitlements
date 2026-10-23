@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Widget Extension 与主 App 共享同一个应用组，以便通过 AppGroup 传递状态（如有需要）。 -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.cyberskin.app</string>
+	</array>
+</dict>
+</plist>

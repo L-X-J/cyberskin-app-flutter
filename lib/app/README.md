@@ -17,4 +17,4 @@
 
 - `app_route_visibility.dart`：页面可见性观察器，只发布当前顶层页面，不承载业务导航。
 - `route_auth_middleware.dart`：应用命名路由的集中认证保护。
-- `session_controller.dart`：应用级会话与前端设备连接状态，供路由和页面共享。
+- `playback_session_notifier.dart`：订阅公共播放引擎快照，通过 `cyberskin/now_playing` 通道驱动 iOS Live Activity（灵动岛 + 锁屏）和 Android MediaStyle 通知；不持有设备或业务状态。

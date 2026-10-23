@@ -53,3 +53,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // MediaSession + MediaStyle 通知，用于设备播放的前台服务通知样式。
+    implementation("androidx.media:media:1.7.0")
+}

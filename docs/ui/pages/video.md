@@ -20,6 +20,8 @@
 - Browser 提供 URL 输入框；实际内置播放器由后续平台能力接入。
 - Local 提供本地视频选择入口和 Privacy first 说明；本轮不引入文件选择插件。
 - 底部复用 Device / Video 导航和全局设备快捷 pill。
+- Official / Local 的进度横线使用播放器库返回的实际可见画面矩形，贴住画面底边并覆盖画面宽度，自动排除居中黑边和自适应竖版留白，默认不展示圆点、时间数值或左侧播放/暂停按钮；仅拖动时在横线上方显示目标时间/总时长，提示避让主导航与设备 pill，松手立即隐藏并提交 seek。点击视频画面沿用播放器原有的播放/暂停交互；标题、选片和全屏按钮独立保留。
+- App 内播放器全屏保留唯一设备快捷 pill，默认在安全内容区右侧的高度中间，可拖动且限制在内容边界内；退出全屏恢复页面停靠策略，模态弹窗仍隐藏 pill。
 
 ## 数据与边界
 
@@ -32,6 +34,7 @@
 - 标签保持等宽可点击区域；窄屏按可用宽度收缩，宽屏居中且宽度不超过基准宽度。大字体增加轨道高度，过长标签显示省略号并保留完整无障碍名称。
 - Browser 输入框使用独立 Stateful 生命周期，响应式更新不会重置光标。
 - 截图目标：`build/ui/video_official_402x847_text1.0.png`、`build/ui/video_browser_402x847_text1.0.png`、`build/ui/video_local_402x847_text1.0.png`。
+- 播放器控件验收（2026-10-23）：已用 Flutter Widget 渲染验证横屏视频、方形、9:16 视频的进度线与真实画面底边/宽度对齐、默认隐藏时间与左侧播放按钮、拖动时显示时间且松手隐藏、播放列表按钮移除、全屏 pill 拖动、模态隐藏、退出全屏归位、可拖动状态默认纵向居中及横竖屏切换后的边界适配，以及 847 × 402 横屏、320 × 568 的 text scale 2.0；截图为 `build/ui/video_controls_402x847_text1.0.png`、`build/ui/video_fullscreen_dragged_402x847_text1.0.png`、`build/ui/video_fullscreen_847x402_text1.0.png`、`build/ui/video_fullscreen_320x568_text2.0.png`。拖动提示截图为 `build/ui/video_controls_seeking_402x847_text1.0.png`、`build/ui/video_fullscreen_seeking_320x568_text2.0.png`。截图使用有尺寸的受控平台帧，保留真实播放器布局与 seek 调用链，覆盖服务端尺寸缺失时的解码尺寸回退；新增真实画面边界截图为 `build/ui/video_progress_1080x1920_402x847.png`、`build/ui/video_progress_1080x1080_402x847.png`，默认居中截图为 `build/ui/video_fullscreen_centered_402x847_text1.0.png`。未验证原生解码与设备 BLE。
 - 未验证项：真实视频播放、系统文件选择、视频音频节奏联动和实机背景裁切。
 
 ## 顶部导航本次验收（2026-10-23）

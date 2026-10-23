@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_video_feed_list/flutter_video_feed_list.dart';
 
+import '../../../core/theme/app_video_style.dart';
 import '../domain/entities/video_media.dart';
 
 /// 官方信息流和本地视频共用的播放区域，不处理文件选择、HTTP 或设备指令。
@@ -18,7 +19,6 @@ final class VideoPlayerSurface extends StatefulWidget {
     required this.onFullscreen,
     this.bottomPadding = 0,
     this.onIndexChanged,
-    this.onShowList,
     this.onChoose,
     this.scrollable = true,
   });
@@ -43,9 +43,6 @@ final class VideoPlayerSurface extends StatefulWidget {
 
   /// 当前官方视频改变后触发分页预取。
   final ValueChanged<int>? onIndexChanged;
-
-  /// 打开共用数据源的封面列表。
-  final VoidCallback? onShowList;
 
   /// 重新选择本地视频。
   final VoidCallback? onChoose;
@@ -128,18 +125,6 @@ final class VideoPlayerSurfaceState extends State<VideoPlayerSurface>
     _progress.value = _PlaybackSnapshot(
       position: event.position,
       duration: event.duration,
-      playing: event.isPlaying,
-    );
-  }
-
-  /// 暂停事件也更新按钮，不能只依赖仅在播放时触发的进度回调。
-  void _onPlaybackState(VideoPlaybackStateEvent event) {
-    if (!mounted) return;
-    final old = _progress.value;
-    _progress.value = _PlaybackSnapshot(
-      position: old.position,
-      duration: old.duration,
-      playing: event.state == VideoPlaybackState.started,
     );
   }
 
@@ -181,7 +166,7 @@ final class VideoPlayerSurfaceState extends State<VideoPlayerSurface>
             items: _items,
             playbackAllowed: widget.active && _foreground,
             preserveManualPause: true,
-          reportPausedProgress: true,
+            reportPausedProgress: true,
             infiniteScroll: false,
             loop: widget.scrollable,
             allowUserScroll: widget.scrollable && !widget.fullscreen,
@@ -194,8 +179,23 @@ final class VideoPlayerSurfaceState extends State<VideoPlayerSurface>
                 : VideoDisplayMode.adaptive,
             onIndexChanged: _onIndex,
             onPlaybackProgress: _onProgress,
-            onPlaybackStateChanged: _onPlaybackState,
             onPlaybackError: _onError,
+            mediaOverlayBuilder: (context, item, index, mediaBounds) {
+              if (index != _index) return null;
+              return Positioned(
+                left: mediaBounds.left,
+                top: mediaBounds.bottom - AppVideoStyle.playbackTouchHeight,
+                width: mediaBounds.width,
+                height: AppVideoStyle.playbackTouchHeight,
+                child: ValueListenableBuilder<_PlaybackSnapshot>(
+                  valueListenable: _progress,
+                  builder: (context, progress, _) => _PlaybackProgress(
+                    progress: progress,
+                    onSeek: _feed.seekTo,
+                  ),
+                ),
+              );
+            },
             logF: (_) {},
           ),
           if (failed)
@@ -218,7 +218,9 @@ final class VideoPlayerSurfaceState extends State<VideoPlayerSurface>
           Positioned(
             left: 0,
             right: 0,
-            bottom: widget.fullscreen ? 0 : widget.bottomPadding,
+            bottom: widget.fullscreen
+                ? AppVideoStyle.playbackTouchHeight
+                : widget.bottomPadding,
             child: DecoratedBox(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -232,55 +234,37 @@ final class VideoPlayerSurfaceState extends State<VideoPlayerSurface>
                 bottom: widget.fullscreen,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              media?.title ?? '',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                      Expanded(
+                        child: Text(
+                          media?.title ?? '',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
-                          if (widget.onShowList != null && !widget.fullscreen)
-                            IconButton(
-                              tooltip: 'Video list',
-                              onPressed: widget.onShowList,
-                              icon: const Icon(Icons.video_library_outlined),
-                            ),
-                          if (widget.onChoose != null && !widget.fullscreen)
-                            IconButton(
-                              tooltip: 'Choose video',
-                              onPressed: widget.onChoose,
-                              icon: const Icon(Icons.video_file_outlined),
-                            ),
-                          IconButton(
-                            tooltip: widget.fullscreen
-                                ? 'Exit full screen'
-                                : 'Full screen',
-                            onPressed: widget.onFullscreen,
-                            icon: Icon(
-                              widget.fullscreen
-                                  ? Icons.fullscreen_exit
-                                  : Icons.fullscreen,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                      ValueListenableBuilder<_PlaybackSnapshot>(
-                        valueListenable: _progress,
-                        builder: (context, progress, _) => _PlaybackControls(
-                          progress: progress,
-                          onSeek: _feed.seekTo,
-                          onToggle: () => progress.playing
-                              ? _feed.pauseThisFeed()
-                              : _feed.resumeThisFeed(),
+                      if (widget.onChoose != null && !widget.fullscreen)
+                        IconButton(
+                          tooltip: 'Choose video',
+                          onPressed: widget.onChoose,
+                          color: Colors.white,
+                          icon: const Icon(Icons.video_file_outlined),
+                        ),
+                      IconButton(
+                        tooltip: widget.fullscreen
+                            ? 'Exit full screen'
+                            : 'Full screen',
+                        onPressed: widget.onFullscreen,
+                        color: Colors.white,
+                        icon: Icon(
+                          widget.fullscreen
+                              ? Icons.fullscreen_exit
+                              : Icons.fullscreen,
                         ),
                       ),
                     ],
@@ -300,30 +284,23 @@ final class _PlaybackSnapshot {
   const _PlaybackSnapshot({
     this.position = Duration.zero,
     this.duration = Duration.zero,
-    this.playing = false,
   });
   final Duration position;
   final Duration duration;
-  final bool playing;
 }
 
 /// 拖动时保留手指位置，松手才向原生播放器发送一次 seek。
-final class _PlaybackControls extends StatefulWidget {
-  const _PlaybackControls({
-    required this.progress,
-    required this.onSeek,
-    required this.onToggle,
-  });
+final class _PlaybackProgress extends StatefulWidget {
+  const _PlaybackProgress({required this.progress, required this.onSeek});
   final _PlaybackSnapshot progress;
   final Future<void> Function(Duration) onSeek;
-  final VoidCallback onToggle;
 
   /// 创建进度拖动的局部状态。
   @override
-  State<_PlaybackControls> createState() => _PlaybackControlsState();
+  State<_PlaybackProgress> createState() => _PlaybackProgressState();
 }
 
-final class _PlaybackControlsState extends State<_PlaybackControls> {
+final class _PlaybackProgressState extends State<_PlaybackProgress> {
   double? _dragPosition;
 
   /// 将进度格式化为播放器的分秒或时分秒显示。
@@ -343,37 +320,46 @@ final class _PlaybackControlsState extends State<_PlaybackControls> {
     final value =
         (_dragPosition ?? widget.progress.position.inMilliseconds.toDouble())
             .clamp(0.0, total > 0 ? total : 1.0);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        Slider(
-          value: value,
-          max: total > 0 ? total : 1,
-          onChanged: total > 0
-              ? (value) => setState(() => _dragPosition = value)
-              : null,
-          onChangeEnd: (value) async {
-            await widget.onSeek(Duration(milliseconds: value.round()));
-            if (mounted) setState(() => _dragPosition = null);
-          },
-        ),
-        Row(
-          children: [
-            IconButton(
-              tooltip: widget.progress.playing ? 'Pause' : 'Play',
-              onPressed: widget.onToggle,
-              icon: Icon(
-                widget.progress.playing ? Icons.pause : Icons.play_arrow,
-              ),
+        SizedBox(
+          height: AppVideoStyle.playbackTouchHeight,
+          child: SliderTheme(
+            data: AppVideoStyle.playbackSliderTheme,
+            child: Slider(
+              value: value,
+              max: total > 0 ? total : 1,
+              semanticFormatterCallback: (value) =>
+                  _time(Duration(milliseconds: value.round())),
+              onChangeStart: total > 0
+                  ? (value) => setState(() => _dragPosition = value)
+                  : null,
+              onChanged: total > 0
+                  ? (value) => setState(() => _dragPosition = value)
+                  : null,
+              onChangeEnd: (value) {
+                // 松手即隐藏提示；seek 的异步耗时不延长数值的展示时间。
+                setState(() => _dragPosition = null);
+                unawaited(widget.onSeek(Duration(milliseconds: value.round())));
+              },
             ),
-            Expanded(
+          ),
+        ),
+        if (_dragPosition != null)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: AppVideoStyle.playbackPreviewBottomGap,
+            child: IgnorePointer(
               child: Text(
                 '${_time(Duration(milliseconds: value.round()))} / ${_time(widget.progress.duration)}',
-                style: const TextStyle(fontSize: 12, color: Colors.white70),
+                key: const ValueKey('video-seek-time'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: Colors.white),
               ),
             ),
-          ],
-        ),
+          ),
       ],
     );
   }

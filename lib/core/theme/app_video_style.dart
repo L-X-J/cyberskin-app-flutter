@@ -1,4 +1,4 @@
-// 视频来源导航的视觉规格；对应 Ardot Video Pages 567:3–567:7。
+// 视频来源导航与播放控制的视觉规格；导航对应 Ardot Video Pages 567:3–567:7。
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -7,7 +7,7 @@ import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart';
 import 'app_colors.dart';
 import 'app_gradients.dart';
 
-/// 三个视频来源共用的玻璃轨道、指示器与文字样式。
+/// 视频来源导航的玻璃、文字样式，以及 Official / Local 共用的播放进度样式。
 abstract final class AppVideoStyle {
   /// 基准轨道为 356 × 52；宽屏居中，窄屏按父约束收缩。
   static const double tabBarMaxWidth = 356;
@@ -92,7 +92,47 @@ abstract final class AppVideoStyle {
     saturation: 1,
   );
 
+  /// 仅放大触控区域，细线仍贴住视频底边。
+  static const double playbackTouchHeight = 48;
+
+  /// 拖动时间提示贴近画面底边，保留与进度线的可读间距。
+  static const double playbackPreviewBottomGap = 12;
+
+  /// Official / Local 进度只显示横线，不显示拖动圆点或 Material 气泡。
+  static final SliderThemeData playbackSliderTheme = SliderThemeData(
+    padding: EdgeInsets.zero,
+    trackHeight: 3,
+    trackShape: const _BottomAlignedSliderTrackShape(),
+    thumbShape: SliderComponentShape.noThumb,
+    overlayShape: SliderComponentShape.noOverlay,
+    activeTrackColor: Colors.white,
+    inactiveTrackColor: Colors.white30,
+    showValueIndicator: ShowValueIndicator.never,
+  );
+
   /// 文字放大时增加轨道高度，保持行高和上下留白，不缩小字体。
   static double tabBarHeightFor(TextScaler textScaler) =>
       math.max(tabBarHeight, textScaler.scale(16) * (21 / 16) + 24);
+}
+
+/// 轨道贯穿视频宽度并贴底，向上保留完整触控高度而不增加视觉底部留白。
+final class _BottomAlignedSliderTrackShape extends RectangularSliderTrackShape {
+  const _BottomAlignedSliderTrackShape();
+
+  @override
+  Rect getPreferredRect({
+    required RenderBox parentBox,
+    Offset offset = Offset.zero,
+    required SliderThemeData sliderTheme,
+    bool isEnabled = false,
+    bool isDiscrete = false,
+  }) {
+    final height = sliderTheme.trackHeight!;
+    return Rect.fromLTWH(
+      offset.dx,
+      offset.dy + parentBox.size.height - height,
+      parentBox.size.width,
+      height,
+    );
+  }
 }

@@ -10,7 +10,6 @@ import 'package:get/get.dart';
 import '../../../app/floating_control_controller.dart';
 import '../../../app/widgets/app_scaffold.dart';
 import '../../../core/theme/app_video_style.dart';
-import '../../../core/widgets/app_image.dart';
 import 'video_controller.dart';
 import 'video_player_surface.dart';
 import 'video_source_entries.dart';
@@ -461,66 +460,6 @@ final class _OfficialVideosState extends State<_OfficialVideos> {
   var _player = GlobalKey<VideoPlayerSurfaceState>();
   int _revision = -1;
 
-  /// 选片使用已有结果，接近列表末尾时仍由同一个分页接口追加。
-  Future<void> _showList() async {
-    final selected = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.sizeOf(context).height * .65,
-          child: Obx(
-            () => ListView.builder(
-              itemCount: widget.controller.officialVideos.length + 1,
-              itemBuilder: (context, index) {
-                final videos = widget.controller.officialVideos;
-                if (index == videos.length) {
-                  return Center(
-                    child: TextButton(
-                      onPressed:
-                          widget.controller.hasMore &&
-                              !widget.controller.isLoadingMore.value
-                          ? widget.controller.loadMore
-                          : null,
-                      child: Text(
-                        widget.controller.isLoadingMore.value
-                            ? 'Loading...'
-                            : widget.controller.hasMore
-                            ? 'Load more'
-                            : 'End of videos',
-                      ),
-                    ),
-                  );
-                }
-                final video = videos[index];
-                return ListTile(
-                  leading: SizedBox(
-                    width: 64,
-                    height: 48,
-                    child: AppImage.load(
-                      video.coverUrl ?? '',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  title: Text(
-                    video.titleEn ?? '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text('${video.durationSeconds ?? 0}s'),
-                  onTap: () => Navigator.pop(context, index),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-    if (selected != null && mounted) {
-      await _player.currentState?.jumpToIndex(selected);
-    }
-  }
-
   /// 首屏与分页错误分开呈现，不能因后续请求失败移除正在播放的视频。
   @override
   Widget build(BuildContext context) => Obx(() {
@@ -570,7 +509,6 @@ final class _OfficialVideosState extends State<_OfficialVideos> {
             fullscreen: widget.fullscreen,
             bottomPadding: widget.bottomPadding,
             onFullscreen: widget.onFullscreen,
-            onShowList: _showList,
             onIndexChanged: (index) {
               if (index >= videos.length - 3 &&
                   widget.controller.loadMoreFailure.value == null) {

@@ -20,4 +20,4 @@
 
 - `app_rhythm_style.dart`：Ardot 自定义节奏页面共享颜色、面板圆角和操作列约束。
 
-- `app_video_style.dart`：Ardot 视频来源导航的轨道、文字、指示器和玻璃参数；大字体自然增高。
+- `app_video_style.dart`：Ardot 视频来源导航的轨道、文字、指示器和玻璃参数，以及 Official / Local 播放器的进度条样式；大字体自然增高。

@@ -58,7 +58,7 @@ final class _HeatBarControlState extends State<HeatBarControl> {
   Widget build(BuildContext context) {
     return Container(
       height: widget.height,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: AppTheme.freeControlBoxDecoration,
       child: Column(
         children: [
@@ -94,7 +94,7 @@ final class _HeatBarControlState extends State<HeatBarControl> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           color: Colors.white.withValues(alpha: 0.55),
                         ),
                       ),

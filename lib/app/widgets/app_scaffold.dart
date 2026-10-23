@@ -215,10 +215,10 @@ final class _AppScaffoldState extends State<AppScaffold> {
       if (box == null || !box.hasSize) return;
       final rawBounds = box.localToGlobal(Offset.zero) & box.size;
       final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
-      // 悬浮控件的可拖动区域消费系统底部安全区，避免它停在 Home Indicator 上。
+      // 全屏时内容体仍可延伸到刘海后方，拖动边界须额外避开顶部与底部安全区。
       final safeBounds = Rect.fromLTRB(
         rawBounds.left,
-        rawBounds.top,
+        math.max(rawBounds.top, MediaQuery.viewPaddingOf(context).top),
         rawBounds.right,
         math.max(rawBounds.top, rawBounds.bottom - bottomSafeArea),
       );

@@ -97,7 +97,7 @@ final class _FreeControlLayoutBuilderState
         final availableWidth = constraints.maxWidth;
         const gap = 12.0;
         final colWidth = (availableWidth - gap) / 2;
-        final unitRowHeight = colWidth * (105 / 172);
+        final unitRowHeight = colWidth * (115 / 172);
 
         // 1. 最大网格行数
         var maxRow = 0;

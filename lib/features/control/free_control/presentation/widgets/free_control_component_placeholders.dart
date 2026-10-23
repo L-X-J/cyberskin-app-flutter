@@ -12,7 +12,6 @@ import '../../domain/entities/free_control_layout.dart';
 import '../free_control_controller.dart';
 import 'heat_bar_control.dart';
 import 'heat_toggle_control.dart';
-import 'mode_multi_control.dart';
 import 'suck_multi_control.dart';
 import 'suck_toggle_control.dart';
 import 'telescopic_horizontal_stepped_control.dart';
@@ -176,6 +175,7 @@ final class FreeControlComponentPlaceholder extends StatelessWidget {
         bleToggle?.call(on);
       };
     }
+
     final onGear = c == null
         ? null
         : (int gear) => c.onGearSelected(config, gear);

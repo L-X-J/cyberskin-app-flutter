@@ -7,6 +7,8 @@
 - `video_binding.dart`：装配视频页 Controller 与 VideoRepository。
 - `video_tab_content.dart`：使用 LGButton.custom、SVG 等价渐变和细玻璃轮廓显示来源导航，并同步横向 PageView 与来源播放许可。
 
+- `video_player_surface.dart`：官方和本地视频共用的播放器宿主、生命周期及局部播放进度；复用播放器库的实际可见画面矩形提供贴底进度横线、拖动时的时间提示与全屏操作，画面点击沿用插件的播放/暂停交互。
+
 视频功能的展示层。
 
 `VideoTabContent` 只负责视频标签状态展示；一级导航由外层 `AppScaffold` 所有，页面不得在

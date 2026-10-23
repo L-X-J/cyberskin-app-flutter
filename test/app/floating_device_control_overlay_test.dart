@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:cyberskin_app/app/app_routes.dart';
 import 'package:cyberskin_app/app/floating_control_controller.dart';
@@ -6,13 +8,23 @@ import 'package:cyberskin_app/app/session_controller.dart';
 import 'package:cyberskin_app/app/widgets/app_primary_tab_navigation.dart';
 import 'package:cyberskin_app/app/widgets/app_scaffold.dart';
 import 'package:cyberskin_app/app/widgets/floating_device_control_overlay.dart';
+import 'package:cyberskin_app/core/theme/app_video_style.dart';
 import 'package:cyberskin_app/features/control/domain/device_session.dart';
 import 'package:cyberskin_app/features/control/presentation/control_session_controller.dart';
 import 'package:cyberskin_app/features/control/presentation/widgets/device_control_pill.dart';
 import 'package:cyberskin_app/features/device/domain/device.dart';
+import 'package:cyberskin_app/features/video/domain/entities/video_media.dart';
+import 'package:cyberskin_app/features/video/presentation/video_player_surface.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_video_feed_list/flutter_video_feed_list.dart';
 import 'package:get/get.dart';
+// 通过插件已有的平台接口提供有尺寸的画面，核验画面与进度线的真实渲染边界。
+// ignore: depend_on_referenced_packages
+import 'package:video_player_platform_interface/video_player_platform_interface.dart'
+    as vp;
 
 import '../support/ble_control_fixture.dart';
 
@@ -223,7 +235,7 @@ void main() {
   );
 
   testWidgets(
-    'dialogs, login and fullscreen do not have a control above them',
+    'dialogs and routes with hidden policy do not have a control above them',
     (tester) async {
       await render(tester);
       final context = tester.element(find.byType(AppScaffold));
@@ -245,6 +257,296 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(DeviceControlPill), findsOneWidget);
       }
+    },
+  );
+
+  testWidgets('draggable default stays vertically centered after rotation', (
+    tester,
+  ) async {
+    await render(tester);
+    await open(tester, AppRoutes.profile);
+    final pill = find.byType(DeviceControlPill);
+    for (final viewport in [const Size(402, 874), const Size(874, 402)]) {
+      tester.view.physicalSize = viewport;
+      await tester.pumpAndSettle();
+      expect(floating.draggedPosition.value, isNull);
+      expect(
+        tester.getRect(pill).center.dy,
+        closeTo(floating.bodyBounds.value!.center.dy, .01),
+      );
+      final bounds = floating.bodyBounds.value!;
+      final rect = tester.getRect(pill);
+      expect(rect.top, greaterThanOrEqualTo(bounds.top));
+      expect(rect.bottom, lessThanOrEqualTo(bounds.bottom));
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'video controls and fullscreen pill remain usable across drag, modal and resize',
+    (tester) async {
+      final captureKey = GlobalKey();
+      final previousPlatform = vp.VideoPlayerPlatform.instance;
+      final videoPlatform = _VideoPreviewPlatform();
+      vp.VideoPlayerPlatform.instance = videoPlatform;
+      addTearDown(() => vp.VideoPlayerPlatform.instance = previousPlatform);
+      final media = ValueNotifier(
+        const VideoMedia(
+          id: 'preview',
+          title: 'Video preview',
+          videoUrl: 'file:///video-preview.mp4',
+        ),
+      );
+      addTearDown(media.dispose);
+      await tester.runAsync(() async {
+        final font = File(
+          '.fvm/flutter_sdk/bin/cache/artifacts/material_fonts/Roboto-Regular.ttf',
+        );
+        await (FontLoader('VideoPreview')..addFont(
+              Future.value(ByteData.sublistView(font.readAsBytesSync())),
+            ))
+            .load();
+        final icons = File(
+          '.fvm/flutter_sdk/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+        );
+        await (FontLoader('MaterialIcons')..addFont(
+              Future.value(ByteData.sublistView(icons.readAsBytesSync())),
+            ))
+            .load();
+      });
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(402, 847);
+      tester.view.padding = const FakeViewPadding(top: 50, bottom: 34);
+      tester.view.viewPadding = const FakeViewPadding(top: 50, bottom: 34);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        GetMaterialApp(
+          theme: ThemeData(
+            brightness: Brightness.dark,
+            fontFamily: 'VideoPreview',
+          ),
+          navigatorObservers: [
+            FloatingControlObserver(
+              policies: const {'/': FloatingControlPolicy.fixed},
+              resetRoutes: const {},
+            ),
+          ],
+          builder: (context, child) => RepaintBoundary(
+            key: captureKey,
+            child: FloatingDeviceControlOverlay(child: child!),
+          ),
+          home: ValueListenableBuilder<VideoMedia>(
+            valueListenable: media,
+            builder: (context, currentMedia, _) => Obx(
+              () => AppScaffold(
+                currentTab: AppTab.video,
+                showBottomNavigation: !floating.mediaFullscreen.value,
+                appBar: const PreferredSize(
+                  preferredSize: Size.zero,
+                  child: SizedBox.shrink(),
+                ),
+                body: VideoPlayerSurface(
+                  // 使用真实纹理布局和受控平台帧，测试不连接网络或设备。
+                  items: [currentMedia],
+                  feedId: 'video-controls-audit',
+                  active: false,
+                  fullscreen: floating.mediaFullscreen.value,
+                  onFullscreen: () => floating.mediaFullscreen.toggle(),
+                  bottomPadding: 120,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final feed = tester.widget<VideoFeedView>(find.byType(VideoFeedView));
+      await feed.onPlaybackProgress!(
+        const VideoPlaybackProgressEvent(
+          item: DefaultVideoItem(
+            id: 'preview',
+            videoUrl: 'preview.mp4',
+            coverUrl: '',
+          ),
+          index: 0,
+          position: Duration(seconds: 30),
+          duration: Duration(minutes: 2),
+          isPlaying: false,
+        ),
+      );
+      await tester.pump();
+      expect(find.byTooltip('Video list'), findsNothing);
+      final seekTime = find.byKey(const ValueKey('video-seek-time'));
+      expect(seekTime, findsNothing);
+      expect(find.byTooltip('Play'), findsNothing);
+      expect(find.byTooltip('Pause'), findsNothing);
+      final slider = find.byType(Slider);
+      final viewportRect = tester.getRect(find.byType(VideoPlayerSurface));
+      final videoRect = tester
+          .getRect(find.byKey(const ValueKey('video-test-frame')))
+          .intersect(viewportRect);
+      final sliderRect = tester.getRect(slider);
+      final track = AppVideoStyle.playbackSliderTheme.trackShape!
+          .getPreferredRect(
+            parentBox: tester.renderObject<RenderBox>(slider),
+            offset: sliderRect.topLeft,
+            sliderTheme: AppVideoStyle.playbackSliderTheme,
+          );
+      expect(track.bottom, closeTo(videoRect.bottom, .01));
+      expect(track.left, closeTo(videoRect.left, .01));
+      expect(track.right, closeTo(videoRect.right, .01));
+      expect(track.bottom, lessThan(viewportRect.bottom - 100));
+      final playerState = tester.state(find.byType(VideoPlayerSurface));
+
+      Future<void> capture(String name) async {
+        final boundary =
+            captureKey.currentContext!.findRenderObject()!
+                as RenderRepaintBoundary;
+        await tester.runAsync(() async {
+          final image = await boundary.toImage();
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          final file = File('build/ui/$name.png');
+          file.parent.createSync(recursive: true);
+          file.writeAsBytesSync(bytes!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+
+      await capture('video_controls_402x847_text1.0');
+      final gesture = await tester.startGesture(
+        Offset(sliderRect.width / 4, sliderRect.bottom - 12),
+      );
+      await gesture.moveBy(const Offset(40, 0));
+      await tester.pump();
+      expect(seekTime, findsOneWidget);
+      expect(tester.widget<Text>(seekTime).data, endsWith('/ 02:00'));
+      expect(
+        tester
+            .getRect(seekTime)
+            .overlaps(tester.getRect(find.byType(AppPrimaryTabNavigation))),
+        isFalse,
+      );
+      expect(
+        tester
+            .getRect(seekTime)
+            .overlaps(tester.getRect(find.byType(DeviceControlPill))),
+        isFalse,
+      );
+      expect(tester.widget<Slider>(slider).value, greaterThan(30000));
+      expect(tester.getRect(slider), sliderRect);
+      await capture('video_controls_seeking_402x847_text1.0');
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(seekTime, findsNothing);
+      expect(videoPlatform.position, greaterThan(const Duration(seconds: 30)));
+
+      await tester.tap(find.byTooltip('Full screen'));
+      await tester.pumpAndSettle();
+      expect(tester.state(find.byType(VideoPlayerSurface)), same(playerState));
+      final pill = find.byType(DeviceControlPill);
+      expect(pill, findsOneWidget);
+      expect(find.byType(AppPrimaryTabNavigation), findsNothing);
+      final dock = tester.getRect(pill);
+      expect(
+        dock.center.dy,
+        closeTo(floating.bodyBounds.value!.center.dy, .01),
+      );
+      expect(dock.bottom, lessThan(tester.getTopLeft(slider).dy));
+      expect(tester.getRect(slider).bottom, closeTo(videoRect.bottom, .01));
+      expect(seekTime, findsNothing);
+      await capture('video_fullscreen_centered_402x847_text1.0');
+      await tester.drag(pill, const Offset(-100, 160));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(pill).dx, lessThan(dock.left));
+      expect(tester.getTopLeft(pill).dy, greaterThan(dock.top));
+      expect(control.state.value, DeviceSessionState.idle);
+      await capture('video_fullscreen_dragged_402x847_text1.0');
+
+      unawaited(
+        showDialog<void>(
+          context: tester.element(find.byType(AppScaffold)),
+          builder: (_) => const AlertDialog(title: Text('Modal')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(pill, findsNothing);
+      Get.back<void>();
+      await tester.pumpAndSettle();
+      expect(pill, findsOneWidget);
+
+      tester.view.physicalSize = const Size(847, 402);
+      tester.view.padding = const FakeViewPadding(left: 34, bottom: 21);
+      tester.view.viewPadding = const FakeViewPadding(left: 34, bottom: 21);
+      await tester.pumpAndSettle();
+      await tester.drag(pill, const Offset(2000, 2000));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(pill).right, lessThanOrEqualTo(847));
+      expect(tester.getRect(pill).bottom, lessThanOrEqualTo(402 - 21));
+      await tester.drag(pill, const Offset(-200, -100));
+      await tester.pumpAndSettle();
+      await capture('video_fullscreen_847x402_text1.0');
+      await tester.tap(find.byTooltip('Exit full screen'));
+      await tester.pumpAndSettle();
+      expect(floating.effectivePolicy, FloatingControlPolicy.fixed);
+      final fixed = tester.getRect(pill);
+      await tester.drag(pill, const Offset(-100, -100));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(pill), fixed);
+      expect(find.byType(AppPrimaryTabNavigation), findsOneWidget);
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      tester.view.viewPadding = const FakeViewPadding(top: 24, bottom: 24);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Full screen'));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(pill).right, lessThanOrEqualTo(320));
+      expect(tester.getRect(pill).bottom, lessThanOrEqualTo(568));
+      await capture('video_fullscreen_320x568_text2.0');
+      final largeTextDrag = await tester.startGesture(
+        tester.getBottomLeft(slider) + const Offset(80, -12),
+      );
+      await largeTextDrag.moveBy(const Offset(30, 0));
+      await tester.pump();
+      expect(seekTime, findsOneWidget);
+      await capture('video_fullscreen_seeking_320x568_text2.0');
+      await largeTextDrag.up();
+      await tester.pumpAndSettle();
+      expect(seekTime, findsNothing);
+      tester.view.physicalSize = const Size(402, 847);
+      tester.view.padding = const FakeViewPadding();
+      tester.view.viewPadding = const FakeViewPadding();
+      tester.platformDispatcher.textScaleFactorTestValue = 1;
+      floating.mediaFullscreen.value = false;
+      for (final dimensions in [
+        const Size(1080, 1920),
+        const Size(1080, 1080),
+      ]) {
+        media.value = VideoMedia(
+          id: 'preview',
+          title: 'Video preview',
+          videoUrl: 'file:///video-preview.mp4',
+          width: dimensions.width.toInt(),
+          height: dimensions.height.toInt(),
+        );
+        await tester.pumpAndSettle();
+        final viewport = tester.getRect(find.byType(VideoPlayerSurface));
+        final frame = tester
+            .getRect(find.byKey(const ValueKey('video-test-frame')))
+            .intersect(viewport);
+        expect(tester.getRect(slider).bottom, closeTo(frame.bottom, .01));
+        expect(tester.getRect(slider).left, closeTo(frame.left, .01));
+        expect(tester.getRect(slider).right, closeTo(frame.right, .01));
+        expect(frame.bottom, lessThan(viewport.bottom));
+        await capture(
+          'video_progress_${dimensions.width.toInt()}x${dimensions.height.toInt()}_402x847',
+        );
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
     },
   );
 
@@ -302,4 +604,45 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+}
+
+/// 只替代原生解码和纹理，保留插件自身的布局、尺寸回退与 seek 调用链。
+final class _VideoPreviewPlatform extends vp.VideoPlayerPlatform {
+  Duration position = const Duration(seconds: 30);
+
+  @override
+  Future<void> init() async {}
+  @override
+  Future<int?> createWithOptions(vp.VideoCreationOptions options) async => 1;
+  @override
+  Stream<vp.VideoEvent> videoEventsFor(int playerId) => Stream.value(
+    vp.VideoEvent(
+      eventType: vp.VideoEventType.initialized,
+      duration: const Duration(minutes: 2),
+      size: const Size(1920, 1080),
+    ),
+  );
+  @override
+  Widget buildViewWithOptions(vp.VideoViewOptions options) => const ColoredBox(
+    key: ValueKey('video-test-frame'),
+    color: Color(0xFF164B6A),
+  );
+  @override
+  Future<void> setLooping(int playerId, bool looping) async {}
+  @override
+  Future<void> setVolume(int playerId, double volume) async {}
+  @override
+  Future<void> setPlaybackSpeed(int playerId, double speed) async {}
+  @override
+  Future<void> play(int playerId) async {}
+  @override
+  Future<void> pause(int playerId) async {}
+  @override
+  Future<void> dispose(int playerId) async {}
+  @override
+  Future<Duration> getPosition(int playerId) async => position;
+  @override
+  Future<void> seekTo(int playerId, Duration target) async {
+    position = target;
+  }
 }
