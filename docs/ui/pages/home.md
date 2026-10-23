@@ -46,7 +46,7 @@
 - 窄屏：卡片按可用宽度缩小，双列入口保持两列并允许文本自然换行。
 - 宽屏：内容由滚动列承载，不按设计稿宽度整页缩放。
 - 大字体：标题和卡片文本自然增高，底部 pill 由 AppScaffold 重新测量位置。
-- 已连接 Dock 在常规宽度下与快捷 pill 并排；宽度/字号造成水平冲突时导航上移至 pill 上方。滚动内容由 AppScaffold 根据相同尺寸和系统底部安全区计算可达余量，背景始终延伸到视口边缘。
+- 已连接 Dock 优先与快捷 pill 底部对齐并排；导航按剩余横向空间收窄，必要时切换为图标模式。仅在剩余宽度不足以容纳两个 48px 触控区域及外框内边距时，导航上移至 pill 上方。滚动内容由 AppScaffold 根据相同尺寸和系统底部安全区计算可达余量，背景始终延伸到视口边缘。
 - 截图目标：`build/ui/home_disconnected_402x874_text1.0.png`、`build/ui/home_connected_402x949_text1.0.png`。
 - 设备首页统一使用 `/home` 的连接/未连接视图；悬浮快捷控件在未连接时返回主页。说明书动作进入 [设备介绍页](device-manual.md)，不在主页层直接读取说明书 Repository。
 - 公共卡片像素回归：`test/core/widgets/app_layered_gradient_card_test.dart`；运行后生成 `build/ui/layered_gradient_card_red_170x170_text1.0.png`，验证渐变方向、前景清晰度、裁切、内阴影偏移与图层覆盖。该截图不是经设计确认的 Golden 基线。
@@ -65,6 +65,8 @@
 - 组件 Widget 验证入口：`test/app/app_primary_tab_navigation_test.dart`。真实 Flutter 渲染产物：`build/ui/primary_navigation_device_402x200_text1.0.png`、`primary_navigation_video_402x200_text1.0.png`、`primary_navigation_viewport_220x200_text1.0.png`、`primary_navigation_viewport_320x200_text3.0.png`、`primary_navigation_constrained_402x200_text1.0.png`（局部宽度 140）、`primary_navigation_viewport_1024x200_text1.0.png`；均相对于 `build/ui/`。测试背景为固定蓝紫渐变，字体为 SDK Roboto，组件截图不等于整页或真机截图，也未建立已获设计确认的 Golden。
 - 本次验证范围：横向几何、外部选择更新、两个按钮点击、键盘操作、选中语义、窄屏/局部窄约束、大字体和宽屏。未验证：首页完整组合截图、iOS/Android GPU 玻璃光学效果、读屏实机体验、MiSans 差异及设计叠图验收。既有应用测试在显示导航前的 Add Device 初始断言失败，独立记录，不据此宣称整页流程通过。
 - 2026-10-23 动画验证：相关 Widget 测试覆盖导航入场（220/402 宽度）、选中块中间帧、顶部栏先退场且高度保持、左右页面入场、快速反向、低高度下滚动位置保留及减少动态效果。整页 Flutter 截图位于 `build/ui/home_tabs_{device,header_exiting,to_video,video,to_device}_402x949_text1.0.png`；选中块中间帧为 `build/ui/primary_navigation_sliding_402x200_text1.0.png`。使用 fake 设备 Repository、空视频列表、Roboto 和 50/34 安全区；本轮以用户指定动效为依据，未重取设计节点，未进行真机帧率或 GPU 玻璃效果验收。
+
+- 2026-10-23 Android Dock 定位修正：Flutter Widget 渲染验证 320/360/393/402px 宽度、0/24px 底部安全区下导航与快捷 pill 底部对齐且保留间隔，并验证大字体空间不足时堆叠。截图位于 `build/ui/android_docks_{320,360,393,402}x800_text1.0.png`，对照图为 `build/ui/android_docks_comparison.png`；使用 fake 会话、Roboto 和默认文字缩放，未连接 Android 真机，平台玻璃效果待实机验收。
 
 ## 自由控制入口转场
 

@@ -39,6 +39,10 @@
 	<string>Cyberskin connects to your local development server to load app data.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose a video to play locally. Your videos are never uploaded.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -61,10 +65,6 @@
 		</dict>
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
-	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
 	<true/>
 	<key>UIBackgroundModes</key>
 	<array>

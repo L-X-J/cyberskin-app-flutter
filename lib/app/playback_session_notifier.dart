@@ -123,6 +123,5 @@ final class _SentState {
       phase == other.phase;
 
   @override
-  int get hashCode =>
-      Object.hash(title, totalSeconds, remainingSeconds, phase);
+  int get hashCode => Object.hash(title, totalSeconds, remainingSeconds, phase);
 }

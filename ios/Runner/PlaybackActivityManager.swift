@@ -54,7 +54,7 @@ final class PlaybackActivityManager {
         remainingSeconds: Int,
         phase: String
     ) {
-        // 同一会话已有活动时只更新；不允许同时存在两个 Live Activity。
+        // 同一会话已有活动时只更新，不重复创建。
         if let existing = activity {
             Task {
                 await existing.update(
@@ -70,7 +70,16 @@ final class PlaybackActivityManager {
             return
         }
 
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        // iOS 16.2+ 提供更细粒度的授权状态。
+        // areActivitiesEnabled 为 false 时说明用户在「设置」里关闭了该 App 的 Live Activity，
+        // 此时打印提示而非静默忽略，方便排查。
+        // areActivitiesEnabled 为 false 表示用户在「设置」里关闭了该 App 的 Live Activity，
+        // 或设备/系统不支持。iOS 系统在首次 Activity.request() 时自动弹授权提示，无需主动申请。
+        let info = ActivityAuthorizationInfo()
+        guard info.areActivitiesEnabled else {
+            print("[PlaybackActivity] Live Activities not enabled — check Settings → Cyberskin → Live Activities, and that NSSupportsLiveActivities is set in Info.plist with a Widget Extension target present")
+            return
+        }
 
         let attrs = PlaybackActivityAttributes(
             title: title,
@@ -88,8 +97,10 @@ final class PlaybackActivityManager {
                 content: content,
                 pushType: nil
             )
+            print("[PlaybackActivity] Live Activity started: id=\(activity?.id ?? "nil"), title=\(title)")
         } catch {
-            // 设备不支持 Live Activity 时静默跳过（如 iPhone SE 无灵动岛仍可锁屏显示）。
+            // 最常见原因：Widget Extension target 未建立，或 Info.plist 缺少 NSSupportsLiveActivities。
+            print("[PlaybackActivity] Activity.request() failed: \(error)")
         }
     }
 

@@ -20,6 +20,9 @@ final class AppPrimaryTabNavigation extends StatelessWidget {
   /// 设计稿中的分段导航高度。
   static const double height = 68;
 
+  /// 紧凑模式下保留两个 48px 触控区域及外框内边距。
+  static const double minWidth = 108;
+
   /// 设计稿中的最大导航宽度。
   static const double maxWidth = 211;
 

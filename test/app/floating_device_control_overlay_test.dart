@@ -47,11 +47,13 @@ void main() {
     WidgetTester tester, {
     double textScale = 1,
     Size viewport = const Size(402, 874),
+    String? fontFamily,
+    double bottomInset = 34,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = viewport;
-    tester.view.padding = const FakeViewPadding(top: 50, bottom: 34);
-    tester.view.viewPadding = const FakeViewPadding(top: 50, bottom: 34);
+    tester.view.padding = FakeViewPadding(top: 50, bottom: bottomInset);
+    tester.view.viewPadding = FakeViewPadding(top: 50, bottom: bottomInset);
     addTearDown(tester.view.reset);
     Widget page(String title) => AppScaffold(
       currentTab: title == 'Video' ? AppTab.video : AppTab.home,
@@ -72,7 +74,7 @@ void main() {
     );
     await tester.pumpWidget(
       GetMaterialApp(
-        theme: ThemeData(brightness: Brightness.dark),
+        theme: ThemeData(brightness: Brightness.dark, fontFamily: fontFamily),
         initialRoute: AppRoutes.home,
         navigatorObservers: [
           FloatingControlObserver(
@@ -101,7 +103,10 @@ void main() {
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context)
               .copyWith(textScaler: TextScaler.linear(textScale)),
-          child: FloatingDeviceControlOverlay(child: child!),
+          child: RepaintBoundary(
+            key: const ValueKey('dock-capture'),
+            child: FloatingDeviceControlOverlay(child: child!),
+          ),
         ),
       ),
     );
@@ -180,6 +185,78 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  for (final width in [320.0, 360.0, 393.0, 402.0]) {
+    for (final bottomInset in [0.0, 24.0]) {
+      testWidgets('docks align at width $width and inset $bottomInset', (
+        tester,
+      ) async {
+        await tester.runAsync(() async {
+          final font = File(
+            '.fvm/flutter_sdk/bin/cache/artifacts/material_fonts/Roboto-Medium.ttf',
+          );
+          await (FontLoader('DockPreview')..addFont(
+                Future.value(ByteData.sublistView(await font.readAsBytes())),
+              ))
+              .load();
+          final icons = File(
+            '.fvm/flutter_sdk/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+          );
+          await (FontLoader('MaterialIcons')..addFont(
+                Future.value(ByteData.sublistView(await icons.readAsBytes())),
+              ))
+              .load();
+        });
+        await render(
+          tester,
+          viewport: Size(width, 800),
+          fontFamily: 'DockPreview',
+          bottomInset: bottomInset,
+        );
+        final navigation = tester.getRect(find.byType(AppPrimaryTabNavigation));
+        final pill = tester.getRect(find.byType(DeviceControlPill));
+        expect(navigation.bottom, closeTo(800 - bottomInset - 12, 0.01));
+        expect(navigation.bottom, closeTo(pill.bottom, 0.01));
+        expect(navigation.right + 12, lessThanOrEqualTo(pill.left));
+        expect(
+          navigation.width,
+          greaterThanOrEqualTo(AppPrimaryTabNavigation.minWidth),
+        );
+        final context = tester.element(find.byType(AppPrimaryTabNavigation));
+        expect(
+          AppScaffold.contentBottomPaddingOf(
+            context,
+            showBottomNavigation: true,
+          ),
+          closeTo(68 + 24 + bottomInset, 0.01),
+        );
+        await tester.tap(find.bySemanticsLabel('Video'));
+        await tester.pumpAndSettle();
+        expect(find.text('Video'), findsWidgets);
+        expect(tester.takeException(), isNull);
+
+        if (bottomInset == 24) {
+          final boundary = tester.renderObject<RenderRepaintBoundary>(
+            find.byKey(const ValueKey('dock-capture')),
+          );
+          await tester.runAsync(() async {
+            final image = await boundary.toImage();
+            try {
+              final bytes = await image.toByteData(
+                format: ui.ImageByteFormat.png,
+              );
+              Directory('build/ui').createSync(recursive: true);
+              await File(
+                'build/ui/android_docks_${width.toInt()}x800_text1.0.png',
+              ).writeAsBytes(bytes!.buffer.asUint8List());
+            } finally {
+              image.dispose();
+            }
+          });
+        }
+      });
+    }
+  }
 
   testWidgets(
     'narrow large-text layout stacks the docks above the bottom safe area',

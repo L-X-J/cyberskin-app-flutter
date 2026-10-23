@@ -57,32 +57,29 @@ final class AppScaffold extends StatefulWidget {
     bool reserveFloatingControl = true,
   }) {
     final textScaler = MediaQuery.textScalerOf(context);
-    final maxWidth = MediaQuery.sizeOf(context).width - 48;
-    final controlSize = AppDeviceControlStyle.sizeFor(
-      textScaler: textScaler,
-      maxWidth: maxWidth,
-      fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
-    );
     final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
     if (!showBottomNavigation) {
+      final controlSize = AppDeviceControlStyle.sizeFor(
+        textScaler: textScaler,
+        maxWidth: MediaQuery.sizeOf(context).width - 48,
+        fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
+      );
       return reserveFloatingControl
           ? controlSize.height + 24 + bottomSafeArea
           : 0;
     }
 
-    final navigationWidth = AppPrimaryTabNavigation.widthFor(
-      MediaQuery.sizeOf(context).width,
+    final metrics = _DockMetrics.from(
+      viewportWidth:
+          MediaQuery.sizeOf(context).width -
+          MediaQuery.paddingOf(context).horizontal,
+      bottomSafeArea: bottomSafeArea,
+      textScaler: textScaler,
+      fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
+      showBottomNavigation: true,
     );
-    final docksOverlap = _docksOverlap(
-      viewportWidth: MediaQuery.sizeOf(context).width,
-      navigationWidth: navigationWidth,
-      controlWidth: controlSize.width,
-    );
-    final dockHeight = docksOverlap
-        ? AppPrimaryTabNavigation.height + 12 + controlSize.height
-        : math.max(AppPrimaryTabNavigation.height, controlSize.height);
     // 12px 留给 Dock 到屏幕边缘，另 12px 留给滚动内容与 Dock 的呼吸空间。
-    return dockHeight + 24 + bottomSafeArea;
+    return metrics.dockHeight + 24 + bottomSafeArea;
   }
 
   @override
@@ -157,6 +154,7 @@ final class _AppScaffoldState extends State<AppScaffold> {
                   Positioned(
                     left: 24,
                     bottom: metrics.navigationBottom,
+                    width: metrics.navigationWidth,
                     child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0, end: 1),
                       duration: MediaQuery.disableAnimationsOf(context)
@@ -237,36 +235,42 @@ final class _DockMetrics {
     required String? fontFamily,
     required bool showBottomNavigation,
   }) {
-    if (!showBottomNavigation) return const _DockMetrics(navigationBottom: 0);
+    if (!showBottomNavigation) {
+      return const _DockMetrics(
+        navigationBottom: 0,
+        navigationWidth: 0,
+        dockHeight: 0,
+      );
+    }
     final controlSize = AppDeviceControlStyle.sizeFor(
       textScaler: textScaler,
       maxWidth: viewportWidth - 48,
       fontFamily: fontFamily,
     );
-    final navigationWidth = AppPrimaryTabNavigation.widthFor(viewportWidth);
-    final overlap = _docksOverlap(
-      viewportWidth: viewportWidth,
-      navigationWidth: navigationWidth,
-      controlWidth: controlSize.width,
-    );
+    final preferredWidth = AppPrimaryTabNavigation.widthFor(viewportWidth);
+    final availableWidth = viewportWidth - 48 - controlSize.width - 12;
+    // 优先利用导航的紧凑图标模式，避免普通 Android 手机仅因不足 211px
+    // 就把导航上移一整行；两个分段无法保留最小触控宽度时才堆叠。
+    final overlap = availableWidth < AppPrimaryTabNavigation.minWidth;
     return _DockMetrics(
       navigationBottom:
           bottomSafeArea + 12 + (overlap ? controlSize.height + 12 : 0),
+      navigationWidth: overlap
+          ? preferredWidth
+          : math.min(preferredWidth, availableWidth),
+      dockHeight: overlap
+          ? AppPrimaryTabNavigation.height + 12 + controlSize.height
+          : math.max(AppPrimaryTabNavigation.height, controlSize.height),
     );
   }
 
-  const _DockMetrics({required this.navigationBottom});
+  const _DockMetrics({
+    required this.navigationBottom,
+    required this.navigationWidth,
+    required this.dockHeight,
+  });
 
   final double navigationBottom;
-}
-
-/// 左右 Dock 之间不足 12px 时将导航上移到快捷控件上方。
-bool _docksOverlap({
-  required double viewportWidth,
-  required double navigationWidth,
-  required double controlWidth,
-}) {
-  final navigationRight = 24 + navigationWidth;
-  final controlLeft = viewportWidth - controlWidth - 24;
-  return navigationRight + 12 > controlLeft;
+  final double navigationWidth;
+  final double dockHeight;
 }

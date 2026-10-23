@@ -36,8 +36,8 @@ Cyberskin App 是面向美国男性用户的英文 Flutter 客户端，连接并
   translucent 变体；认证页的 `Resend code` 保留为无实体背景的文本链接。契约见
   `docs/ui/components/liquid-glass-button.md`。
 
-- 一级 Device / Video 导航与全局设备快捷 pill 由 `AppScaffold` 共同协调：常规宽度并排，
-  横向空间或大字体不足时导航移到 pill 上方；页面滚动内容通过
+- 一级 Device / Video 导航与全局设备快捷 pill 由 `AppScaffold` 共同协调：优先收窄导航并排，
+  紧凑图标导航仍无法满足最小触控宽度时才移到 pill 上方；页面滚动内容通过
   `AppScaffold.contentBottomPaddingOf` 预留 Dock 和系统底部安全区，背景保持铺满 viewport。
 
 - App 状态使用 GetX `GetxController` + `Rx`；路由和依赖使用 GetX；局部状态使用 `setState`。

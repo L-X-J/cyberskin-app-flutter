@@ -55,7 +55,6 @@ import '../floating_control_controller.dart';
 import '../playback_session_notifier.dart';
 import '../session_controller.dart';
 
-
 /// 注册应用生命周期内共享的 Repository、API 客户端和控制器。
 final class AppBinding extends Bindings {
   /// 使用应用入口选择的设备 Repository 创建绑定。
@@ -255,9 +254,6 @@ final class AppBinding extends Bindings {
       permanent: true,
     );
     // 订阅公共播放引擎快照，驱动 iOS Live Activity 和 Android MediaStyle 通知。
-    Get.put(
-      PlaybackSessionNotifier(devicePlayback)..start(),
-      permanent: true,
-    );
+    Get.put(PlaybackSessionNotifier(devicePlayback)..start(), permanent: true);
   }
 }
