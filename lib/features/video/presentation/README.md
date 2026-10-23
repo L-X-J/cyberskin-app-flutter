@@ -5,6 +5,7 @@
 - `video_page.dart`：渲染可独立路由或嵌入主页的 Official、Browser、Local 内容状态，并按 AppScaffold Dock 几何预留底部滚动空间。
 - `video_controller.dart`：加载官方视频并维护标签、Browser 输入和错误状态。
 - `video_binding.dart`：装配视频页 Controller 与 VideoRepository。
+- `video_tab_content.dart`：使用 LGButton.custom、SVG 等价渐变和细玻璃轮廓显示来源导航，并同步横向 PageView 与来源播放许可。
 
 视频功能的展示层。
 

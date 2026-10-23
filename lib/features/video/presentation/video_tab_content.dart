@@ -1,13 +1,15 @@
-// 共享 TabBar 与横向 PageView，组合官方信息流、网页入口和本地播放三个常驻子页。
+// 液态玻璃来源导航与横向 PageView，组合官方信息流、网页入口和本地播放三个常驻子页。
 import 'dart:async';
 
 import 'package:cyberskin_app/core/extensions/ui_ext.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart';
 import 'package:get/get.dart';
 
 import '../../../app/floating_control_controller.dart';
 import '../../../app/widgets/app_scaffold.dart';
+import '../../../core/theme/app_video_style.dart';
 import '../../../core/widgets/app_image.dart';
 import 'video_controller.dart';
 import 'video_player_surface.dart';
@@ -33,23 +35,16 @@ final class VideoTabContent extends StatefulWidget {
   State<VideoTabContent> createState() => _VideoTabContentState();
 }
 
-final class _VideoTabContentState extends State<VideoTabContent>
-    with SingleTickerProviderStateMixin {
+final class _VideoTabContentState extends State<VideoTabContent> {
   late final PageController _pages;
-  late final TabController _tabs;
-  late final Worker _tabWorker;
   bool _switching = false;
 
-  /// 两个导航控件共享初始索引，避免标签高亮与实际页不同步。
+  /// PageView 使用来源状态的初始索引，标签直接消费同一个状态。
   @override
   void initState() {
     super.initState();
     final initial = widget.controller.selectedTab.value.index;
     _pages = PageController(initialPage: initial);
-    _tabs = TabController(length: 3, vsync: this, initialIndex: initial);
-    _tabWorker = ever(widget.controller.selectedTab, (tab) {
-      if (_tabs.index != tab.index) _tabs.animateTo(tab.index);
-    });
   }
 
   /// 隐藏一级视频页时退出全屏；不能把全屏状态带到设备页面。
@@ -108,9 +103,7 @@ final class _VideoTabContentState extends State<VideoTabContent>
   /// 退出清理局部导航资源，不持久化本地视频或网址。
   @override
   void dispose() {
-    _tabWorker.dispose();
     _pages.dispose();
-    _tabs.dispose();
     if (widget.controller.isFullscreen.value) {
       if (Get.isRegistered<FloatingControlController>()) {
         Get.find<FloatingControlController>().mediaFullscreen.value = false;
@@ -186,36 +179,12 @@ final class _VideoTabContentState extends State<VideoTabContent>
             ),
             if (!fullscreen)
               Positioned(
-                top: 1.statusBarHeight,
+                top: 0.statusBarHeight,
                 left: 0,
                 right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  child: Container(
-                    margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: .45),
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    child: TabBar(
-                      controller: _tabs,
-                      onTap: _select,
-                      dividerColor: Colors.transparent,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      indicator: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary
-                            .withValues(alpha: .6),
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.white70,
-                      tabs: const [
-                        Tab(text: 'Official'),
-                        Tab(text: 'Browser'),
-                        Tab(text: 'Local'),
-                      ],
-                    ),
-                  ),
+                child: _VideoSourceTabBar(
+                  selectedIndex: selected.index,
+                  onSelected: _select,
                 ),
               ),
           ],
@@ -223,6 +192,225 @@ final class _VideoTabContentState extends State<VideoTabContent>
       );
     });
   }
+}
+
+/// 顶部导航使用完整窗口的安全区；玻璃背景实际采样其后的页面内容。
+final class _VideoSourceTabBar extends StatelessWidget {
+  const _VideoSourceTabBar({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = AppVideoStyle.tabLabel.copyWith(
+      fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
+    );
+    final height = AppVideoStyle.tabBarHeightFor(
+      MediaQuery.textScalerOf(context),
+    );
+    return SafeArea(
+      top: false,
+      bottom: false,
+      child: Padding(
+        // 壳层会清除局部顶部 inset；外层已通过全局 statusBarHeight 避让。
+        // 此处仅处理左右安全区，避免再次叠加顶部距离。
+        padding: AppVideoStyle.tabBarMargin,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AppVideoStyle.tabBarMaxWidth,
+            ),
+            child: LGContainer(
+              useOwnLayer: true,
+              settings: AppVideoStyle.tabBarGlass,
+              shape: const LiquidRoundedRectangle(
+                borderRadius: AppVideoStyle.tabBarRadius,
+              ),
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppVideoStyle.tabBarBackground,
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(AppVideoStyle.tabBarRadius),
+                  ),
+                ),
+                child: SizedBox(
+                  key: const ValueKey('video-source-tab-bar'),
+                  height: height,
+                  child: Padding(
+                    padding: AppVideoStyle.tabIndicatorPadding,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width =
+                            (constraints.maxWidth - AppVideoStyle.tabGap * 2) /
+                            VideoTab.values.length;
+                        const labels = ['Official', 'Browser', 'Local'];
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            IgnorePointer(
+                              child: AnimatedAlign(
+                                alignment: Alignment(-1.0 + selectedIndex, 0),
+                                duration:
+                                    MediaQuery.disableAnimationsOf(context)
+                                    ? Duration.zero
+                                    : const Duration(milliseconds: 240),
+                                curve: Curves.easeOutCubic,
+                                child: SizedBox(
+                                  key: const ValueKey('video-source-indicator'),
+                                  width: width,
+                                  height: constraints.maxHeight,
+                                  child: _VideoSourceIndicator(
+                                    height: constraints.maxHeight,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                for (
+                                  var index = 0;
+                                  index < labels.length;
+                                  index++
+                                ) ...[
+                                  if (index > 0)
+                                    const SizedBox(width: AppVideoStyle.tabGap),
+                                  Expanded(
+                                    child: _VideoSourceButton(
+                                      label: labels[index],
+                                      selected: selectedIndex == index,
+                                      textStyle: textStyle,
+                                      height: constraints.maxHeight,
+                                      onSelected: () => onSelected(index),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// SVG 填充与玻璃轮廓分层绘制；不把颜色交给玻璃 tint 的乘色混合。
+final class _VideoSourceIndicator extends StatelessWidget {
+  const _VideoSourceIndicator({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => LGContainer(
+    useOwnLayer: true,
+    quality: LGQuality.premium,
+    settings: AppVideoStyle.tabIndicatorGlass,
+    shape: LiquidRoundedRectangle(borderRadius: height / 2),
+    child: const CustomPaint(
+      painter: _VideoSourceCapsulePainter(),
+      child: SizedBox.expand(),
+    ),
+  );
+}
+
+/// 光学轮廓限制在内缘，既保留 SVG 渐变，也避免粗描边遮住背景。
+final class _VideoSourceCapsulePainter extends CustomPainter {
+  const _VideoSourceCapsulePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final bounds = Offset.zero & size;
+    final shape = RRect.fromRectAndRadius(
+      bounds,
+      Radius.circular(size.height / 2),
+    );
+    canvas.drawRRect(
+      shape,
+      Paint()..shader = AppVideoStyle.tabIndicatorGradient.createShader(bounds),
+    );
+    canvas.drawDRRect(
+      shape,
+      shape.deflate(AppVideoStyle.tabIndicatorRimWidth),
+      Paint()..shader = AppVideoStyle.tabIndicatorRim.createShader(bounds),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _VideoSourceCapsulePainter oldDelegate) => false;
+}
+
+/// 固定按钮区负责点击、键盘与语义；装饰胶囊独立移动，不改变命中位置。
+final class _VideoSourceButton extends StatelessWidget {
+  const _VideoSourceButton({
+    required this.label,
+    required this.selected,
+    required this.textStyle,
+    required this.height,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final TextStyle textStyle;
+  final double height;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) => FocusableActionDetector(
+    shortcuts: const {
+      SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+      SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+    },
+    actions: {
+      ActivateIntent: CallbackAction<ActivateIntent>(
+        onInvoke: (_) {
+          onSelected();
+          return null;
+        },
+      ),
+    },
+    child: Semantics(
+      selected: selected,
+      child: LGButton.custom(
+        label: label,
+        width: double.infinity,
+        height: height,
+        onTap: onSelected,
+        style: LGButtonStyle.transparent,
+        interactionScale: 1,
+        stretch: 0,
+        child: ExcludeSemantics(
+          child: Padding(
+            padding: AppVideoStyle.tabLabelPadding,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: textStyle.copyWith(
+                color: selected
+                    ? textStyle.color
+                    : AppVideoStyle.tabUnselectedLabelColor,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// 常驻子树只保留页面与播放位置，不赋予隐藏页面播放许可。
@@ -393,7 +581,13 @@ final class _OfficialVideosState extends State<_OfficialVideos> {
         ),
         if (!widget.fullscreen)
           Positioned(
-            top: MediaQuery.paddingOf(context).top + 72,
+            top:
+                0.statusBarHeight +
+                AppVideoStyle.tabBarMargin.top +
+                AppVideoStyle.tabBarHeightFor(
+                  MediaQuery.textScalerOf(context),
+                ) +
+                12,
             right: 16,
             child: Obx(
               () => Row(
