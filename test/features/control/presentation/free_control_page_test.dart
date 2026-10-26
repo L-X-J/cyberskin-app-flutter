@@ -59,6 +59,7 @@ void main() {
     setUp(() {
       Get.reset();
       bleCoordinator = CyberskinBleRuntimeCoordinator(
+        isAuthenticated: () => true,
         catalogRepository: _FakeCatalogRepository(),
       );
       sessionController = ControlSessionController();

@@ -278,7 +278,8 @@ final class LoginController extends GetxController {
       await _session.refreshFromCredentials();
       _session.markAuthenticated();
       // 配置刷新由首页自动触发，此处不重复发起，避免竞态覆盖刚建立的登录态。
-      await Get.offAllNamed<void>(AppRoutes.home);
+      // 保留匿名首页及其 BLE 订阅，避免旧路由清理销毁新首页的同类型控制器。
+      AppRoutes.returnToHome();
       return;
     }
     failure.value = result.failureOrNull;

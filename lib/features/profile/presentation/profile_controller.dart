@@ -1,3 +1,4 @@
+// 用户资料展示、加载和退出登录的交互编排。
 import 'dart:async';
 
 import 'package:get/get.dart';
@@ -53,12 +54,15 @@ final class ProfileController extends GetxController {
   Future<void> logout() async {
     if (isLoggingOut.value) return;
     isLoggingOut.value = true;
-    // 远端请求与本地清理并行，节省时间；远端失败不影响本地登出。
-    await Future.wait<void>([
-      _authRepository.logout(),
-      _session.logout(),
-    ]);
-    isLoggingOut.value = false;
-    await Get.offAllNamed<void>(AppRoutes.home);
+    // 先关闭设备会话，但保留请求所需凭证，避免本地 clear 与远端鉴权读取竞态。
+    _session.markAnonymous();
+    try {
+      await _authRepository.logout();
+    } finally {
+      await _session.logout();
+      isLoggingOut.value = false;
+      // 复用栈中的主页，避免 offAllNamed 的旧路由清理删除新主页控制器。
+      AppRoutes.returnToHome();
+    }
   }
 }

@@ -1,6 +1,7 @@
 // 主页状态、BLE 自动发现与多 Repository 数据聚合编排。
 // ignore_for_file: prefer_initializing_formals
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cyberskin_device_sdk/cyberskin_device_sdk.dart';
 import 'package:flutter/material.dart';
@@ -93,6 +94,9 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
 
   bool _hadConnectedDevice = false;
   bool _powerOffInProgress = false;
+  int _popupAdGeneration = 0;
+  int? _popupAdPendingGeneration;
+  bool _popupAdShown = false;
 
   /// 当前前端设备连接状态；由 BLE 事件同步到全局 SessionController。
   Rx<DeviceConnectionStatus> get deviceStatus => _session.deviceStatus;
@@ -113,7 +117,9 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   void onReady() {
     super.onReady();
     WidgetsBinding.instance.addObserver(this);
+    _bindPopupAdObservers();
     _bindBleObservers();
+    unawaited(_maybeShowPopupAd());
     // 未配置 API 地址时跳过主页网络聚合；已认证页面仍需恢复 BLE 自动发现。
     if (const String.fromEnvironment('CYBERSKIN_API_BASE_URL').isNotEmpty) {
       unawaited(_loadHomeAndStartBle());
@@ -325,13 +331,16 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   }
 
   /// 在主页发起 BLE profile 加载、权限申请、扫描和已知设备自动重连。
-  Future<void> startDiscovery() async {
+  Future<void> startDiscovery({bool userInitiated = true}) async {
     if (!isAuthenticated) {
       openLogin();
       return;
     }
     final coordinator = _bleCoordinator;
-    if (coordinator == null) return;
+    if (coordinator == null ||
+        (!userInitiated && coordinator.isDiscoveryPaused)) {
+      return;
+    }
     // 用户主动发起新一轮扫描，清除上一次绑定失败的持久提示。
     bindFailureMessage.value = null;
     await coordinator.loadProfilesAndStart();
@@ -342,6 +351,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   Future<void> stopDiscovery() async {
     await _bleCoordinator?.stopDiscovery();
     _syncBleStatus();
+    _syncBleCardState();
   }
 
   /// 确认主页发现的新设备，连接成功后创建用户绑定并刷新主页快照。
@@ -562,7 +572,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
         _syncBleCardState();
         if (state == 'on' && isAuthenticated) {
           // 登录或权限回调早于适配器状态事件时，在开关确认后补发自动扫描。
-          unawaited(startDiscovery());
+          unawaited(startDiscovery(userInitiated: false));
         }
       }),
     );
@@ -573,6 +583,8 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
         _contentGeneration++;
         _contentRequested = false;
         if (state != SessionState.authenticated) {
+          selectedTab.value = AppTab.home;
+          _hadConnectedDevice = false;
           final old = dashboard.value;
           dashboard.value = HomeDashboard(deviceModels: old.deviceModels);
         }
@@ -580,11 +592,6 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
         if (state == SessionState.authenticated) {
           // 登录返回主页后自动恢复 BLE 流程；协调器内部会再次检查权限和开关。
           unawaited(startDiscovery());
-          // 登录成功后检查并展示弹窗广告（一次性，已看过的不再展示）。
-          unawaited(_maybeShowPopupAd());
-        } else if (state == SessionState.anonymous) {
-          // 注销后清理自动发现和用户 profile，避免匿名会话复用旧账号数据。
-          unawaited(coordinator.clearUserSession());
         }
       }),
     );
@@ -597,7 +604,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
         if (coordinator.permissionGranted.value &&
             coordinator.adapterState.value == 'on' &&
             isAuthenticated) {
-          unawaited(startDiscovery());
+          unawaited(startDiscovery(userInitiated: false));
         }
       }),
     );
@@ -688,7 +695,7 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && isAuthenticated) {
-      unawaited(startDiscovery());
+      unawaited(startDiscovery(userInitiated: false));
     }
   }
 
@@ -696,6 +703,11 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
   void _syncBleStatus() {
     final coordinator = _bleCoordinator;
     if (coordinator == null) return;
+    if (!isAuthenticated) {
+      _hadConnectedDevice = false;
+      _session.setDeviceConnectionStatus(DeviceConnectionStatus.disconnected);
+      return;
+    }
     final connected = coordinator.hasConnectedDevice;
     final connecting = coordinator.isConnecting;
     if (connecting) {
@@ -710,37 +722,90 @@ final class HomeController extends GetxController with WidgetsBindingObserver {
     _hadConnectedDevice = connected;
   }
 
-  /// 登录成功后检查并展示未看过的弹窗广告；失败静默，不影响主页其他流程。
+  /// 登录与设备连接分别到达时重试；世代隔离失效会话和断连前的异步结果。
+  void _bindPopupAdObservers() {
+    _bleWorkers.add(
+      ever<SessionState>(_session.state, (_) {
+        _popupAdGeneration++;
+        _popupAdShown = false;
+        unawaited(_maybeShowPopupAd());
+      }),
+    );
+    _bleWorkers.add(
+      ever<DeviceConnectionStatus>(deviceStatus, (_) {
+        _popupAdGeneration++;
+        unawaited(_maybeShowPopupAd());
+      }),
+    );
+  }
+
+  bool _canShowPopupAd(int generation) =>
+      generation == _popupAdGeneration &&
+      !isClosed &&
+      isAuthenticated &&
+      deviceStatus.value == DeviceConnectionStatus.connected &&
+      !_popupAdShown;
+
+  /// 登录且设备已连接后，仅展示已落盘并成功解码的本地广告图片。
   Future<void> _maybeShowPopupAd() async {
     final adRepo = _adRepository;
     final seenStore = _seenAdStore;
+    final generation = _popupAdGeneration;
     if (adRepo == null || seenStore == null) return;
-    if (!isAuthenticated) return;
+    if (!_canShowPopupAd(generation) ||
+        _popupAdPendingGeneration == generation) {
+      return;
+    }
+    _popupAdPendingGeneration = generation;
     try {
       final result = await adRepo.fetchPopupAds();
-      if (!isAuthenticated || isClosed) return;
+      if (!_canShowPopupAd(generation)) return;
       final ads = result.valueOrNull;
       if (ads == null || ads.isEmpty) return;
       for (final ad in ads) {
         final id = ad.id;
         if (id == null) continue;
-        if (await seenStore.isSeen(id)) continue;
-        await seenStore.markSeen(id);
-        await Get.dialog<void>(
-          PopupAdDialog(ad: ad),
+        final seen = await seenStore.isSeen(id);
+        if (!_canShowPopupAd(generation)) return;
+        if (seen) continue;
+        final imagePath = await AppAdvertisementHelper.cacheImage(ad.imageUrl);
+        if (!_canShowPopupAd(generation)) return;
+        if (imagePath == null) continue;
+        final context = Get.context;
+        if (context == null || !context.mounted) return;
+        late final ImageProvider<Object> image;
+        if (imagePath.startsWith('assets/') || imagePath.startsWith('asset:')) {
+          image = AssetImage(imagePath.replaceFirst(RegExp(r'^asset:'), ''));
+        } else {
+          image = FileImage(File(imagePath));
+        }
+        var decoded = true;
+        await precacheImage(image, context, onError: (_, _) => decoded = false);
+        if (!_canShowPopupAd(generation)) return;
+        if (!decoded) continue;
+        // 使用同一个本地 provider，避免弹出后重新请求网络或先露出关闭按钮。
+        final dismissed = Get.dialog<void>(
+          PopupAdDialog(ad: ad, image: image),
           barrierDismissible: true,
           barrierColor: Colors.transparent,
         );
-        // 每次登录只展示一条弹窗广告。
+        _popupAdShown = true;
+        await seenStore.markSeen(id);
+        await dismissed;
         break;
       }
     } on Object {
-      // 弹窗广告失败不影响主页其他功能，静默处理。
+      // 缓存、解码或广告请求失败时保持静默，且不提前记录未展示广告。
+    } finally {
+      if (_popupAdPendingGeneration == generation) {
+        _popupAdPendingGeneration = null;
+      }
     }
   }
 
   @override
   void onClose() {
+    _popupAdGeneration++;
     _loadGeneration++;
     _contentGeneration++;
     WidgetsBinding.instance.removeObserver(this);

@@ -24,12 +24,15 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   /// 创建 [CyberskinBleRuntimeCoordinator] 协调器实例。
   ///
   /// [catalogRepository] 用于获取后端设备 profile；[userDeviceRepository] 用于进行设备用户绑定；
-  /// [preferencesFuture] 用于已知设备记录的本地持久化。
+  /// [preferencesFuture] 用于已知设备记录的本地持久化；
+  /// [isAuthenticated] 由应用层提供，所有扫描、连接及设备事件均受当前会话约束。
   CyberskinBleRuntimeCoordinator({
     required DeviceCatalogRepository catalogRepository,
+    required bool Function() isAuthenticated,
     UserDeviceRepository? userDeviceRepository,
     Future<SharedPreferences>? preferencesFuture,
   }) : _catalogRepository = catalogRepository,
+       _isAuthenticated = isAuthenticated,
        _userDeviceRepository = userDeviceRepository,
        _preferencesFuture =
            preferencesFuture ?? SharedPreferences.getInstance();
@@ -43,6 +46,13 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   /// 设备目录数据仓储，用于获取设备型号及 GATT Profile 详情。
   final DeviceCatalogRepository _catalogRepository;
+
+  // 由应用层注入会话判定，数据层不依赖 SessionController 或路由生命周期。
+  final bool Function() _isAuthenticated;
+  Future<void>? _sessionCleanup;
+  bool get _canUseDevices => _isAuthenticated() && _sessionCleanup == null;
+  bool _isCurrentSession(int generation) =>
+      _canUseDevices && generation == _sessionGeneration;
 
   /// 用户设备绑定仓储，用于向后端绑定设备。
   final UserDeviceRepository? _userDeviceRepository;
@@ -119,9 +129,18 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   /// 共享的扫描检查与启动 Future，合并并发请求。
   Future<void>? _discoveryFuture;
+  int _discoveryFutureGeneration = 0;
 
   /// 会话代数，注销时递增使旧的异步请求结果失效。
   int _sessionGeneration = 0;
+
+  // 用户 Stop 取消本轮扫描意图；权限弹窗和 SDK 启动回调不能将其重新打开。
+  int _scanGeneration = 0;
+  bool _discoveryEnabled = false;
+  bool _discoveryPaused = false;
+
+  /// 用户已停止扫描；自动权限或前台回调须等待用户重新扫描或下一次登录。
+  bool get isDiscoveryPaused => _discoveryPaused;
 
   /// App 主动发起断开的设备 ID 集合，用于区分设备侧断开与 App 侧断开。
   final Set<String> _intentionalDisconnects = <String>{};
@@ -157,6 +176,13 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   /// 主页和设备页都可能在路由切换时触发该入口，必须在协调器内合并并发请求，
   /// 避免重复创建 BLE 监听、重复请求目录详情或同时启动多个扫描会话。
   Future<void> loadProfilesAndStart() {
+    if (!_isAuthenticated()) return Future<void>.value();
+    final cleanup = _sessionCleanup;
+    if (cleanup != null) {
+      return cleanup.then((_) => loadProfilesAndStart());
+    }
+    _discoveryEnabled = true;
+    _discoveryPaused = false;
     if (_profilesConfigured) {
       return _startDiscovery();
     }
@@ -179,12 +205,13 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     scanCompleted.value = false;
     _bleLog('loadProfilesAndStart: 开始加载设备 profile');
     await initializeBluetooth();
-    final manager = this.manager;
+    if (!_isCurrentSession(generation)) return;
     final t0 = DateTime.now();
     final result = await _catalogRepository.listDeviceModels();
     _bleLog(
       'listDeviceModels 耗时 ${DateTime.now().difference(t0).inMilliseconds}ms',
     );
+    if (!_isCurrentSession(generation)) return;
     final summaries = result.valueOrNull;
     if (summaries == null) {
       final failure = result.failureOrNull;
@@ -203,6 +230,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
       if (modelId == null || modelId <= 0) continue;
       final t1 = DateTime.now();
       final detail = await _catalogRepository.getDeviceModelDetail(modelId);
+      if (!_isCurrentSession(generation)) return;
       final value = detail.valueOrNull;
       if (value == null) {
         _bleLog(
@@ -218,7 +246,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
       profiles.add(profile);
     }
     // 注销可能在目录请求期间发生；过期结果不能重新写入用户 profile 或启动扫描。
-    if (generation != _sessionGeneration) {
+    if (!_isCurrentSession(generation)) {
       _bleLog('loadProfilesAndStart: session 已失效，丢弃结果');
       return;
     }
@@ -244,7 +272,9 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
   /// 登录回调、主页初始化和用户点击可能同时触发扫描，因此这里合并并发请求，
   /// 并在每次真正启动前重新检查平台状态，避免权限或开关变化后仍调用 SDK 扫描。
   Future<void> _startDiscovery() {
-    if (!_profilesConfigured) return Future<void>.value();
+    if (!_canUseDevices || !_discoveryEnabled || !_profilesConfigured) {
+      return Future<void>.value();
+    }
     // 已有活跃连接时不启动扫描；重连由设备侧断开事件触发，不需要持续扫描。
     if (hasConnectedDevice) {
       _bleLog('_startDiscovery: 跳过，设备已连接');
@@ -254,7 +284,14 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     // 不代表当前这一轮扫描正在进行；重扫只能依据事件状态判断。
     if (isScanning.value) return Future<void>.value();
     final existing = _discoveryFuture;
-    if (existing != null) return existing;
+    if (existing != null) {
+      // Stop 后立即再次点 Scan，需要等待旧启动结束，再兑现这次新的扫描意图。
+      if (_discoveryFutureGeneration != _scanGeneration) {
+        return existing.then((_) => _startDiscovery());
+      }
+      return existing;
+    }
+    _discoveryFutureGeneration = _scanGeneration;
     final future = _checkAndStartDiscovery();
     _discoveryFuture = future;
     return future.whenComplete(() {
@@ -266,6 +303,8 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   /// 检查系统蓝牙开关与权限状态，满足条件后启动 SDK 自动扫描。
   Future<void> _checkAndStartDiscovery() async {
+    final generation = _sessionGeneration;
+    final scanGeneration = _scanGeneration;
     final current = manager;
     // 蓝牙关闭时先保留 Bluetooth off 阶段，不触发可能因适配器关闭而失败的权限请求。
     if (adapterState.value != 'on') {
@@ -273,6 +312,9 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
       return;
     }
     final permissionsGranted = await current.requestBluetoothPermissions();
+    if (!_isCurrentSession(generation) || scanGeneration != _scanGeneration) {
+      return;
+    }
     // 除了依赖异步事件外同步保存结果，避免平台权限实现不广播事件时状态不一致。
     permissionGranted.value = permissionsGranted;
     if (!permissionsGranted) {
@@ -286,6 +328,10 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
     }
     _bleLog('_checkAndStartDiscovery: 启动自动扫描');
     await current.startAutoDiscovery();
+    // SDK 内部也会等待权限；注销可能发生在第二次等待中。
+    if (!_isCurrentSession(generation) || scanGeneration != _scanGeneration) {
+      await current.stopAutoDiscovery();
+    }
   }
 
   /// 创建 SDK Manager 实例、订阅事件并完成基础蓝牙状态初始化。
@@ -366,23 +412,68 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   /// 停止扫描，但保留已建立的连接和 profile 缓存。
   Future<void> stopDiscovery() async {
+    _discoveryEnabled = false;
+    _discoveryPaused = true;
+    _attemptedConnectionId = null;
+    _scanGeneration++;
+    isScanning.value = false;
+    scanCompleted.value = false;
+    pendingDiscovery.value = null;
     final current = _manager;
     if (current == null) return;
     await current.stopAutoDiscovery();
   }
 
-  /// 注销时清理用户 profile、待确认设备和扫描请求，防止匿名会话继续复用旧账号数据。
-  Future<void> clearUserSession() async {
+  /// 同步封闭扫描入口并清空视图，再等待扫描停止和物理断开完成。
+  ///
+  /// 在途目录、权限、连接与绑定回调均按会话代数丢弃；清理可由注销或 401 重复触发。
+  Future<void> clearUserSession() {
+    final existing = _sessionCleanup;
+    if (existing != null) return existing;
     _sessionGeneration++;
-    await stopDiscovery();
-    // 内存缓存在注销时失效，防止旧账号设备列表泄给新登录用户。
+    final discovery = _discoveryFuture;
+    _startFuture = null;
+    _discoveryFuture = null;
+    _profilesConfigured = false;
+    final remoteIds = connectionStates.keys.toSet();
+    _intentionalDisconnects.addAll(remoteIds);
+    _manager?.configureProfiles(const []);
     _userDeviceRepository?.invalidateCache();
     pendingDiscovery.value = null;
-    _intentionalDisconnects.clear();
+    clearConnectedDevice();
+    connectionStates.clear();
+    runtime.clear();
+    _runtimeLog.reset();
+    _attemptedConnectionId = null;
     _modelIdByRemoteId.clear();
     _profilesByModel = <int, BleDeviceProfile>{};
-    _profilesConfigured = false;
+    isScanning.value = false;
     scanCompleted.value = false;
+    failureCode.value = null;
+    failureMessage.value = null;
+    final future = _stopSessionDevices(remoteIds, discovery);
+    _sessionCleanup = future;
+    return future.whenComplete(() {
+      if (identical(_sessionCleanup, future)) _sessionCleanup = null;
+    });
+  }
+
+  Future<void> _stopSessionDevices(
+    Set<String> remoteIds,
+    Future<void>? discovery,
+  ) async {
+    await Future.wait<void>([
+      stopDiscovery(),
+      for (final remoteId in remoteIds)
+        if (_manager != null) _manager!.disconnect(remoteId),
+    ]);
+    // 等待尚未结束的扫描启动，避免其在 stop 返回后重新开启 SDK 扫描。
+    try {
+      await discovery;
+    } finally {
+      await stopDiscovery();
+      _intentionalDisconnects.clear();
+    }
   }
 
   /// 当前是否存在已建立的 BLE 连接。
@@ -436,9 +527,15 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   /// 确认并连接新发现的设备，连接成功后向后端提交绑定，并记录到已知设备列表。
   Future<bool> confirmAndConnect(BleDiscoveredDevice device) async {
+    if (!_canUseDevices) return false;
+    final generation = _sessionGeneration;
     _modelIdByRemoteId[device.remoteId] = device.profile.modelId;
     pendingDiscovery.value = null;
     final connected = await manager.connectDiscovered(device);
+    if (!_isCurrentSession(generation)) {
+      if (connected) await disconnectIntentionally(device.remoteId);
+      return false;
+    }
     if (!connected) return false;
     final repository = _userDeviceRepository;
     if (repository == null) return true;
@@ -448,6 +545,10 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
         deviceUid: device.remoteId,
       ),
     );
+    if (!_isCurrentSession(generation)) {
+      await disconnectIntentionally(device.remoteId);
+      return false;
+    }
     if (result.isFailure) {
       // 绑定被服务端拒绝；标记为预期断开，避免触发设备侧断开的重扫逻辑。
       _intentionalDisconnects.add(device.remoteId);
@@ -502,12 +603,15 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   /// 由 [DeviceHomeController] 在加载到匹配设备后调用，建立连接设备视图。
   ///
-  /// 若已存在相同 [remoteId] 的视图，则仅更新 [device] 元数据并重新应用当前运行态，
-  /// 避免替换视图对象导致所有下游 Obx 重建。
+  /// 同一设备且元数据对象未改变时保留视图；型号详情到达后替换初始快照，
+  /// 并重放当前遥测，避免首页一直使用 SDK 连接时的占位名称与能力。
   void setConnectedDevice(ConnectedDeviceState state) {
+    if (!_canUseDevices) return;
     final existing = connectedDevice.value;
-    if (existing != null && existing.remoteId == state.remoteId) {
-      // remoteId 不变时仅刷新运行态快照；device 元数据不可变，不需要更新。
+    if (existing != null &&
+        existing.remoteId == state.remoteId &&
+        identical(existing.device, state.device)) {
+      // 同一份不可变元数据无需重建视图。
       final current = runtime[state.remoteId];
       if (current != null) existing.applyStatus(current);
       return;
@@ -549,8 +653,26 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
 
   /// 响应并处理 BLE SDK 广播的各种运行时事件。
   void _onEvent(BleEvent event) {
+    if (!_canUseDevices) {
+      // 平台开关和权限仍用于匿名首页；账号设备事件不得恢复已退出的连接视图。
+      if (event case BleConnectionChanged(
+        :final remoteId,
+        state: BleConnectionState.connected,
+      )) {
+        final current = _manager;
+        if (current != null) unawaited(current.disconnect(remoteId));
+      }
+      if (event is BleScanningChanged && event.scanning) {
+        unawaited(stopDiscovery());
+      }
+      if (event is! BleAdapterChanged && event is! BlePermissionChanged) return;
+    }
     switch (event) {
       case BleScanningChanged(:final scanning):
+        if (scanning && !_discoveryEnabled) {
+          unawaited(stopDiscovery());
+          return;
+        }
         _bleLog('扫描状态变化: scanning=$scanning');
         if (scanning) {
           scanCompleted.value = false;
@@ -573,6 +695,7 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
           failureMessage.value = null;
         }
       case BleDeviceDiscovered(:final device, :final isKnown):
+        if (!_discoveryEnabled) return;
         _modelIdByRemoteId[device.remoteId] = device.profile.modelId;
         _bleLog(
           '发现设备: id=${device.remoteId} '
@@ -594,6 +717,16 @@ class CyberskinBleRuntimeCoordinator extends GetxService {
           unawaited(manager.connectDiscovered(device));
         }
       case BleConnectionChanged(:final remoteId, :final state):
+        if (!_discoveryEnabled &&
+            connectionStates[remoteId] != BleConnectionState.connected &&
+            (state == BleConnectionState.connecting ||
+                state == BleConnectionState.connected)) {
+          if (state == BleConnectionState.connected) {
+            final current = _manager;
+            if (current != null) unawaited(current.disconnect(remoteId));
+          }
+          return;
+        }
         _bleLog('连接状态变化: id=$remoteId state=$state');
         connectionStates[remoteId] = state;
         if (state == BleConnectionState.connected) {

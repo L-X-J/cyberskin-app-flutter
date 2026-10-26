@@ -5,6 +5,7 @@
 - `bindings/`：GetX 应用级与路由级依赖绑定。
 - `widgets/`：应用壳层共享组件，例如底部导航和全局控制区域。
 - `app_routes.dart`：顶层命名路由表。
+- `session_controller.dart`：应用认证与连接状态；注销和凭证失效均调用装配层注入的设备清理，不依赖首页 Controller 存活。
 - `floating_control_controller.dart`：应用级悬浮控件的路由策略、几何边界和会话内拖动位置。
 - `/home` 是匿名可浏览主页；`/profile` 通过统一认证 Middleware 保护，`/login` 是认证入口。
 - `app_route_logger.dart`：将命名路由变化适配到统一日志边界，不持久化路由参数。

@@ -26,6 +26,56 @@ final class ConnectedDeviceRepository implements DeviceRepository {
   Future<Result<List<Device>>> loadDevices() async {
     final boundResult = await _userDeviceRepository.listUserDevices();
     final boundDevices = boundResult.valueOrNull;
+    // 绑定记录是账号元数据，不能作为物理连接是否存在的判据。
+    final connectedRemoteId = _bleCoordinator.connectedRemoteId;
+    final connectedModelId = _bleCoordinator.connectedModelId;
+    if (_bleCoordinator.hasConnectedDevice &&
+        connectedRemoteId != null &&
+        connectedModelId != null) {
+      final detailResult = await _catalogRepository.getDeviceModelDetail(
+        connectedModelId,
+      );
+      // 查询期间可能退出或切换设备，旧详情不得恢复失效的设备视图。
+      if (!_bleCoordinator.hasConnectedDevice ||
+          _bleCoordinator.connectedRemoteId != connectedRemoteId ||
+          _bleCoordinator.connectedModelId != connectedModelId) {
+        return const Result.ok([]);
+      }
+      final detail = detailResult.valueOrNull;
+      if (detail != null) {
+        UserDevice? metadata;
+        for (final bound in boundDevices ?? const <UserDevice>[]) {
+          if (bound.deviceModelId == connectedModelId) {
+            metadata = bound;
+            break;
+          }
+        }
+        final battery = _bleCoordinator.connectedRuntime?.batteryLevel;
+        return Result.ok([
+          Device(
+            id: metadata?.id?.toString() ?? connectedRemoteId,
+            model: '$connectedModelId',
+            name:
+                metadata?.customName ??
+                detail.summary.name ??
+                metadata?.modelName ??
+                'Device',
+            status: DeviceConnectionStatus.connected,
+            batteryPercent: battery != null && battery >= 0 && battery <= 100
+                ? battery
+                : null,
+            capabilities: _capabilities(detail),
+            cardColor: detail.summary.cardColor,
+            tags: detail.summary.tags,
+            iconUrl: metadata?.iconUrl ?? detail.summary.iconUrl,
+            hardwareUid: metadata?.hardwareUid ?? detail.summary.hardwareUid,
+          ),
+        ]);
+      }
+      final snapshot = _bleCoordinator.connectedDevice.value;
+      if (snapshot != null) return Result.ok([snapshot.device]);
+      return Result.failure(detailResult.failureOrNull!);
+    }
     if (boundDevices == null) {
       return Result.failure(boundResult.failureOrNull!);
     }

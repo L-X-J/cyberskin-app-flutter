@@ -20,6 +20,9 @@ final class DeviceHomeController extends GetxController {
 
   final DeviceRepository _repository;
   final CyberskinBleRuntimeCoordinator? _bleCoordinator;
+  Worker? _connectionWorker;
+  Worker? _connectedDeviceWorker;
+  int _loadGeneration = 0;
 
   /// 当前可供用户访问的设备列表。
   final RxList<Device> devices = <Device>[].obs;
@@ -39,16 +42,29 @@ final class DeviceHomeController extends GetxController {
   void onReady() {
     super.onReady();
     unawaited(load());
-    unawaited(_bleCoordinator?.loadProfilesAndStart());
     // BLE 连接可能在 load() 之后才建立；监听连接状态变化，
     // 有设备连接时补一次同步，确保 connectedDevice 视图不因时序差而缺失；
     // 设备断开时清理连接视图，若当前在二级设备页面则自动返回主页未连接状态。
     final coordinator = _bleCoordinator;
     if (coordinator != null) {
-      ever(coordinator.connectionStates, (_) {
-        if (coordinator.hasConnectedDevice && devices.isNotEmpty) {
-          _syncConnectedDevice(devices.toList(growable: false));
-        } else if (!coordinator.hasConnectedDevice) {
+      // SDK 先发布连接状态，再建立设备快照；空绑定列表不能覆盖随后到达的快照。
+      _connectedDeviceWorker = ever(coordinator.connectedDevice, (_) {
+        _useConnectedSnapshot();
+      });
+      _useConnectedSnapshot();
+      _connectionWorker = ever(coordinator.connectionStates, (_) {
+        if (coordinator.hasConnectedDevice) {
+          if (devices.isEmpty) {
+            unawaited(load());
+          } else {
+            _syncConnectedDevice(devices.toList(growable: false));
+          }
+        } else {
+          // 首页在注销后继续存活，必须同时使旧账号的在途设备查询失效。
+          _loadGeneration++;
+          isLoading.value = false;
+          devices.clear();
+          failure.value = null;
           coordinator.clearConnectedDevice();
           if (AppRoutes.requiresConnectedDevice(Get.currentRoute)) {
             AppRoutes.returnToHome();
@@ -63,28 +79,46 @@ final class DeviceHomeController extends GetxController {
     if (isLoading.value) {
       return;
     }
+    final generation = ++_loadGeneration;
     isLoading.value = true;
     failure.value = null;
 
     final result = await _repository.loadDevices();
     final loadedDevices = result.valueOrNull;
+    if (isClosed || generation != _loadGeneration) return;
     if (loadedDevices != null) {
       devices.assignAll(loadedDevices);
       _syncConnectedDevice(loadedDevices);
     } else {
       failure.value = result.failureOrNull;
     }
+    _useConnectedSnapshot();
     isLoading.value = false;
+  }
+
+  /// 已连接设备与悬浮控制条共用快照，服务端绑定列表为空或失败不代表物理断开。
+  void _useConnectedSnapshot() {
+    final coordinator = _bleCoordinator;
+    final connected = coordinator?.connectedDevice.value;
+    if (coordinator == null ||
+        !coordinator.hasConnectedDevice ||
+        connected == null) {
+      return;
+    }
+    if (devices.length == 1 && identical(devices.first, connected.device)) {
+      return;
+    }
+    devices.assignAll([connected.device]);
   }
 
   /// 将已加载设备列表同步到协调器的连接设备视图。
   ///
-  /// 连接成功时取列表首项构造 [ConnectedDeviceState]，断开时清除视图。
+  /// 仅用当前连接型号匹配的元数据更新 [ConnectedDeviceState]，空列表不清除物理连接。
   /// remoteId 从协调器的 connectionStates 中找第一个 connected 条目获取。
   void _syncConnectedDevice(List<Device> loadedDevices) {
     final coordinator = _bleCoordinator;
     if (coordinator == null) return;
-    if (loadedDevices.isEmpty || !coordinator.hasConnectedDevice) {
+    if (!coordinator.hasConnectedDevice) {
       coordinator.clearConnectedDevice();
       return;
     }
@@ -100,7 +134,13 @@ final class DeviceHomeController extends GetxController {
       coordinator.clearConnectedDevice();
       return;
     }
-    final device = loadedDevices.first;
+    final modelId = coordinator.connectedModelId;
+    final device = modelId == null
+        ? loadedDevices.firstOrNull
+        : loadedDevices.firstWhereOrNull(
+            (device) => device.model == '$modelId',
+          );
+    if (device == null) return;
     coordinator.setConnectedDevice(
       ConnectedDeviceState(device: device, remoteId: connectedRemoteId),
     );
@@ -119,6 +159,14 @@ final class DeviceHomeController extends GetxController {
   /// 忽略当前首次发现设备。
   Future<void> dismissDiscovery() =>
       _bleCoordinator?.dismissDiscovery() ?? Future<void>.value();
+
+  @override
+  void onClose() {
+    _loadGeneration++;
+    _connectionWorker?.dispose();
+    _connectedDeviceWorker?.dispose();
+    super.onClose();
+  }
 
   /// 重新启动 profile 加载和蓝牙扫描。
   Future<void> startDiscovery() =>

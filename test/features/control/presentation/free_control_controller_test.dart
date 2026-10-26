@@ -75,6 +75,7 @@ void main() {
   setUp(() {
     Get.reset();
     bleCoordinator = CyberskinBleRuntimeCoordinator(
+      isAuthenticated: () => true,
       catalogRepository: _OfflineCatalogRepository(),
     );
     commands = _RecordingCommandRepository();

@@ -55,6 +55,7 @@ class BleControlFixture {
   }) {
     SharedPreferences.setMockInitialValues({});
     coordinator = CyberskinBleRuntimeCoordinator(
+      isAuthenticated: () => true,
       catalogRepository: _Catalog(),
       preferencesFuture: SharedPreferences.getInstance(),
     );

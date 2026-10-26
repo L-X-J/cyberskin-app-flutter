@@ -129,8 +129,13 @@ final class HomeDisconnectedView extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(24, topPadding, 24, bottomInset),
         children: [
           _ScanCard(
-            state: bleCardState,
-            pending: pendingDiscovery,
+            state: isAuthenticated
+                ? bleCardState
+                : HomeBleCardState.fromPhase(
+                    HomeBleCardPhase.loginRequired,
+                    adapterOn: bleCardState.adapterOn,
+                  ),
+            pending: isAuthenticated ? pendingDiscovery : null,
             onPrimaryAction: onPrimaryAction,
             onStop: onStopDiscovery,
             onConfirm: onConfirmDiscovery,

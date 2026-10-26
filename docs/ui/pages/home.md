@@ -40,6 +40,7 @@
 - `HomeController` 只编排 Repository 和 `SessionController`，`HomeDashboard` 冻结渲染所需列表。
 - 项目约束一次最多绑定一个设备；发现多条绑定记录时报告数据错误，不猜测当前设备。
 - UI 重建、窗口变化和截图不得触发 BLE 操作或重复加载；加载由 Controller 生命周期控制。
+- 登录和退出登录后均复用路由栈中的主页，重置为 Device 标签和未连接视图；会话层负责停止扫描、断开设备，迟到的 BLE 回调不能恢复匿名连接态。回归入口为 `test/features/profile/presentation/logout_home_test.dart`，离线 Flutter 渲染截图为 `build/ui/home_logout_disconnected_402x874_text1.0.png`、`build/ui/home_relogin_connected_402x874_text1.0.png`；真实 BLE 和系统权限弹窗时序仍需实机验收。
 
 ## 适配与验收
 
@@ -77,3 +78,9 @@
 ## 聚合内容接入（2026-10-22）
 
 训练和广告改为 `/app/v1/home` 一次聚合，型号过滤、真实摘要、轮播生命周期和跳转契约见 [Training 页面](training.md)。训练只展示首条，More 进入完整目录。刷新失败保留真实旧内容。
+
+## 弹窗广告展示条件
+
+- 同时满足已登录、设备已连接后才检查弹窗广告；恢复登录及稍后连接设备也适用。
+- 复用 banner 的图片落盘缓存流程，下载完成后预解码本地图片；弹窗直接使用同一个本地图片 provider，准备期间不显示蒙层或关闭按钮。
+- 请求、缓存或解码期间退出登录、设备断连或 Controller 销毁时，丢弃本次结果。下载或解码失败的广告不标记已看过；同次登录最多展示一条，断连重连不重复弹出。

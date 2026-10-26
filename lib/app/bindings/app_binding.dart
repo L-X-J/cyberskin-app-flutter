@@ -77,6 +77,11 @@ final class AppBinding extends Bindings {
   void dependencies() {
     final client = AppApiClient();
     final sessionStore = SecureSessionCredentialStore();
+    late final CyberskinBleRuntimeCoordinator bleCoordinator;
+    final session = SessionController(
+      sessionStore: sessionStore,
+      onSessionEnded: () => bleCoordinator.clearUserSession(),
+    );
     final monitor = NetworkRequestMonitor();
     final transport = GetConnectApiTransport(
       client: client,
@@ -115,7 +120,9 @@ final class AppBinding extends Bindings {
       permanent: true,
     );
     Get.put<CyberskinBleRuntimeCoordinator>(
-      CyberskinBleRuntimeCoordinator(
+      bleCoordinator = CyberskinBleRuntimeCoordinator(
+        isAuthenticated: () =>
+            session.state.value == SessionState.authenticated,
         catalogRepository: Get.find<DeviceCatalogRepository>(),
         userDeviceRepository: Get.find<UserDeviceRepository>(),
       ),
@@ -235,10 +242,7 @@ final class AppBinding extends Bindings {
       ),
       permanent: true,
     );
-    Get.put<SessionController>(
-      SessionController(sessionStore: sessionStore),
-      permanent: true,
-    );
+    Get.put<SessionController>(session, permanent: true);
     Get.put<ControlSessionController>(
       ControlSessionController(
         programPlayback: devicePlayback,

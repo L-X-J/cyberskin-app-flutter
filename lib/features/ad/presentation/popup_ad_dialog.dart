@@ -11,10 +11,13 @@ import '../../home/presentation/widgets/home_advertisement_helper.dart';
 /// 弹窗广告对话框；点击图片执行跳转，点击蒙层或关闭按钮退出。
 class PopupAdDialog extends StatelessWidget {
   /// 创建弹窗广告视图。
-  const PopupAdDialog({required this.ad, super.key});
+  const PopupAdDialog({required this.ad, required this.image, super.key});
 
   /// 待展示的广告条目。
   final AppAdvertisement ad;
+
+  /// 已完成本地缓存及解码的图片，禁止使用网络图片 provider。
+  final ImageProvider image;
 
   @override
   Widget build(BuildContext context) {
@@ -45,19 +48,7 @@ class PopupAdDialog extends StatelessWidget {
                   },
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: ad.imageUrl != null && ad.imageUrl!.isNotEmpty
-                        ? Image.network(
-                            ad.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const SizedBox(
-                              height: 180,
-                              child: ColoredBox(color: Colors.grey),
-                            ),
-                          )
-                        : const SizedBox(
-                            height: 180,
-                            child: ColoredBox(color: Colors.grey),
-                          ),
+                    child: Image(image: image, fit: BoxFit.cover),
                   ),
                 ),
                 const SizedBox(height: 16),

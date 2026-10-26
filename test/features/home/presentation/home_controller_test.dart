@@ -35,6 +35,7 @@ void main() {
     'shows the login-required phase for anonymous users when adapter is on',
     () async {
       final coordinator = CyberskinBleRuntimeCoordinator(
+        isAuthenticated: () => true,
         catalogRepository: _FakeDeviceCatalogRepository(),
       );
       final session = SessionController();
@@ -71,7 +72,9 @@ void main() {
 
   test('clears the user BLE session after logout', () async {
     final coordinator = _TestBleCoordinator();
-    final session = SessionController()..markAuthenticated();
+    final session = SessionController(
+      onSessionEnded: coordinator.clearUserSession,
+    )..markAuthenticated();
     final controller = HomeController(session, bleCoordinator: coordinator);
 
     controller.onReady();
@@ -151,7 +154,10 @@ void main() {
 
 final class _TestBleCoordinator extends CyberskinBleRuntimeCoordinator {
   _TestBleCoordinator()
-    : super(catalogRepository: _FakeDeviceCatalogRepository());
+    : super(
+        catalogRepository: _FakeDeviceCatalogRepository(),
+        isAuthenticated: () => true,
+      );
 
   bool turnOnBluetoothCalled = false;
   bool openBluetoothSettingsCalled = false;

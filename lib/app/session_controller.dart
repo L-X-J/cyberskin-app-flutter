@@ -30,8 +30,17 @@ enum SessionState {
 /// 它不能被当作凭证存在的证明，否则会出现「凭证已删但仍显示已登录」的分叉。
 final class SessionController extends GetxController {
   /// 创建会话控制器，并绑定可选的凭证存储用于回读与失效监听。
-  SessionController({SessionCredentialStore? sessionStore})
-    : _sessionStore = sessionStore;
+  SessionController({
+    SessionCredentialStore? sessionStore,
+    Future<void> Function()? onSessionEnded,
+  }) : _sessionStore = sessionStore,
+       // 保持公开命名参数，应用装配不应依赖私有字段名。
+       // ignore: prefer_initializing_formals
+       _onSessionEnded = onSessionEnded;
+
+  // 应用装配注入设备清理，保证注销和凭证失效不依赖首页是否仍在路由栈。
+  final Future<void> Function()? _onSessionEnded;
+  Future<void>? _sessionCleanup;
 
   /// 可选的凭证存储；为空时退化为纯内存状态，供不访问安全的测试使用。
   final SessionCredentialStore? _sessionStore;
@@ -107,12 +116,15 @@ final class SessionController extends GetxController {
       return;
     }
     state.value = SessionState.anonymous;
+    setDeviceConnectionStatus(DeviceConnectionStatus.disconnected);
+    _sessionCleanup = _onSessionEnded?.call();
   }
 
   /// 清除本地凭证并收敛为匿名；远端登出是否成功都不保留本地登录态。
   Future<void> logout() async {
-    await _sessionStore?.clear();
     markAnonymous();
+    await _sessionStore?.clear();
+    await _sessionCleanup;
   }
 
   /// 更新设备连接状态，并在设备断开时自动让依赖设备的二级页面返回主页未连接状态。
@@ -163,9 +175,11 @@ final class SessionController extends GetxController {
 
   /// 按凭证是否存在写入会话状态。
   void _applyCredentialPresence(bool hasCredentials) {
-    state.value = hasCredentials
-        ? SessionState.authenticated
-        : SessionState.anonymous;
+    if (hasCredentials) {
+      markAuthenticated();
+    } else {
+      markAnonymous();
+    }
   }
 
   /// 订阅凭证失效事件；重复调用只保留一个订阅。
